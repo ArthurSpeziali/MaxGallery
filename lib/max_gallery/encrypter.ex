@@ -1,10 +1,22 @@
 defmodule MaxGallery.Encrypter do
 
-    def file(path, key) do
+    def file(:encrypt, path, new_path, key) do
         with {:ok, content} <- File.read(path),
-             {:ok, enc} <- encrypt(content, key) do
+             {:ok, {iv, cypher}} <- encrypt(content, key),
+             :ok <- File.write(new_path, cypher, [:write]) do
 
-            {:ok, enc}
+            {:ok, {iv, cypher}}
+        else
+            error -> error
+        end
+    end
+
+    def file(:decrypt, path, iv, key) do
+        with {:ok, content} <- File.read(path),
+             {:ok, data} <- {iv, content} |> decrypt(key),
+             :ok <- File.write(path, data, [:write]) do
+
+            {:ok, data}
         else
             error -> error
         end
