@@ -2,6 +2,7 @@ defmodule MaxGallery.Core.Data.Api do
     alias MaxGallery.Core.Data
     alias MaxGallery.Repo
 
+
     def all() do
         Repo.all(Data)
         |> case do
@@ -11,8 +12,15 @@ defmodule MaxGallery.Core.Data.Api do
     end
 
     def insert(params) do
-        Data.changeset(%Data{}, params)
+        struct(%Data{}, params)
         |> Repo.insert()
     end
 
+    def get(id) do
+        Repo.get(Data, id)
+        |> case do
+            nil -> {:error, "not found"}
+            querry -> {:ok, querry}
+        end
+    end
 end
