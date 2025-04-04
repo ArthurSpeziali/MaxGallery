@@ -22,9 +22,6 @@ defmodule MaxGallery.Encrypter do
     end
 
 
-    def encrypt(data, _key) when not is_binary(data), do: {:error, "data is not binary"}
-    def encrypt(_data, key) when not is_binary(key), do: {:error, "key is not binary"}
-
     def encrypt(data, key) do
         iv = :crypto.strong_rand_bytes(16)  
         hash_key = hash(key)
