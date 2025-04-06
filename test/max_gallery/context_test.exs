@@ -1,6 +1,6 @@
 defmodule MaxGallery.Data.ContextTest do
     use MaxGallery.DataCase
-    alias MaxGallery.Core.Data.Context
+    alias MaxGallery.Context
     alias MaxGallery.Core.Data.Api
 
     
@@ -33,7 +33,7 @@ defmodule MaxGallery.Data.ContextTest do
         end
 
         assert {:ok, querry} = Context.decrypt_all("key")
-        assert {name, ^msg} = List.first(querry)
+        assert %{name: name, blob: ^msg} = List.first(querry)
         assert ^name = Path.basename(path)
     end
 end
