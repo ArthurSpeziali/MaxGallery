@@ -20,6 +20,7 @@ defmodule MaxGalleryWeb.Router do
         get "/", PageController, :home
         post "/auth", PageController, :auth
         live "/data", DataLive
+        get "/logout", PageController, :logout
     end
 
     # Other scopes may use custom stacks.

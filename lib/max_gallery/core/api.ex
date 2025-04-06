@@ -23,4 +23,11 @@ defmodule MaxGallery.Core.Data.Api do
             querry -> {:ok, querry}
         end
     end
+
+    def delete(id) do
+        case get(id) do
+            {:ok, querry} -> Repo.delete(querry)
+            error -> error
+        end
+    end
 end

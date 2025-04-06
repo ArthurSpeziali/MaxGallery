@@ -8,12 +8,16 @@ defmodule MaxGalleryWeb.PageController do
         render(conn, :home, layout: false)
     end
 
-    def auth(conn, %{"auth" => key}) do
-        put_session(conn, :auth?, true)
-        |> put_session(:auth_params, key)
+    def auth(conn, %{"key" => key}) do
+        put_session(conn, :auth_key, key)
         |> redirect(to: "/data")
     end
     def auth(conn, _params) do
         redirect(conn, to: "/")
+    end
+
+    def logout(conn, _params) do
+        configure_session(conn, drop: true)
+        |> redirect(to: "/")
     end
 end

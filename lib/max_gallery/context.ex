@@ -1,6 +1,7 @@
 defmodule MaxGallery.Context do
     alias MaxGallery.Core.Data.Api
     alias MaxGallery.Encrypter
+    alias MaxGallery.Phantom
 
 
     def cypher_insert(path, key) do
@@ -29,8 +30,16 @@ defmodule MaxGallery.Context do
             {:ok, blob} = {item.blob_iv, item.blob} |> Encrypter.decrypt(key)
 
             %{name: name <> item.ext, blob: blob, id: item.id}
-        end)
+        end) |> Phantom.encode_bin()
 
         {:ok, querry}
+    end
+
+
+    def cypher_delete(id) do
+        case Api.delete(id) do
+            {:ok, querry} -> {:ok, querry}
+            error -> error
+        end
     end
 end

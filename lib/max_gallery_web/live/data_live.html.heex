@@ -1,16 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-    <header class="bg-gray-800 text-white p-1 flex items-center">
-        <.form for={%{}} action={~p"/"} method="get">
-            <button>
-                <img src="/images/logo.png" alt="Logo" class="w-auto h-14 px-2">
-            </button>
-        </.form>
-    </header>
-
-
     <body>
-        <div class="grid grid-cols-3 gap-4 p-4">
+        <div class="grid md:grid-cols-3 grid-cols-1 gap-4 p-4">
             <%= for item <- @datas do %>
 
                 <div class="border rounded-xl shadow-md p-4 bg-white grid grid-rows-[1fr_auto] h-40">
@@ -21,12 +12,29 @@
                     <div class="flex justify-center gap-2 mt-2">
                         <button class="text-blue-600 hover:underline">Show</button>
                         <button class="text-yellow-600 hover:underline">Edit</button>
-                        <button class="text-red-600 hover:underline">Delete</button>
+                        <button phx-click="ask_delete" phx-value-id={item.id} phx-value-name={item.name} class="text-red-600 hover:underline">Delete</button>
                     </div>
                 </div>
 
             <% end %>
         </div>
-    </body>
 
+
+        <%= if @delete_iframe do %>
+
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-6 rounded shadow-lg">
+                    <p>Are you sure you want to delete: </p>
+                    <strong class="block text-center">"{@name_data}" ?</strong>
+
+                    <div class="flex justify-end mt-[3.5rem] gap-3">
+                        <button phx-click="cancel_delete" class="bg-orange-600 dark:text-white text-black px-2 py-1 w-[3rem] rounded">No</button>
+                        <button phx-click="confirm_delete" phx-value-id={@delete_iframe} class="bg-transparent border border-orange-600 w-[3rem] text-orange-600 rounded px-2 py-1">Yes</button>
+                    </div>
+                </div>
+            </div>
+
+        <% end %>
+
+    </body>
 </html>
