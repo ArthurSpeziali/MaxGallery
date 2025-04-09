@@ -30,4 +30,15 @@ defmodule MaxGallery.Core.Data.Api do
             error -> error
         end
     end
+
+    def update(id, params) do
+        with {:ok, querry} <- get(id),
+             changeset <- Data.changeset(querry, params),
+             {:ok, new_querry} <- Repo.update(changeset) do
+
+            {:ok, new_querry}
+        else
+            error -> error
+        end
+    end
 end

@@ -1,4 +1,5 @@
 defmodule MaxGallery.Phantom do
+    alias MaxGallery.Encrypter
 
     defp validate_bin(binary) do
         if String.valid?(binary) do
@@ -31,6 +32,13 @@ defmodule MaxGallery.Phantom do
             Map.update!(item, :name, &validate_bin/1)
             |> Map.update!(:blob, &validate_bin/1)
         end)
+    end
+
+
+    def valid?(querry, key) do
+        {:ok, dec_data} = Encrypter.decrypt({querry.name_iv, querry.name}, key)
+
+        String.valid?(dec_data)
     end
 
 end

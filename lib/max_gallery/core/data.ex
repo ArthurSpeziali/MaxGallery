@@ -11,4 +11,8 @@ defmodule MaxGallery.Core.Data do
         timestamps()
     end
 
+
+    def changeset(model, params) do
+        Ecto.Changeset.cast(model, params, [:name, :name_iv, :blob, :blob_iv, :ext])
+    end
 end

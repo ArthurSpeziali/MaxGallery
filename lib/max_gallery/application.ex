@@ -17,7 +17,10 @@ defmodule MaxGallery.Application do
       # Start a worker by calling: MaxGallery.Worker.start_link(arg)
       # {MaxGallery.Worker, arg},
       # Start to serve requests, typically the last entry
-      MaxGalleryWeb.Endpoint
+      MaxGalleryWeb.Endpoint,
+        
+      ## ADICIONAR O GENSERVER AQUI
+      MaxGallery.Server.LiveServer
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

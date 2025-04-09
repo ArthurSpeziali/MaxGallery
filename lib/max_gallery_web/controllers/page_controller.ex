@@ -1,5 +1,6 @@
 defmodule MaxGalleryWeb.PageController do
     use MaxGalleryWeb, :controller
+    alias MaxGallery.Server.LiveServer
 
 
     def home(conn, _params) do
@@ -17,6 +18,8 @@ defmodule MaxGalleryWeb.PageController do
     end
 
     def logout(conn, _params) do
+        LiveServer.clr()
+            
         configure_session(conn, drop: true)
         |> redirect(to: "/")
     end

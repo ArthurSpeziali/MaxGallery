@@ -36,10 +36,15 @@ defmodule MaxGallery.Context do
     end
 
 
-    def cypher_delete(id) do
-        case Api.delete(id) do
-            {:ok, querry} -> {:ok, querry}
+    def cypher_delete(id, key) do
+        with {:ok, querry} <- Api.get(id),
+             true <- Phantom.valid?(querry, key),
+             {:ok, _querry} <- Api.delete(id) do
+            
+            {:ok, querry}
+        else
             error -> error
         end
     end
+
 end
