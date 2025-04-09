@@ -10,9 +10,13 @@ defmodule MaxGallery.Server.LiveServer do
         {:ok, state}
     end
 
-    
-    def handle_call(:get, _from, state) do
+
+    def handle_call(:all, _from, state) do
         {:reply, state, state}
+    end
+    
+    def handle_call({:get, key}, _from, state) do
+        {:reply, state[key], state}
     end
 
     def handle_cast({:put, map}, state) do
@@ -28,8 +32,12 @@ defmodule MaxGallery.Server.LiveServer do
     end
 
 
-    def get() do
-        GenServer.call(@mod, :get)
+    def all() do
+        GenServer.call(@mod, :all)
+    end
+
+    def get(key) do
+        GenServer.call(@mod, {:get, key})
     end
 
     def put(map) do

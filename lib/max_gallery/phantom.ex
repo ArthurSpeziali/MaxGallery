@@ -5,26 +5,8 @@ defmodule MaxGallery.Phantom do
         if String.valid?(binary) do
             binary
         else
-            Base.encode64(binary) <> get_ext(binary)
+            Base.encode64(binary) <> Path.extname(binary)
         end 
-    end
-
-    defp get_ext(binary) do
-        charlist = :binary.bin_to_list(binary)
-
-        index = Enum.reverse(charlist)
-                |> Enum.find_index(fn item ->
-                    item == ?.
-                end)
-
-        if index do
-            point = Enum.count(charlist) - index - 1
-
-            Enum.slice(charlist, point..-1//1)
-            |> List.to_string()
-        else
-            ""
-        end
     end
 
     def encode_bin(datas) do

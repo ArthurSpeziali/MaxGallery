@@ -54,7 +54,9 @@ defmodule MaxGalleryWeb.DataLive do
         name = Enum.at(datas, index)
                |> Map.fetch!(:name)
 
-        LiveServer.put(%{content: content, name: name})
+        key = socket.assigns[:auth_key]
+
+        LiveServer.put(%{content: content, name: name, auth_key: key})
 
         {:noreply,
             push_navigate(socket, to: "/editor?id=#{id}")

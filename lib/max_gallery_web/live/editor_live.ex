@@ -1,11 +1,13 @@
 defmodule MaxGalleryWeb.EditorLive do
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Server.LiveServer
+    alias MaxGallery.Context
+
 
     def mount(%{"id" => id}, _session, socket) do
         socket = assign(socket, [
-            content: LiveServer.get()[:content],
-            name: LiveServer.get()[:name],
+            content: LiveServer.get(:content),
+            name: LiveServer.get(:name),
             id: id,
             edit_iframe: false
         ])
@@ -35,7 +37,9 @@ defmodule MaxGalleryWeb.EditorLive do
 
     def handle_event("confirm_edit", %{"new_content" => content, "new_name" => name}, socket) do
         id = socket.assigns[:id]
-        {id, name, content}
+        key = LiveServer.get(:auth_key)
+
+        Context.cypher_update(id, %{name: name, blob: content}, key)
 
         {:noreply, 
             push_navigate(socket, to: "/data")
