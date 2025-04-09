@@ -5,9 +5,14 @@ defmodule MaxGalleryWeb.EditorLive do
 
 
     def mount(%{"id" => id}, _session, socket) do
+        data = LiveServer.get(:datas)
+                  |> Enum.find(fn item -> 
+                      to_string(item.id) == id
+                  end)
+
         socket = assign(socket, [
-            content: LiveServer.get(:content),
-            name: LiveServer.get(:name),
+            data: data,
+            auth_key: LiveServer.get(:auth_key),
             id: id,
             edit_iframe: false
         ])
@@ -37,7 +42,7 @@ defmodule MaxGalleryWeb.EditorLive do
 
     def handle_event("confirm_edit", %{"new_content" => content, "new_name" => name}, socket) do
         id = socket.assigns[:id]
-        key = LiveServer.get(:auth_key)
+        key = socket.assigns[:auth_key]
 
         Context.cypher_update(id, %{name: name, blob: content}, key)
 

@@ -36,4 +36,12 @@ defmodule MaxGallery.Data.ContextTest do
         assert %{name: name, blob: ^msg} = List.first(querry)
         assert ^name = Path.basename(path)
     end
+
+    test "Insert an data, then update its content.", %{msg: msg} do
+        path = create_file(msg)
+        
+        assert {:ok, id} = Context.cypher_insert(path, "key")
+        assert {:ok, data} = Context.decrypt_one(id, "key")
+        assert {:ok, _q} = Context.cypher_update(id, %{name: data.name <> data.ext, blob: data.blob}, "key")
+    end
 end

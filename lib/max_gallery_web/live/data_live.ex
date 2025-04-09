@@ -43,20 +43,9 @@ defmodule MaxGalleryWeb.DataLive do
 
     def handle_event("editor", %{"id" => id}, socket) do
         datas = socket.assigns[:datas]
-
-        index = Enum.find_index(datas, fn item -> 
-            to_string(item.id) == id
-        end)
-
-        content = Enum.at(datas, index)
-                  |> Map.fetch!(:blob)
-
-        name = Enum.at(datas, index)
-               |> Map.fetch!(:name)
-
         key = socket.assigns[:auth_key]
 
-        LiveServer.put(%{content: content, name: name, auth_key: key})
+        LiveServer.put(%{datas: datas, auth_key: key})
 
         {:noreply,
             push_navigate(socket, to: "/editor?id=#{id}")

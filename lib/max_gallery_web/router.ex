@@ -23,6 +23,7 @@ defmodule MaxGalleryWeb.Router do
 
         live "/data", DataLive
         live "/editor", EditorLive
+        # get "/editor", PageController, :redirect_data
     end
 
     # Other scopes may use custom stacks.

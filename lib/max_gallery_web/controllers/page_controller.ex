@@ -23,4 +23,8 @@ defmodule MaxGalleryWeb.PageController do
         configure_session(conn, drop: true)
         |> redirect(to: "/")
     end
+
+    def redirect_data(conn, _params) do
+        redirect(conn, to: "/data")
+    end
 end

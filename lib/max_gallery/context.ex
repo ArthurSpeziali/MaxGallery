@@ -47,24 +47,36 @@ defmodule MaxGallery.Context do
         end
     end
 
+    
+    def decrypt_one(id, key) do
+        with {:ok, querry} <- Api.get(id),
+             {:ok, name} <- Encrypter.decrypt({querry.name_iv, querry.name}, key),
+             {:ok, blob} <- Encrypter.decrypt({querry.blob_iv, querry.blob}, key),
+             ext <- querry.ext do
 
-    def cypher_update(id, %{name: old_name, blob: old_blob}, key) do
-        ext = Path.extname(old_name)
-        old_name = Path.basename(old_name, ext)
+            {:ok, %{
+                name: name,
+                blob: blob,
+                ext: ext
+            }}
+        else
+            error -> error
+        end
+    end
 
 
-        IO.inspect(old_name)
-        IO.inspect(key)
-        {:ok, {name_iv, name}} = Encrypter.encrypt(old_name, key)
-        {:ok, {blob_iv, blob}} = Encrypter.encrypt(old_blob, key)
+    def cypher_update(id, %{name: new_name, blob: new_blob}, key) do
+        ext = Path.extname(new_name)
+        new_name = Path.basename(new_name, ext)
+
+        {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
+        {:ok, {blob_iv, blob}} = Encrypter.encrypt(new_blob, key)
 
         params = %{name_iv: name_iv, name: name, blob_iv: blob_iv, blob: blob, ext: ext}
         {:ok, querry} = Api.get(id)
 
         if Phantom.valid?(querry, key) do
             Api.update(id, params)
-        else
-            IO.puts("Otário kkk")
         end
     end
 
