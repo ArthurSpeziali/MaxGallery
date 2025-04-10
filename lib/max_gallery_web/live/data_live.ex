@@ -52,4 +52,15 @@ defmodule MaxGalleryWeb.DataLive do
         }
     end
 
+    def handle_event("show", %{"id" => id}, socket) do
+        datas = socket.assigns[:datas]
+        key = socket.assigns[:auth_key]
+
+        LiveServer.put(%{datas: datas, auth_key: key})
+
+        {:noreply,
+            push_navigate(socket, to: "/show?id=#{id}")
+        }
+    end
+
 end

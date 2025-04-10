@@ -29,7 +29,7 @@ defmodule MaxGallery.Context do
             {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
             {:ok, blob} = {item.blob_iv, item.blob} |> Encrypter.decrypt(key)
 
-            %{name: name <> item.ext, blob: blob, id: item.id}
+            %{name: name, ext: item.ext, blob: blob, id: item.id}
         end) |> Phantom.encode_bin()
 
         {:ok, querry}

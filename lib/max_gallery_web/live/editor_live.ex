@@ -2,13 +2,15 @@ defmodule MaxGalleryWeb.EditorLive do
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Context
+    alias MaxGallery.Phantom
 
 
     def mount(%{"id" => id}, _session, socket) do
         data = LiveServer.get(:datas)
                   |> Enum.find(fn item -> 
                       to_string(item.id) == id
-                  end)
+                  end) |> Phantom.encode_bin() 
+                  |> List.first()
 
         socket = assign(socket, [
             data: data,
