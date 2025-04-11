@@ -11,16 +11,25 @@ defmodule MaxGalleryWeb.ShowLive do
               end) |> Phantom.encode_bin()
               |> List.first()
 
-        key = LiveServer.get(:auth_key)
-
+        
         socket = assign(socket, [
             data: data,
-            auth_key: key
+            auth_key: LiveServer.get(:auth_key)
         ])
 
         {:ok, socket, layout: false}
     end
     def mount(_params, _session, socket) do
         {:ok, push_navigate(socket, to: "/data")}
+    end
+
+
+    def handle_event("cancel", _params, socket) do
+        LiveServer.del(:datas)
+        LiveServer.del(:auth_key)
+
+        {:noreply,
+            push_navigate(socket, to: "/data")
+        }
     end
 end

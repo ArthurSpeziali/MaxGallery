@@ -2,7 +2,13 @@
 <html lang="pt-BR">
     <body>
         <div class="py-4 px-6 mx-auto mt-4 mb-8 max-w-[75%] border rounded-lg shadow-2xl">
-            <h1 class="text-2xl font-bold">{@data.name <> @data.ext}</h1>
+            <div class="flex justify-between">
+                <h1 class="text-2xl font-bold">{@data.name <> @data.ext}</h1>
+
+                <button phx-click="cancel">
+                    <img src="images/close.png" alt="Close" class="w-auto h-8">
+                </button>
+            </div>
 
             <div class="mx-auto border rounded-lg shadow-lg mt-8 px-8 p-4">
                 <pre class="font-sans whitespace-pre-wrap break-words">{@data.blob}</pre>

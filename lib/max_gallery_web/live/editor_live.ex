@@ -12,6 +12,7 @@ defmodule MaxGalleryWeb.EditorLive do
                   end) |> Phantom.encode_bin() 
                   |> List.first()
 
+
         socket = assign(socket, [
             data: data,
             auth_key: LiveServer.get(:auth_key),
@@ -22,6 +23,9 @@ defmodule MaxGalleryWeb.EditorLive do
         {:ok, socket, layout: false}
     end
     def mount(_params, _session, socket) do
+        LiveServer.del(:datas)
+        LiveServer.del(:auth_key)
+
         {:ok, 
             push_navigate(socket, to: "/data")
         }
@@ -37,6 +41,9 @@ defmodule MaxGalleryWeb.EditorLive do
     end
 
     def handle_event("redirect_edit", _params, socket) do
+        LiveServer.del(:datas)
+        LiveServer.del(:auth_key)
+
         {:noreply, 
             push_navigate(socket, to: "/data")
         }
@@ -47,6 +54,9 @@ defmodule MaxGalleryWeb.EditorLive do
         key = socket.assigns[:auth_key]
 
         Context.cypher_update(id, %{name: name, blob: content}, key)
+
+        LiveServer.del(:datas)
+        LiveServer.del(:auth_key)
 
         {:noreply, 
             push_navigate(socket, to: "/data")

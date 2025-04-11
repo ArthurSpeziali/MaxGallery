@@ -47,6 +47,6 @@ defmodule MaxGallery.PhatomTest do
     end
 
     test "Test the encode_bin/1 function for a fail package", %{fail_datas: data} do
-        assert "/54TES50eHQ=.txt" = Phantom.encode_bin(data) |> List.first() |> Map.get(:name)
+        assert "/54TES50eHQ=" = Phantom.encode_bin(data) |> List.first() |> Map.get(:name)
     end
 end
