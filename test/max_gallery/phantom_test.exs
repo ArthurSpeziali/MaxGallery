@@ -1,9 +1,14 @@
 defmodule MaxGallery.PhatomTest do
-    use ExUnit.Case, async: true
+    use MaxGallery.DataCase
     alias MaxGallery.Phantom
+    alias MaxGallery.Context
+    alias MaxGallery.Core.Data.Api
+
 
     setup do
         {:ok,
+            msg: "Hello World!",
+
             fail_datas: [
                 %{
                     id: 1,
@@ -42,11 +47,35 @@ defmodule MaxGallery.PhatomTest do
     end
 
 
+    defp create_file(msg) do
+        path = "/tmp/max_gallery/test#{Enum.random(0..10_000//1)}"
+        File.mkdir("/tmp/max_gallery")
+        File.write(path, msg, [:write])
+        path
+    end
+
+
     test "Test the encode_bin/1 function for a sucess package", %{sucess_datas: data} do
         assert ^data = Phantom.encode_bin(data)
     end
 
     test "Test the encode_bin/1 function for a fail package", %{fail_datas: data} do
         assert "/54TES50eHQ=" = Phantom.encode_bin(data) |> List.first() |> Map.get(:name)
+    end
+
+    test "Test if an cypher encrypted with a valid key is valid", %{msg: msg} do
+        path = create_file(msg)
+
+        assert {:ok, id} = Context.cypher_insert(path, "key")
+        assert {:ok, querry} = Api.get(id)
+        assert Phantom.valid?(querry, "key")
+    end
+
+    test "Test if an cypher encrypted with a invalid key is valid", %{msg: msg} do
+        path = create_file(msg)
+
+        assert {:ok, id} = Context.cypher_insert(path, "key")
+        assert {:ok, querry} = Api.get(id)
+        refute Phantom.valid?(querry, "key2")
     end
 end

@@ -5,10 +5,10 @@ defmodule MaxGalleryWeb.DataLive do
 
 
     def mount(_params, %{"auth_key" => key}, socket) do
+        LiveServer.put(%{auth_key: key})
         {:ok, datas} = Context.decrypt_all(key)
 
         socket = assign(socket, [
-            auth_key: key,
             datas: datas,
             delete_iframe: nil
         ])
@@ -33,7 +33,7 @@ defmodule MaxGalleryWeb.DataLive do
     end
 
     def handle_event("confirm_delete", %{"id" => id}, socket) do
-        key = socket.assigns[:auth_key]
+        key = LiveServer.get(:auth_key)
         Context.cypher_delete(id, key)
 
         {:noreply,
@@ -42,22 +42,12 @@ defmodule MaxGalleryWeb.DataLive do
     end
 
     def handle_event("editor", %{"id" => id}, socket) do
-        datas = socket.assigns[:datas]
-        key = socket.assigns[:auth_key]
-
-        LiveServer.put(%{datas: datas, auth_key: key})
-
         {:noreply,
             push_navigate(socket, to: "/editor?id=#{id}")
         }
     end
 
     def handle_event("show", %{"id" => id}, socket) do
-        datas = socket.assigns[:datas]
-        key = socket.assigns[:auth_key]
-
-        LiveServer.put(%{datas: datas, auth_key: key})
-
         {:noreply,
             push_navigate(socket, to: "/show?id=#{id}")
         }

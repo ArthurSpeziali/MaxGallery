@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
     <body>
-        <form phx-submit="confirm_edit">
+        <form phx-change="update_content" phx-submit="confirm_edit">
             <div class="mt-4 mb-8 p-4 mx-auto md:max-w-[75%] max-w-[90%] border rounded-lg shadow-2xl">
 
                 <div class="flex justify-between mb-8">
@@ -26,7 +26,7 @@
 
                 <p class="font-bold">Content</p>
                 <div>
-                    <textarea name="new_content" class="w-full h-screen p-4">{@data.blob}</textarea>
+                    <textarea name="new_content" class="w-full h-screen p-2">{@new_content || @data.blob}</textarea>
                 </div>
             </div>
 

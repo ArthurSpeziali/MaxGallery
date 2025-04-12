@@ -6,26 +6,22 @@ defmodule MaxGalleryWeb.EditorLive do
 
 
     def mount(%{"id" => id}, _session, socket) do
-        data = LiveServer.get(:datas)
-                  |> Enum.find(fn item -> 
-                      to_string(item.id) == id
-                  end) |> Phantom.encode_bin() 
-                  |> List.first()
+        key = LiveServer.get(:auth_key)
 
+        {:ok, querry} = Context.decrypt_one(id, key) 
+        data = Phantom.encode_bin(querry)
+               |> List.first()
 
         socket = assign(socket, [
             data: data,
-            auth_key: LiveServer.get(:auth_key),
             id: id,
-            edit_iframe: false
+            edit_iframe: false,
+            new_content: false
         ])
 
         {:ok, socket, layout: false}
     end
     def mount(_params, _session, socket) do
-        LiveServer.del(:datas)
-        LiveServer.del(:auth_key)
-
         {:ok, 
             push_navigate(socket, to: "/data")
         }
@@ -41,9 +37,6 @@ defmodule MaxGalleryWeb.EditorLive do
     end
 
     def handle_event("redirect_edit", _params, socket) do
-        LiveServer.del(:datas)
-        LiveServer.del(:auth_key)
-
         {:noreply, 
             push_navigate(socket, to: "/data")
         }
@@ -51,15 +44,15 @@ defmodule MaxGalleryWeb.EditorLive do
 
     def handle_event("confirm_edit", %{"new_content" => content, "new_name" => name}, socket) do
         id = socket.assigns[:id]
-        key = socket.assigns[:auth_key]
+        key = LiveServer.get(:auth_key)
 
         Context.cypher_update(id, %{name: name, blob: content}, key)
-
-        LiveServer.del(:datas)
-        LiveServer.del(:auth_key)
-
         {:noreply, 
             push_navigate(socket, to: "/data")
         }
+    end
+
+    def handle_event("update_content", %{"new_content" => content}, socket) do
+        {:noreply, assign(socket, new_content: content)}
     end
 end

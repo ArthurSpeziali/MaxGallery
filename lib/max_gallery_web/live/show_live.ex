@@ -2,19 +2,20 @@ defmodule MaxGalleryWeb.ShowLive do
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Phantom
+    alias MaxGallery.Context
 
 
     def mount(%{"id" => id}, _session, socket) do
-        data = LiveServer.get(:datas)
-              |> Enum.find(fn item -> 
-                  to_string(item.id) == id
-              end) |> Phantom.encode_bin()
-              |> List.first()
+        key = LiveServer.get(:auth_key)
+
+        {:ok, querry} = Context.decrypt_one(id, key) 
+        data = Phantom.encode_bin(querry)
+               |> List.first()
 
         
         socket = assign(socket, [
             data: data,
-            auth_key: LiveServer.get(:auth_key)
+            id: id
         ])
 
         {:ok, socket, layout: false}
@@ -25,9 +26,6 @@ defmodule MaxGalleryWeb.ShowLive do
 
 
     def handle_event("cancel", _params, socket) do
-        LiveServer.del(:datas)
-        LiveServer.del(:auth_key)
-
         {:noreply,
             push_navigate(socket, to: "/data")
         }

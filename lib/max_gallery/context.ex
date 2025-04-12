@@ -8,12 +8,15 @@ defmodule MaxGallery.Context do
         with ext <- Path.extname(path),
              {:ok, {name_iv, name}} <- Path.basename(path, ext) |> Encrypter.encrypt(key),
              {:ok, {blob_iv, blob}} <- Encrypter.file(:encrypt, path, key),
+             {:ok, {msg_iv, msg}} <- Encrypter.encrypt(Phantom.get_text(), key),
              {:ok, querry} <- Api.insert(%{
                  name: name,
                  name_iv: name_iv,
                  blob: blob,
                  blob_iv: blob_iv,
-                 ext: ext}) do
+                 ext: ext,
+                 msg: msg,
+                 msg_iv: msg_iv}) do
 
             {:ok, querry.id}
         else

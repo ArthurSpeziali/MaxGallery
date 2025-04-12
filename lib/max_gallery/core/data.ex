@@ -7,6 +7,8 @@ defmodule MaxGallery.Core.Data do
         field :blob, :binary
         field :blob_iv, :binary
         field :ext, :string, default: ".txt"
+        field :msg, :string
+        field :msg_iv, :string
 
         timestamps()
     end

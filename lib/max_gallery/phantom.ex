@@ -20,10 +20,12 @@ defmodule MaxGallery.Phantom do
     end
 
 
-    def valid?(querry, key) do
-        {:ok, dec_data} = Encrypter.decrypt({querry.blob_iv, querry.blob}, key)
+    def get_text(), do: "encrypted_data"
 
-        String.valid?(dec_data)
+    def valid?(%{msg_iv: msg_iv, msg: msg}, key) do
+        {:ok, dec_cypher} = Encrypter.decrypt({msg_iv, msg}, key)
+
+        dec_cypher == get_text()
     end
 
 end

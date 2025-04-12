@@ -15,16 +15,15 @@ defmodule MaxGallery.Extension do
 
 
     def get_ext(ext) do
-        atom_ext = String.to_atom(ext)
+        atom_ext = String.slice(ext, 1..-1//1)
+                   |> String.to_atom()
 
         cond do
-            atom_ext in exts(:audio) -> :audio
-            atom_ext in exts(:text) -> :text
-            atom_ext in exts(:image) -> :image
-            atom_ext in exts(:video) -> :video
-            true -> nil
+            atom_ext in exts(:audio) -> "audio"
+            atom_ext in exts(:text) -> "text"
+            atom_ext in exts(:image) -> "image"
+            atom_ext in exts(:video) -> "video"
+            true -> "text" # If none, compile as text binary
         end
     end
-
-
 end

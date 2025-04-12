@@ -6,7 +6,7 @@ defmodule MaxGallery.Core.Data.ApiTest do
     test "Put 10 cyphers, and get all" do
 
         for item <- 1..10//1 do
-            assert {:ok, _cyphers} = Api.insert(%{name: "Teste#{item}", blob: <<0>>})
+            assert {:ok, _cyphers} = Api.insert(%{name: "Teste#{item}", blob: <<0>>, msg: "", msg_iv: ""})
         end
 
         assert {:ok, cyphers} = Api.all()

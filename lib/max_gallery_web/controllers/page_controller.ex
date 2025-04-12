@@ -1,6 +1,7 @@
 defmodule MaxGalleryWeb.PageController do
     use MaxGalleryWeb, :controller
     alias MaxGallery.Server.LiveServer
+    alias MaxGallery.Context
 
 
     def home(conn, _params) do
@@ -22,5 +23,13 @@ defmodule MaxGalleryWeb.PageController do
             
         configure_session(conn, drop: true)
         |> redirect(to: "/")
+    end
+
+    def images(conn, %{"id" => id}) do
+        key = LiveServer.get(:auth_key)
+        {:ok, querry} = Context.decrypt_one(id, key) 
+
+        put_resp_content_type(conn, "image/png")
+        |> send_resp(200, querry.blob)
     end
 end
