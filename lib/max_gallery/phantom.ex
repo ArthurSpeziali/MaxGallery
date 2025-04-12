@@ -11,8 +11,13 @@ defmodule MaxGallery.Phantom do
 
     def encode_bin(datas) when is_list(datas) do
         Enum.map(datas, fn item -> 
-            Map.update!(item, :name, &validate_bin/1)
-            |> Map.update!(:blob, &validate_bin/1)
+            new_map = Map.update!(item, :name, &validate_bin/1)
+            
+            if new_map[:blob] do
+                Map.update!(new_map, :blob, &validate_bin/1)
+            else
+                new_map
+            end
         end)
     end
     def encode_bin(data) do

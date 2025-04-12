@@ -20,7 +20,9 @@ defmodule MaxGalleryWeb.Router do
         get "/", PageController, :home
         post "/auth", PageController, :auth
         get "/logout", PageController, :logout
+
         get "/imgs/:id", PageController, :images
+        get "/vids/:id", PageController, :videos
 
         live "/data", DataLive
         live "/editor", EditorLive

@@ -27,8 +27,25 @@
                         </button>
                     </div>
 
-                    <div class="flex justify-center inline-block mx-auto p-4 max-w-[90%] mt-2 border rounded-lg shadow-2xl">
+                    <div class="flex justify-center inline-block mx-auto p-4 max-w-[90%] mt-2 border rounded-lg shadow-xl">
                         <img src={"/imgs/#{@id}"} class="max-w-full h-auto"/>
+                    </div>
+                </div>
+
+
+            <% "video" -> %>
+                <div>
+                    <div class="flex justify-between items-center px-6 py-2 max-w-[90%] mx-auto mt-4 border shadow-md rounded">
+                        <strong class="text-[1.5rem]">{@data.name <> @data.ext}</strong>
+                        <button phx-click="cancel">
+                            <img src="images/close.png" alt="Close" class="w-auto h-12">
+                        </button>
+                    </div>
+
+                    <div class="flex justify-center inline-block mx-auto p-4 max-w-[90%] mt-2 mb-4 border rounded-lg shadow-xl">
+                        <video controls class="w-auto h-[40rem]">
+                            <source src={"/vids/#{@id}"} type="video/mp4"/>
+                        </video>
                     </div>
                 </div>
 

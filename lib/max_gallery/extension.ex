@@ -13,6 +13,35 @@ defmodule MaxGallery.Extension do
         [:mp4, :mkv, :avi, :mov, :wmv, :flv, :webm, :mpeg, :mpg, :"3gp", :m4v, :ts, :m2ts, :ogv, :vob]
     end
 
+    defp mime_map() do
+        %{
+          mp4: "video/mp4",
+          webm: "video/webm",
+          mpeg: "video/mpeg",
+          avi: "video/x-msvideo",
+          mkv: "video/matroska",
+          wmv: "video/x-ms-wmv",
+          mov: "video/quicktime",
+          "3gp": "video/3gpp",
+          jpg: "image/jpeg",
+          jpeg: "image/jpeg",
+          png: "image/png",
+          gif: "image/gif",
+          svg: "image/svg+xml",
+          webp: "image/webp",
+          bmp: "image/bmp",
+          tiff: "image/tiff",
+          ico: "image/x-icon",
+          mp3: "audio/mpeg",
+          ogg: "audio/ogg",
+          wav: "audio/wav",
+          aac: "audio/aac",
+          flac: "audio/flac",
+          midi: "audio/midi",
+          m4a: "audio/mp4",
+        }
+    end
+
 
     def get_ext(ext) do
         atom_ext = String.slice(ext, 1..-1//1)
@@ -24,6 +53,19 @@ defmodule MaxGallery.Extension do
             atom_ext in exts(:image) -> "image"
             atom_ext in exts(:video) -> "video"
             true -> "text" # If none, compile as text binary
+        end
+    end
+
+    def get_mime(ext) do
+        atom_ext = String.slice(ext, 1..-1//1)
+                   |> String.to_atom()
+
+        mime = mime_map()
+               |> Map.get(atom_ext)
+
+        case mime do
+            nil -> "image/png"
+            mime -> mime
         end
     end
 end

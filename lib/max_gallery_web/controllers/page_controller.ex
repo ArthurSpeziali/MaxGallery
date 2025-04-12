@@ -1,12 +1,23 @@
 defmodule MaxGalleryWeb.PageController do
     use MaxGalleryWeb, :controller
     alias MaxGallery.Server.LiveServer
+    alias MaxGallery.Extension
     alias MaxGallery.Context
 
 
+    defp content_render(conn, id) do
+        key = LiveServer.get(:auth_key)
+        {:ok, querry} = Context.decrypt_one(id, key) 
+
+        mime = Map.fetch!(querry, :ext)
+               |> Extension.get_mime()
+
+        put_resp_content_type(conn, mime)
+        |> send_resp(200, querry.blob)
+    end
+
+
     def home(conn, _params) do
-        # The home page is often custom made,
-        # so skip the default app layout.
         render(conn, :home, layout: false)
     end
 
@@ -25,11 +36,12 @@ defmodule MaxGalleryWeb.PageController do
         |> redirect(to: "/")
     end
 
-    def images(conn, %{"id" => id}) do
-        key = LiveServer.get(:auth_key)
-        {:ok, querry} = Context.decrypt_one(id, key) 
 
-        put_resp_content_type(conn, "image/png")
-        |> send_resp(200, querry.blob)
+    def images(conn, %{"id" => id}) do
+        content_render(conn, id)
+    end
+
+    def videos(conn, %{"id" => id}) do
+        content_render(conn, id)
     end
 end

@@ -38,6 +38,18 @@ defmodule MaxGallery.Context do
         {:ok, querry}
     end
 
+    def decrypt_all(key, :lazy) do
+        {:ok, lazy_datas} = Api.all_lazy()
+
+        querry = Enum.map(lazy_datas, fn item -> 
+            {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
+
+            %{name: name, ext: item.ext, id: item.id}
+        end) |> Phantom.encode_bin()
+
+        {:ok, querry}
+    end
+
 
     def cypher_delete(id, key) do
         with {:ok, querry} <- Api.get(id),
@@ -54,13 +66,26 @@ defmodule MaxGallery.Context do
     def decrypt_one(id, key) do
         with {:ok, querry} <- Api.get(id),
              {:ok, name} <- Encrypter.decrypt({querry.name_iv, querry.name}, key),
-             {:ok, blob} <- Encrypter.decrypt({querry.blob_iv, querry.blob}, key),
-             ext <- querry.ext do
+             {:ok, blob} <- Encrypter.decrypt({querry.blob_iv, querry.blob}, key) do
 
             {:ok, %{
                 name: name,
                 blob: blob,
-                ext: ext
+                ext: querry.ext
+            }}
+        else
+            error -> error
+        end
+    end
+
+    def decrypt_one(id, key, :lazy) do
+        with {:ok, querry} <- Api.get_lazy(id),
+             {:ok, name} <- Encrypter.decrypt({querry.name_iv, querry.name}, key) do
+
+            {:ok, %{
+                name: name,
+                ext: querry.ext,
+                id: querry.id
             }}
         else
             error -> error

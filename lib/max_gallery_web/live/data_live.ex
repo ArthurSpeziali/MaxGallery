@@ -6,10 +6,10 @@ defmodule MaxGalleryWeb.DataLive do
 
     def mount(_params, %{"auth_key" => key}, socket) do
         LiveServer.put(%{auth_key: key})
-        {:ok, datas} = Context.decrypt_all(key)
+        {:ok, lazy_datas} = Context.decrypt_all(key, :lazy)
 
         socket = assign(socket, [
-            datas: datas,
+            datas: lazy_datas,
             delete_iframe: nil
         ])
 

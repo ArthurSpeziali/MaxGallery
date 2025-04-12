@@ -1,4 +1,5 @@
 defmodule MaxGallery.Core.Data.Api do
+    import Ecto.Query, only: [from: 2]
     alias MaxGallery.Core.Data
     alias MaxGallery.Repo
 
@@ -8,6 +9,32 @@ defmodule MaxGallery.Core.Data.Api do
         |> case do
             data when is_list(data) -> {:ok, data}
             error -> error
+        end
+    end
+
+    def all_lazy() do
+        fields = Data.fields()
+                 |> List.delete(:blob)
+                 |> List.delete(:blob_iv)
+
+        from(d in Data, select: map(d, ^fields))
+        |> Repo.all()
+        |> case do
+            data when is_list(data) -> {:ok, data}
+            error -> error
+        end
+    end
+
+    def get_lazy(id) do
+        fields = Data.fields()
+                 |> List.delete(:blob)
+                 |> List.delete(:blob_iv)
+
+        from(d in Data, select: map(d, ^fields))
+        |> Repo.get(id)
+        |> case do
+            nil -> {:error, "not found"}
+            querry -> {:ok, querry}
         end
     end
 
