@@ -1,5 +1,7 @@
 defmodule MaxGallery.Phantom do
     alias MaxGallery.Encrypter
+    alias MaxGallery.Core.Data.Api
+
 
     defp validate_bin(binary) do
         if String.valid?(binary) do
@@ -31,6 +33,14 @@ defmodule MaxGallery.Phantom do
         {:ok, dec_cypher} = Encrypter.decrypt({msg_iv, msg}, key)
 
         dec_cypher == get_text()
+    end
+
+
+    def insert_line?(key) do
+        case Api.first_lazy() do
+            {:error, _msg} -> true
+            {:ok, querry} -> valid?(querry, key)
+        end
     end
 
 end

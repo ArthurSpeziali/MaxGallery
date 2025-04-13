@@ -53,4 +53,9 @@ defmodule MaxGalleryWeb.DataLive do
         }
     end
 
+    def handle_event("create", _params, socket) do
+        {:noreply,
+            push_navigate(socket, to: "/import")}
+    end
+
 end

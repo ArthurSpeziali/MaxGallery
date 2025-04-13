@@ -21,13 +21,18 @@ defmodule MaxGalleryWeb.Router do
         post "/auth", PageController, :auth
         get "/logout", PageController, :logout
 
-        get "/imgs/:id", PageController, :images
-        get "/vids/:id", PageController, :videos
-        get "/auds/:id", PageController, :audios
-
         live "/data", DataLive
         live "/editor", EditorLive
         live "/show", ShowLive
+        live "/import", ImportLive
+    end
+
+    scope "/content", MaxGalleryWeb do
+        pipe_through :browser
+
+        get "/imgs/:id", PageController, :images
+        get "/vids/:id", PageController, :videos
+        get "/auds/:id", PageController, :audios
     end
 
     # Other scopes may use custom stacks.

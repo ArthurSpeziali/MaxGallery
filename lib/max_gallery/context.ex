@@ -4,9 +4,27 @@ defmodule MaxGallery.Context do
     alias MaxGallery.Phantom
 
 
-    def cypher_insert(path, key) do
-        with ext <- Path.extname(path),
-             {:ok, {name_iv, name}} <- Path.basename(path, ext) |> Encrypter.encrypt(key),
+    def cypher_insert(path, key, opts \\ []) do
+        key_name = Keyword.get(opts, :name) 
+
+        ext = 
+            if key_name do
+                Path.extname(key_name)
+            else
+                Path.extname(path)
+            end 
+
+        {:ok, {name_iv, name}} = 
+            if key_name do
+                Path.basename(key_name, ext)
+                |> Encrypter.encrypt(key)
+            else
+                Path.basename(path, ext)
+                |> Encrypter.encrypt(key)
+            end 
+
+
+        with true <- Phantom.insert_line?(key),
              {:ok, {blob_iv, blob}} <- Encrypter.file(:encrypt, path, key),
              {:ok, {msg_iv, msg}} <- Encrypter.encrypt(Phantom.get_text(), key),
              {:ok, querry} <- Api.insert(%{
