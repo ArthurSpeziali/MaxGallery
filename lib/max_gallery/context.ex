@@ -107,5 +107,18 @@ defmodule MaxGallery.Context do
             Api.update(id, params)
         end
     end
+    def cypher_update(id, %{name: new_name}, key) do
+        ext = Path.extname(new_name)
+        new_name = Path.basename(new_name, ext)
+
+        {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
+
+        params = %{name_iv: name_iv, name: name, ext: ext}
+        {:ok, querry} = Api.get(id)
+
+        if Phantom.valid?(querry, key) do
+            Api.update(id, params)
+        end
+    end
 
 end

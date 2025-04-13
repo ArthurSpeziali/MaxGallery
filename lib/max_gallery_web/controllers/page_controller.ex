@@ -44,4 +44,8 @@ defmodule MaxGalleryWeb.PageController do
     def videos(conn, %{"id" => id}) do
         content_render(conn, id)
     end
+
+    def audios(conn, %{"id" => id}) do
+        content_render(conn, id)
+    end
 end

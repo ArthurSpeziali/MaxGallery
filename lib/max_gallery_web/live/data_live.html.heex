@@ -12,11 +12,7 @@
                     <div class="flex justify-between">
                         <div class="flex justify-center gap-2 mt-2">
                             <button phx-click="show" phx-value-id={item.id} class="text-blue-600 hover:underline">Show</button>
-
-                            <%= if MaxGallery.Extension.get_ext(item.ext) == "text" do %>
-                                <button phx-click="editor" phx-value-id={item.id} class="text-yellow-600 hover:underline">Edit</button>
-                            <% end %>
-
+                            <button phx-click="editor" phx-value-id={item.id} class="text-yellow-600 hover:underline">Edit</button>
                             <button phx-click="ask_delete" phx-value-id={item.id} phx-value-name={item.name} class="text-red-600 hover:underline">Delete</button>
                         </div>
 

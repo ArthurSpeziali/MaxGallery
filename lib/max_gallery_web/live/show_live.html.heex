@@ -49,6 +49,24 @@
                     </div>
                 </div>
 
+
+            <% "audio" -> %>
+                <div>
+                    <div class="flex justify-between items-center px-6 py-2 max-w-[90%] mx-auto mt-4 border shadow-md rounded">
+                        <strong class="text-[1.5rem]">{@data.name <> @data.ext}</strong>
+                        <button phx-click="cancel">
+                            <img src="images/close.png" alt="Close" class="w-auto h-12">
+                        </button>
+                    </div>
+
+                    <div class="flex justify-center mx-auto mt-[8rem] max-w-[90%] rounded-lg border shadow-xl py-4">
+                        <audio controls class="w-[95%]">
+                            <source src={"/auds/#{@id}"} type="audio/mp3" />
+                        </audio>
+                    </div>
+
+                </div>
+
             <% end %>
     </body>
 </html>

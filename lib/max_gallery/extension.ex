@@ -19,7 +19,7 @@ defmodule MaxGallery.Extension do
           webm: "video/webm",
           mpeg: "video/mpeg",
           avi: "video/x-msvideo",
-          mkv: "video/matroska",
+          mkv: "video/x-matroska", # This file type does not work in html 5!
           wmv: "video/x-ms-wmv",
           mov: "video/quicktime",
           "3gp": "video/3gpp",

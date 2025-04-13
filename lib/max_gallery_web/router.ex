@@ -23,6 +23,7 @@ defmodule MaxGalleryWeb.Router do
 
         get "/imgs/:id", PageController, :images
         get "/vids/:id", PageController, :videos
+        get "/auds/:id", PageController, :audios
 
         live "/data", DataLive
         live "/editor", EditorLive

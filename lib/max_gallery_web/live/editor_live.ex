@@ -51,8 +51,20 @@ defmodule MaxGalleryWeb.EditorLive do
             push_navigate(socket, to: "/data")
         }
     end
+    def handle_event("confirm_edit", %{"new_name" => name}, socket) do
+        id = socket.assigns[:id]
+        key = LiveServer.get(:auth_key)
+
+        Context.cypher_update(id, %{name: name}, key)
+        {:noreply, 
+            push_navigate(socket, to: "/data")
+        }
+    end
 
     def handle_event("update_content", %{"new_content" => content}, socket) do
         {:noreply, assign(socket, new_content: content)}
+    end
+    def handle_event("update_content", _params, socket) do
+        {:noreply, socket}
     end
 end
