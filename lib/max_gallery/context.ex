@@ -43,6 +43,14 @@ defmodule MaxGallery.Context do
     end
 
 
+
+    def decrypt_all(key, opts) when is_list(opts) do
+        if Keyword.get(opts, :lazy) do
+            decrypt_all_lazy(key)
+        else
+            decrypt_all(key)
+        end
+    end
     def decrypt_all(key) do
         {:ok, datas} = Api.all()
 
@@ -56,7 +64,7 @@ defmodule MaxGallery.Context do
         {:ok, querry}
     end
 
-    def decrypt_all(key, :lazy) do
+    defp decrypt_all_lazy(key) do
         {:ok, lazy_datas} = Api.all_lazy()
 
         querry = Enum.map(lazy_datas, fn item -> 

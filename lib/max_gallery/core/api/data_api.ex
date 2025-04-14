@@ -33,7 +33,7 @@ defmodule MaxGallery.Core.Data.Api do
         from(d in Data, select: map(d, ^fields))
         |> Repo.get(id)
         |> case do
-            nil -> {:error, "not found"}
+            nil -> {:error, nil}
             querry -> {:ok, querry}
         end
     end
@@ -47,7 +47,7 @@ defmodule MaxGallery.Core.Data.Api do
         |> first()
         |> Repo.one()
         |> case do
-            nil -> {:error, "not found"}
+            nil -> {:error, nil}
             querry -> {:ok, querry}
         end
     end

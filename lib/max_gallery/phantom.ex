@@ -38,7 +38,7 @@ defmodule MaxGallery.Phantom do
 
     def insert_line?(key) do
         case Api.first_lazy() do
-            {:error, _msg} -> true
+            {:error, nil} -> true
             {:ok, querry} -> valid?(querry, key)
         end
     end
