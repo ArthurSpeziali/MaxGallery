@@ -1,5 +1,6 @@
 defmodule MaxGallery.Context do
-    alias MaxGallery.Core.Data.Api
+    alias MaxGallery.Core.Data.Api, as: DataApi
+    alias MaxGallery.Core.Group.Api, as: GroupApi
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
 
@@ -27,7 +28,7 @@ defmodule MaxGallery.Context do
         with true <- Phantom.insert_line?(key),
              {:ok, {blob_iv, blob}} <- Encrypter.file(:encrypt, path, key),
              {:ok, {msg_iv, msg}} <- Encrypter.encrypt(Phantom.get_text(), key),
-             {:ok, querry} <- Api.insert(%{
+             {:ok, querry} <- DataApi.insert(%{
                  name: name,
                  name_iv: name_iv,
                  blob: blob,
@@ -52,7 +53,7 @@ defmodule MaxGallery.Context do
         end
     end
     def decrypt_all(key) do
-        {:ok, datas} = Api.all()
+        {:ok, datas} = DataApi.all()
 
         querry = Enum.map(datas, fn item -> 
             {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
@@ -65,7 +66,7 @@ defmodule MaxGallery.Context do
     end
 
     defp decrypt_all_lazy(key) do
-        {:ok, lazy_datas} = Api.all_lazy()
+        {:ok, lazy_datas} = DataApi.all_lazy()
 
         querry = Enum.map(lazy_datas, fn item -> 
             {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
@@ -78,9 +79,9 @@ defmodule MaxGallery.Context do
 
 
     def cypher_delete(id, key) do
-        with {:ok, querry} <- Api.get(id),
+        with {:ok, querry} <- DataApi.get(id),
              true <- Phantom.valid?(querry, key),
-             {:ok, _querry} <- Api.delete(id) do
+             {:ok, _querry} <- DataApi.delete(id) do
             
             {:ok, querry}
         else
@@ -90,7 +91,7 @@ defmodule MaxGallery.Context do
 
     
     def decrypt_one(id, key) do
-        with {:ok, querry} <- Api.get(id),
+        with {:ok, querry} <- DataApi.get(id),
              {:ok, name} <- Encrypter.decrypt({querry.name_iv, querry.name}, key),
              {:ok, blob} <- Encrypter.decrypt({querry.blob_iv, querry.blob}, key) do
 
@@ -105,7 +106,7 @@ defmodule MaxGallery.Context do
     end
 
     def decrypt_one(id, key, :lazy) do
-        with {:ok, querry} <- Api.get_lazy(id),
+        with {:ok, querry} <- DataApi.get_lazy(id),
              {:ok, name} <- Encrypter.decrypt({querry.name_iv, querry.name}, key) do
 
             {:ok, %{
@@ -127,10 +128,10 @@ defmodule MaxGallery.Context do
         {:ok, {blob_iv, blob}} = Encrypter.encrypt(new_blob, key)
 
         params = %{name_iv: name_iv, name: name, blob_iv: blob_iv, blob: blob, ext: ext}
-        {:ok, querry} = Api.get(id)
+        {:ok, querry} = DataApi.get(id)
 
         if Phantom.valid?(querry, key) do
-            Api.update(id, params)
+            DataApi.update(id, params)
         end
     end
     def cypher_update(id, %{name: new_name}, key) do
@@ -140,11 +141,18 @@ defmodule MaxGallery.Context do
         {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
 
         params = %{name_iv: name_iv, name: name, ext: ext}
-        {:ok, querry} = Api.get(id)
+        {:ok, querry} = DataApi.get(id)
 
         if Phantom.valid?(querry, key) do
-            Api.update(id, params)
+            DataApi.update(id, params)
         end
     end
 
+
+    def group_insert(group_name \\ "New Group", key) do
+        if Phantom.insert_line?(key) do
+            {:ok, {name_iv, name}} = Encrypter.encrypt(group_name, key)
+            GroupApi.insert(%{name_iv: name_iv, name: name})
+        end
+    end
 end
