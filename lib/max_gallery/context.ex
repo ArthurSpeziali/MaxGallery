@@ -44,35 +44,53 @@ defmodule MaxGallery.Context do
     end
 
 
+    defp send_package(%{ext: _ext} = item, lazy?, key) do
+        {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
 
-    def decrypt_all(key, opts) when is_list(opts) do
-        if Keyword.get(opts, :lazy) do
-            decrypt_all_lazy(key)
+        if lazy? do
+            %{name: name, ext: item.ext, id: item.id}
         else
-            decrypt_all(key)
+            {:ok, blob} = {item.blob_iv, item.blob} |> Encrypter.decrypt(key)
+            %{name: name, blob: blob, ext: item.ext, id: item.id}
         end
     end
-    def decrypt_all(key) do
-        {:ok, datas} = DataApi.all()
-
-        querry = Enum.map(datas, fn item -> 
-            {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
-            {:ok, blob} = {item.blob_iv, item.blob} |> Encrypter.decrypt(key)
-
-            %{name: name, ext: item.ext, blob: blob, id: item.id}
-        end) |> Phantom.encode_bin()
-
-        {:ok, querry}
+    defp send_package(item, _lazy, key) do
+        {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
+        %{name: name, id: item.id} 
     end
 
-    defp decrypt_all_lazy(key) do
-        {:ok, lazy_datas} = DataApi.all_lazy()
+    def decrypt_all(key, opts \\ []) do
+        lazy? = Keyword.get(opts, :lazy)
+        only = Keyword.get(opts, :only)
 
-        querry = Enum.map(lazy_datas, fn item -> 
-            {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
+        {:ok, datas} = 
+            case {lazy?, only} do
+                {nil, nil} ->
+                    {:ok, groups} = GroupApi.all() 
+                    {:ok, datas} = DataApi.all()
 
-            %{name: name, ext: item.ext, id: item.id}
-        end) |> Phantom.encode_bin()
+                    {:ok, groups ++ datas}
+
+                {true, nil} ->
+                    {:ok, groups} = GroupApi.all() 
+                    {:ok, datas} = DataApi.all_lazy()
+
+                    {:ok, groups ++ datas}
+
+                {nil, :datas} ->
+                    DataApi.all()
+
+                {true, :datas} ->
+                    DataApi.all_lazy()
+
+                {_boolean, :groups} ->
+                    GroupApi.all()
+            end
+
+
+        querry = for item <- datas do
+            send_package(item, lazy?, key)
+        end |> Phantom.encode_bin()
 
         {:ok, querry}
     end

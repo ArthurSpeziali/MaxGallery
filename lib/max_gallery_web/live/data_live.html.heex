@@ -17,21 +17,30 @@
         <div class="grid md:grid-cols-3 grid-cols-1 gap-4 px-4 py-2 border rounded shadow m-2">
             <%= for item <- @datas do %>
 
-                <div class="border rounded-xl shadow-md p-4 bg-white grid grid-rows-[1fr_auto] h-40">
-                    <span class="overflow-hidden break-all self-center text-center font-semibold mb-2">
-                        <%= item.name <> item.ext %>
-                    </span>
+                <%= if Map.get(item, :ext) do %>
+                    <div class="border rounded-xl shadow-md p-4 bg-white grid grid-rows-[1fr_auto] h-40">
+                        <span class="overflow-hidden break-all self-center text-center font-semibold mb-2">
+                            <%= item.name <> item.ext %>
+                        </span>
 
-                    <div class="flex justify-between">
-                        <div class="flex justify-center gap-2 mt-2">
-                            <button phx-click="show" phx-value-id={item.id} class="text-blue-600 hover:underline">Show</button>
-                            <button phx-click="editor" phx-value-id={item.id} class="text-yellow-600 hover:underline">Edit</button>
-                            <button phx-click="ask_delete" phx-value-id={item.id} phx-value-name={item.name} class="text-red-600 hover:underline">Delete</button>
+                        <div class="flex justify-between">
+                            <div class="flex justify-center gap-2 mt-2">
+                                <button phx-click="show" phx-value-id={item.id} class="text-blue-600 hover:underline">Show</button>
+                                <button phx-click="editor" phx-value-id={item.id} class="text-yellow-600 hover:underline">Edit</button>
+                                <button phx-click="ask_delete" phx-value-id={item.id} phx-value-name={item.name} class="text-red-600 hover:underline">Delete</button>
+                            </div>
+
+                            <img src={"images/#{MaxGallery.Extension.get_ext(item.ext)}.png"} class="w-auto h-6 mt-2">
                         </div>
-
-                        <img src={"images/#{MaxGallery.Extension.get_ext(item.ext)}.png"} class="w-auto h-6 mt-2">
                     </div>
-                </div>
+
+                <% else %>
+                    <div class="border rounded-xl shadow-md p-4 bg-white grid grid-rows-[1fr_auto] h-40">
+                        <span class="overflow-hidden break-all self-center text-center font-semibold mb-2">
+                            <%= item.name %>
+                        </span>
+                    </div>
+                <% end %>
 
             <% end %>
         </div>
