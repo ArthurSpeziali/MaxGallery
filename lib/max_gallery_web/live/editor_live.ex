@@ -3,12 +3,18 @@ defmodule MaxGalleryWeb.EditorLive do
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Context
     alias MaxGallery.Phantom
+    alias MaxGallery.Extension
 
 
     def mount(%{"id" => id}, _session, socket) do
         key = LiveServer.get(:auth_key)
 
-        {:ok, querry} = Context.decrypt_one(id, key) 
+        {:ok, lazy_data} = Context.decrypt_one(id, key, lazy: true)
+        lazy? = Map.fetch!(lazy_data, :ext) 
+                |> Extension.get_ext() != "text"
+
+
+        {:ok, querry} = Context.decrypt_one(id, key, lazy: lazy?)
         data = Phantom.encode_bin(querry)
                |> List.first()
 

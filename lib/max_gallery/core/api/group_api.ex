@@ -6,7 +6,7 @@ defmodule MaxGallery.Core.Group.Api do
     def all() do
         Repo.all(Group)
         |> case do
-            data when is_list(data) -> {:ok, data}
+            group when is_list(group) -> {:ok, group}
             error -> error
         end
     end
@@ -17,7 +17,7 @@ defmodule MaxGallery.Core.Group.Api do
     end
 
     def get(id) do
-        Repo.get(Data, id)
+        Repo.get(Group, id)
         |> case do
             nil -> {:error, "not found"}
             querry -> {:ok, querry}

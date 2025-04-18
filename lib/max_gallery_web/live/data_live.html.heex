@@ -8,7 +8,7 @@
                     <img src="images/folder.png" class="w-auto h-8"/>
                 </button>
 
-                <button phx-click="create">
+                <button phx-click="create_file">
                     <img src="images/create.png" class="w-auto h-8"/>
                 </button>
             </div>
@@ -39,6 +39,13 @@
                         <span class="overflow-hidden break-all self-center text-center font-semibold mb-2">
                             <%= item.name %>
                         </span>
+
+                        <div class="flex justify-between px-6 mt-2">
+                            <button phx-click="" phx-value-id={item.id} class="text-green-600 hover:underline">Open</button>
+                            <button phx-click="ask_rename" phx-value-id={item.id} phx-value-name={item.name} class="text-orange-600 hover:underline">Rename</button>
+                            <button phx-click="" phx-value-id={item.id} class="text-red-800 hover:underline">Remove</button>
+                        </div>
+
                     </div>
                 <% end %>
 
@@ -60,5 +67,23 @@
             </div>
         <% end %>
 
+
+        <%= if @rename_iframe do %>
+            <div class="fixed inset-0  dark:bg-black dark:bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-6 rounded shadow-lg">
+                    <div class="flex justify-between items-center mb-8">
+                        <p>Enter new group name: </p>
+                        <button phx-click="cancel_rename">
+                            <img src="images/close.png" class="w-auto h-8" />
+                        </button>
+                    </div>
+
+                    <form phx-submit="confirm_rename" phx-value-id={@rename_iframe} class="flex gap-2">
+                        <input name="new_name" class="p-2 rounded border border-gray-600" placeholder={@name_group} />
+                        <button type="submit" class="rounded-lg shadow-md bg-orange-600 text-white py-2 px-4">Send</button>
+                    </form>
+                </div>
+            </div>
+        <% end %>
     </body>
 </html>

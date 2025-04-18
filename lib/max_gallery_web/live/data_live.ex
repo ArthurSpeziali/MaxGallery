@@ -10,7 +10,8 @@ defmodule MaxGalleryWeb.DataLive do
 
         socket = assign(socket, [
             datas: lazy_datas,
-            delete_iframe: nil
+            delete_iframe: nil,
+            rename_iframe: nil
         ])
 
         {:ok, socket, layout: false}
@@ -53,9 +54,32 @@ defmodule MaxGalleryWeb.DataLive do
         }
     end
 
-    def handle_event("create", _params, socket) do
+    def handle_event("create_file", _params, socket) do
         {:noreply,
             push_navigate(socket, to: "/import")}
     end
 
+    def handle_event("ask_rename", %{"id" => id, "name" => name}, socket) do
+        socket = assign(socket,
+            rename_iframe: id,
+            name_group: name
+        )
+
+        {:noreply, socket}
+    end
+
+    def handle_event("confirm_rename", %{"id" => id, "new_name" => name}, socket) do
+        key = LiveServer.get(:auth_key)
+
+        Context.group_update(id, name, key)
+        {:noreply,
+            push_navigate(socket, to: "/data")
+        }
+    end
+
+    def handle_event("cancel_rename", _params, socket) do
+        {:noreply,
+            assign(socket, rename_iframe: nil)
+        }
+    end
 end

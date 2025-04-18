@@ -108,30 +108,33 @@ defmodule MaxGallery.Context do
     end
 
     
-    def decrypt_one(id, key) do
-        with {:ok, querry} <- DataApi.get(id),
-             {:ok, name} <- Encrypter.decrypt({querry.name_iv, querry.name}, key),
-             {:ok, blob} <- Encrypter.decrypt({querry.blob_iv, querry.blob}, key) do
+    def decrypt_one(id, key, opts \\ []) do
+        lazy? = Keyword.get(opts, :lazy)
+        {:ok, querry} = 
+            if lazy? do
+                DataApi.get_lazy(id)
+            else
+                DataApi.get(id)
+            end
 
-            {:ok, %{
-                name: name,
-                blob: blob,
-                ext: querry.ext
-            }}
-        else
-            error -> error
-        end
-    end
+        with {:ok, name} <- Encrypter.decrypt({querry.name_iv, querry.name}, key) do
 
-    def decrypt_one(id, key, :lazy) do
-        with {:ok, querry} <- DataApi.get_lazy(id),
-             {:ok, name} <- Encrypter.decrypt({querry.name_iv, querry.name}, key) do
+            if lazy? do
+                {:ok, %{
+                    id: id,
+                    name: name,
+                    ext: querry.ext
+                }}
+            else
+                {:ok, blob} = Encrypter.decrypt({querry.blob_iv, querry.blob}, key)
 
-            {:ok, %{
-                name: name,
-                ext: querry.ext,
-                id: querry.id
-            }}
+                {:ok, %{
+                    id: id,
+                    name: name,
+                    blob: blob,
+                    ext: querry.ext
+                }}
+            end
         else
             error -> error
         end
@@ -170,7 +173,18 @@ defmodule MaxGallery.Context do
     def group_insert(group_name \\ "New Group", key) do
         if Phantom.insert_line?(key) do
             {:ok, {name_iv, name}} = Encrypter.encrypt(group_name, key)
-            GroupApi.insert(%{name_iv: name_iv, name: name})
+            {:ok, {msg_iv, msg}} = Phantom.get_text() |> Encrypter.encrypt(key)
+
+            GroupApi.insert(%{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg})
+        end
+    end
+
+    def group_update(id, new_name, key) do 
+        {:ok, querry} = GroupApi.get(id)
+        {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
+
+        if Phantom.valid?(querry, key) do
+            GroupApi.update(id, %{name: name, name_iv: name_iv})
         end
     end
 end

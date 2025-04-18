@@ -4,6 +4,8 @@ defmodule MaxGallery.Core.Group do
     schema "groups" do
         field :name_iv, :binary
         field :name, :binary
+        field :msg_iv, :binary
+        field :msg, :binary
 
         timestamps()
     end
