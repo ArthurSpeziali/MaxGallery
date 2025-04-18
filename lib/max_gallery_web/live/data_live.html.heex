@@ -40,10 +40,14 @@
                             <%= item.name %>
                         </span>
 
-                        <div class="flex justify-between px-6 mt-2">
-                            <button phx-click="" phx-value-id={item.id} class="text-green-600 hover:underline">Open</button>
-                            <button phx-click="ask_rename" phx-value-id={item.id} phx-value-name={item.name} class="text-orange-600 hover:underline">Rename</button>
-                            <button phx-click="" phx-value-id={item.id} class="text-red-800 hover:underline">Remove</button>
+                        <div class="flex justify-between">
+                            <div class="flex justify-between gap-2 mt-2">
+                                <button phx-click="" phx-value-id={item.id} class="text-green-600 hover:underline">Open</button>
+                                <button phx-click="ask_rename" phx-value-id={item.id} phx-value-name={item.name} class="text-orange-600 hover:underline">Rename</button>
+                                <button phx-click="ask_remove" phx-value-id={item.id} phx-value-name={item.name} class="text-red-800 hover:underline">Remove</button>
+                            </div>
+
+                            <img src="images/group.png" class="w-auto h-7 mt-2"/>
                         </div>
 
                     </div>
@@ -85,5 +89,20 @@
                 </div>
             </div>
         <% end %>
+
+        <%= if @remove_iframe do %>
+            <div class="fixed inset-0  dark:bg-black dark:bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-6 rounded shadow-lg">
+                    <p>Are you sure you want to remove: </p>
+                    <strong class="block text-center">"{@name_group}" ?</strong>
+
+                    <div class="flex justify-end mt-[3.5rem] gap-3">
+                        <button phx-click="cancel_remove" class="bg-orange-600 text-white px-2 py-1 w-[3rem] rounded">No</button>
+                        <button phx-click="confirm_remove" phx-value-id={@remove_iframe} class="bg-transparent border border-orange-600 w-[3rem] text-orange-600 rounded px-2 py-1">Yes</button>
+                    </div>
+                </div>
+            </div>
+        <% end %>
+
     </body>
 </html>

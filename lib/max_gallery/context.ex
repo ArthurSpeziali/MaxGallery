@@ -187,4 +187,15 @@ defmodule MaxGallery.Context do
             GroupApi.update(id, %{name: name, name_iv: name_iv})
         end
     end
+
+    def group_delete(id, key) do
+        with {:ok, querry} <- GroupApi.get(id),
+             true <- Phantom.valid?(querry, key),
+             {:ok, _querry} <- GroupApi.delete(id) do
+
+            {:ok, querry}
+        else
+            error -> error
+        end
+    end
 end
