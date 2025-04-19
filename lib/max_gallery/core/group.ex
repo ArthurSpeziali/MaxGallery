@@ -1,5 +1,6 @@
 defmodule MaxGallery.Core.Group do
     use Ecto.Schema
+    alias MaxGallery.Core.Data
 
     schema "groups" do
         field :name_iv, :binary
@@ -7,6 +8,7 @@ defmodule MaxGallery.Core.Group do
         field :msg_iv, :binary
         field :msg, :binary
 
+        has_many :cypher, Data
         timestamps()
     end
 

@@ -1,5 +1,6 @@
 defmodule MaxGallery.Core.Data do
     use Ecto.Schema
+    alias MaxGallery.Core.Group
 
     schema "cyphers" do
         field :name, :binary
@@ -10,6 +11,7 @@ defmodule MaxGallery.Core.Data do
         field :msg, :string
         field :msg_iv, :string
 
+        belongs_to :group, Group
         timestamps()
     end
 
@@ -22,6 +24,7 @@ defmodule MaxGallery.Core.Data do
         %__MODULE__{}
         |> Map.delete(:__struct__)
         |> Map.delete(:__meta__)
+        |> Map.delete(:group)
         |> Map.keys()
     end
 end
