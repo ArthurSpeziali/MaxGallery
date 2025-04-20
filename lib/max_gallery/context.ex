@@ -7,6 +7,7 @@ defmodule MaxGallery.Context do
 
     def cypher_insert(path, key, opts \\ []) do
         key_name = Keyword.get(opts, :name) 
+        key_group = Keyword.get(opts, :group)
 
         ext = 
             if key_name do
@@ -35,7 +36,8 @@ defmodule MaxGallery.Context do
                  blob_iv: blob_iv,
                  ext: ext,
                  msg: msg,
-                 msg_iv: msg_iv}) do
+                 msg_iv: msg_iv,
+                 group_id: key_group}) do
 
             {:ok, querry.id}
         else
@@ -62,26 +64,27 @@ defmodule MaxGallery.Context do
     def decrypt_all(key, opts \\ []) do
         lazy? = Keyword.get(opts, :lazy)
         only = Keyword.get(opts, :only)
+        group = Keyword.get(opts, :group)
 
         {:ok, datas} = 
             case {lazy?, only} do
                 {nil, nil} ->
                     {:ok, groups} = GroupApi.all() 
-                    {:ok, datas} = DataApi.all()
+                    {:ok, datas} = DataApi.get_group(group)
 
                     {:ok, groups ++ datas}
 
                 {true, nil} ->
                     {:ok, groups} = GroupApi.all() 
-                    {:ok, datas} = DataApi.all_lazy()
+                    {:ok, datas} = DataApi.get_group_lazy(group)
 
                     {:ok, groups ++ datas}
 
                 {nil, :datas} ->
-                    DataApi.all()
+                    DataApi.get_group(group)
 
                 {true, :datas} ->
-                    DataApi.all_lazy()
+                    DataApi.get_group_lazy(group)
 
                 {_boolean, :groups} ->
                     GroupApi.all()
