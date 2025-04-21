@@ -1,6 +1,25 @@
 defmodule MaxGallery.Core.Group.Api do
+    import Ecto.Query, only: [from: 2]
     alias MaxGallery.Core.Group
     alias MaxGallery.Repo
+
+
+    def all_group(group_id) do
+        querry = 
+            case group_id do
+                nil ->
+                    from(g in Group, where: is_nil(g.parent_id))
+
+                id -> 
+                    from(g in Group, where: g.parent_id == ^id)
+
+            end |> Repo.all()
+
+        case querry do
+            _group when is_list(querry) -> {:ok, querry}
+            error -> error
+        end
+    end
 
 
     def all() do

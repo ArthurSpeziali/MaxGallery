@@ -3,7 +3,7 @@ defmodule MaxGallery.Core.Data.Api do
     alias MaxGallery.Core.Data
     alias MaxGallery.Repo
 
-    def get_group(group_id) do
+    def all_group(group_id) do
         querry = 
             case group_id do
                 nil ->
@@ -15,12 +15,12 @@ defmodule MaxGallery.Core.Data.Api do
             end |> Repo.all()
 
         case querry do
-            [] -> {:error, "not found"}
-            _datas -> {:ok, querry}
+            _datas when is_list(querry) -> {:ok, querry}
+            error -> error
         end
     end
 
-    def get_group_lazy(group_id) do
+    def all_group_lazy(group_id) do
         fields = Data.fields()
                  |> List.delete(:blob_iv)
                  |> List.delete(:blob)
@@ -40,7 +40,6 @@ defmodule MaxGallery.Core.Data.Api do
             _datas -> {:ok, querry}
         end
     end
-
 
 
     def all() do

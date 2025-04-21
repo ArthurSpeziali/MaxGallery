@@ -9,10 +9,24 @@ defmodule MaxGallery.Core.Group do
         field :msg, :binary
 
         has_many :cypher, Data
+
+        belongs_to :parent, __MODULE__
+        has_many :group, __MODULE__, foreign_key: :parent_id
+
         timestamps()
     end
 
     def changeset(model, params) do
         Ecto.Changeset.cast(model, params, [:name, :name_iv])
     end
+
+    def fields() do
+        %__MODULE__{}
+        |> Map.delete(:__struct__)
+        |> Map.delete(:__meta__)
+        |> Map.delete(:group)
+        |> Map.delete(:parent)
+        |> Map.keys()
+    end
+
 end

@@ -69,25 +69,25 @@ defmodule MaxGallery.Context do
         {:ok, datas} = 
             case {lazy?, only} do
                 {nil, nil} ->
-                    {:ok, groups} = GroupApi.all() 
-                    {:ok, datas} = DataApi.get_group(group)
+                    {:ok, groups} = GroupApi.all_group(group) |> IO.inspect()
+                    {:ok, datas} = DataApi.all_group(group)
 
                     {:ok, groups ++ datas}
 
                 {true, nil} ->
-                    {:ok, groups} = GroupApi.all() 
-                    {:ok, datas} = DataApi.get_group_lazy(group)
+                    {:ok, groups} = GroupApi.all_group(group) 
+                    {:ok, datas} = DataApi.all_group_lazy(group)
 
                     {:ok, groups ++ datas}
 
                 {nil, :datas} ->
-                    DataApi.get_group(group)
+                    DataApi.all_group(group)
 
                 {true, :datas} ->
-                    DataApi.get_group_lazy(group)
+                    DataApi.all_group_lazy(group)
 
                 {_boolean, :groups} ->
-                    GroupApi.all()
+                    GroupApi.all_group(group)
             end
 
 
@@ -113,6 +113,7 @@ defmodule MaxGallery.Context do
     
     def decrypt_one(id, key, opts \\ []) do
         lazy? = Keyword.get(opts, :lazy)
+
         {:ok, querry} = 
             if lazy? do
                 DataApi.get_lazy(id)
@@ -173,12 +174,14 @@ defmodule MaxGallery.Context do
     end
 
 
-    def group_insert(group_name \\ "New Group", key) do
+    def group_insert(group_name, key, opts \\ []) do
+        group = Keyword.get(opts, :group)
+
         if Phantom.insert_line?(key) do
             {:ok, {name_iv, name}} = Encrypter.encrypt(group_name, key)
             {:ok, {msg_iv, msg}} = Phantom.get_text() |> Encrypter.encrypt(key)
 
-            GroupApi.insert(%{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg})
+            GroupApi.insert(%{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg, parent_id: group})
         end
     end
 
