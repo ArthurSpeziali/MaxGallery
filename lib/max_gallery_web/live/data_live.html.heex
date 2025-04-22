@@ -5,11 +5,11 @@
             <input/>
             <div class="flex py-2 px-8 gap-1">
                 <button class="">
-                    <img src="images/folder.png" class="w-auto h-8"/>
+                    <img src="/images/folder.png" class="w-auto h-8"/>
                 </button>
 
                 <button phx-click="create_file">
-                    <img src="images/create.png" class="w-auto h-8"/>
+                    <img src="/images/create.png" class="w-auto h-8"/>
                 </button>
             </div>
         </div>
@@ -30,7 +30,7 @@
                                 <button phx-click="ask_delete" phx-value-id={item.id} phx-value-name={item.name} class="text-red-600 hover:underline">Delete</button>
                             </div>
 
-                            <img src={"images/#{MaxGallery.Extension.get_ext(item.ext)}.png"} class="w-auto h-6 mt-2">
+                            <img src={"/images/#{MaxGallery.Extension.get_ext(item.ext)}.png"} class="w-auto h-6 mt-2">
                         </div>
                     </div>
 
@@ -47,7 +47,7 @@
                                 <button phx-click="ask_remove" phx-value-id={item.id} phx-value-name={item.name} class="text-red-800 hover:underline">Remove</button>
                             </div>
 
-                            <img src="images/group.png" class="w-auto h-7 mt-2"/>
+                            <img src="/images/group.png" class="w-auto h-7 mt-2"/>
                         </div>
 
                     </div>
@@ -78,7 +78,7 @@
                     <div class="flex justify-between items-center mb-8">
                         <p>Enter new group name: </p>
                         <button phx-click="cancel_rename">
-                            <img src="images/close.png" class="w-auto h-8" />
+                            <img src="/images/close.png" class="w-auto h-8" />
                         </button>
                     </div>
 

@@ -4,9 +4,11 @@ defmodule MaxGalleryWeb.DataLive do
     alias MaxGallery.Server.LiveServer
 
 
-    def mount(_params, %{"auth_key" => key}, socket) do
+    def mount(params, %{"auth_key" => key}, socket) do
         LiveServer.put(%{auth_key: key})
-        {:ok, lazy_datas} = Context.decrypt_all(key, lazy: true)
+        group_id = Map.get(params, "id")
+
+        {:ok, lazy_datas} = Context.decrypt_all(key, lazy: true, group: group_id)
 
         socket = assign(socket, [
             datas: lazy_datas,

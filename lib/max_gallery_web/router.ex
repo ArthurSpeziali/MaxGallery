@@ -25,6 +25,8 @@ defmodule MaxGalleryWeb.Router do
         live "/editor", EditorLive
         live "/show", ShowLive
         live "/import", ImportLive
+
+        live "/data/:id", DataLive
     end
 
     scope "/content", MaxGalleryWeb do
