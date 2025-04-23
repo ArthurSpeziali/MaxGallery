@@ -36,8 +36,8 @@ defmodule MaxGallery.Core.Data.Api do
             end |> Repo.all()
 
         case querry do
-            [] -> {:error, "not found"}
-            _datas -> {:ok, querry}
+            _data when is_list(querry) -> {:ok, querry}
+            error -> error
         end
     end
 

@@ -109,4 +109,10 @@ defmodule MaxGalleryWeb.DataLive do
             push_navigate(socket, to: "/data")
         }
     end
+
+    def handle_event("open", %{"id" => id}, socket) do
+        {:noreply,
+            push_navigate(socket, to: "/data/#{id}")
+        }
+    end
 end

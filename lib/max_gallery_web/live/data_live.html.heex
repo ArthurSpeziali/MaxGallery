@@ -15,6 +15,10 @@
         </div>
 
         <div class="grid md:grid-cols-3 grid-cols-1 gap-4 px-4 py-2 border rounded shadow m-2">
+            <%= if @datas == [] do %>
+                <strong class="text-xl">No content yet.</strong>
+            <% end %>
+
             <%= for item <- @datas do %>
 
                 <%= if Map.get(item, :ext) do %>
@@ -42,7 +46,7 @@
 
                         <div class="flex justify-between">
                             <div class="flex justify-between gap-2 mt-2">
-                                <button phx-click="" phx-value-id={item.id} class="text-green-600 hover:underline">Open</button>
+                                <button phx-click="open" phx-value-id={item.id} class="text-green-600 hover:underline">Open</button>
                                 <button phx-click="ask_rename" phx-value-id={item.id} phx-value-name={item.name} class="text-orange-600 hover:underline">Rename</button>
                                 <button phx-click="ask_remove" phx-value-id={item.id} phx-value-name={item.name} class="text-red-800 hover:underline">Remove</button>
                             </div>
