@@ -2,20 +2,30 @@
 <html lang="pt-BR">
     <body>
         <div class="flex w-full h-auto justify-between px-2 py-1">
-            <button phx-click="back" phx-value-id={@id_page} class="flex justify-center items-center border border-gray-300 rounded-xl w-14">
+            <button phx-click="back" class="flex justify-center items-center border border-gray-300 rounded-xl w-14">
                 <img src="/images/back.png" class="w-auto h-8"/>
             </button>
 
             <input/>
 
-            <div class="flex py-1 px-8 gap-1">
-                <button class="">
-                    <img src="/images/folder.png" class="w-auto h-10"/>
-                </button>
+            <div class="flex py-1 px-8 gap-3">
+                <div class="flex gap-0">
+                    <button>
+                        <img src="/images/create_folder.png" class="w-auto h-10"/>
+                    </button>
+                    <button>
+                        <img src="/images/import_folder.png" class="w-auto h-10"/>
+                    </button>
+                </div>
 
-                <button phx-click="create_file">
-                    <img src="/images/create.png" class="w-auto h-10"/>
-                </button>
+                <div class="flex gap-0">
+                    <button>
+                        <img src="/images/create_file.png" class="w-auto h-10"/>
+                    </button>
+                    <button phx-click="create_file">
+                        <img src="/images/import_file.png" class="w-auto h-10"/>
+                    </button>
+                </div>
             </div>
         </div>
 

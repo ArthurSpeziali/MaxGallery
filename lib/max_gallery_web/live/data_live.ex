@@ -12,7 +12,7 @@ defmodule MaxGalleryWeb.DataLive do
 
         socket = assign(socket, [
             datas: lazy_datas,
-            id_page: group_id,
+            page_id: group_id,
             delete_iframe: nil,
             rename_iframe: nil,
             remove_iframe: nil
@@ -118,7 +118,7 @@ defmodule MaxGalleryWeb.DataLive do
     end
 
     def handle_event("back", params, socket) do
-        back_id = Map.get(params, "id")
+        back_id = socket.assigns[:page_id]
                   |> Context.get_back()
 
         {:noreply,
