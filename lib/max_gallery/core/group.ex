@@ -10,8 +10,8 @@ defmodule MaxGallery.Core.Group do
 
         has_many :cypher, Data
 
-        belongs_to :parent, __MODULE__
-        has_many :group, __MODULE__, foreign_key: :parent_id
+        belongs_to :group, __MODULE__
+        has_many :subgroup, __MODULE__
 
         timestamps()
     end
@@ -25,7 +25,7 @@ defmodule MaxGallery.Core.Group do
         |> Map.delete(:__struct__)
         |> Map.delete(:__meta__)
         |> Map.delete(:group)
-        |> Map.delete(:parent)
+        |> Map.delete(:subgroup)
         |> Map.keys()
     end
 

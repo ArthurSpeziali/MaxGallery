@@ -181,7 +181,7 @@ defmodule MaxGallery.Context do
             {:ok, {name_iv, name}} = Encrypter.encrypt(group_name, key)
             {:ok, {msg_iv, msg}} = Phantom.get_text() |> Encrypter.encrypt(key)
 
-            GroupApi.insert(%{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg, parent_id: group})
+            GroupApi.insert(%{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg, group_id: group})
         end
     end
 
@@ -202,6 +202,16 @@ defmodule MaxGallery.Context do
             {:ok, querry}
         else
             error -> error
+        end
+    end
+
+
+    def get_back(id) do
+        case id do
+            nil -> nil
+            _id ->
+                {:ok, querry} = GroupApi.get(id)
+                Map.fetch!(querry, :group_id)
         end
     end
 end

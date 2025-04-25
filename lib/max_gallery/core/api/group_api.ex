@@ -8,10 +8,10 @@ defmodule MaxGallery.Core.Group.Api do
         querry = 
             case group_id do
                 nil ->
-                    from(g in Group, where: is_nil(g.parent_id))
+                    from(g in Group, where: is_nil(g.group_id))
 
                 id -> 
-                    from(g in Group, where: g.parent_id == ^id)
+                    from(g in Group, where: g.group_id == ^id)
 
             end |> Repo.all()
 
