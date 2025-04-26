@@ -21,13 +21,17 @@ defmodule MaxGalleryWeb.ShowLive do
         {:ok, socket, layout: false}
     end
     def mount(_params, _session, socket) do
-        {:ok, push_navigate(socket, to: "/data")}
+        page_id = socket.assigns[:page_id]
+
+        {:ok, push_navigate(socket, to: "/data/#{page_id}")}
     end
 
 
     def handle_event("cancel", _params, socket) do
+        page_id = socket.assigns[:page_id]
+        
         {:noreply,
-            push_navigate(socket, to: "/data")
+            push_navigate(socket, to: "/data/#{page_id}")
         }
     end
 end

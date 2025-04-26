@@ -8,6 +8,10 @@ defmodule MaxGallery.Context do
     def cypher_insert(path, key, opts \\ []) do
         key_name = Keyword.get(opts, :name) 
         key_group = Keyword.get(opts, :group)
+                |> case do
+                    str when is_binary(str) -> String.to_integer(str)
+                    int -> int
+                end
 
         ext = 
             if key_name do
@@ -177,9 +181,7 @@ defmodule MaxGallery.Context do
     def group_insert(group_name, key, opts \\ []) do
         group = Keyword.get(opts, :group)
                 |> case do
-                    str when is_binary(str) ->
-                        String.to_integer(str)
-
+                    str when is_binary(str) -> String.to_integer(str)
                     int -> int
                 end
 

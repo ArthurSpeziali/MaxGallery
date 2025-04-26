@@ -62,8 +62,10 @@ defmodule MaxGalleryWeb.DataLive do
     end
 
     def handle_event("import_file", _params, socket) do
+        page_id = socket.assigns[:page_id]
+
         {:noreply,
-            push_navigate(socket, to: "/import")
+            push_navigate(socket, to: "/import/#{page_id}")
         }
     end
 
@@ -145,7 +147,7 @@ defmodule MaxGalleryWeb.DataLive do
 
     def handle_event("confirm_folder", %{"new_name" => name}, socket) do
         key = LiveServer.get(:auth_key)
-        page_id = socket.assigns[:page_id] |> IO.inspect()
+        page_id = socket.assigns[:page_id]
         Context.group_insert(name, key, group: page_id)
 
         {:noreply, 

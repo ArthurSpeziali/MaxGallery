@@ -28,8 +28,10 @@ defmodule MaxGalleryWeb.EditorLive do
         {:ok, socket, layout: false}
     end
     def mount(_params, _session, socket) do
+        page_id = socket.assigns[:page_id]
+
         {:ok, 
-            push_navigate(socket, to: "/data")
+            push_navigate(socket, to: "/data/#{page_id}")
         }
     end
 
@@ -43,27 +45,31 @@ defmodule MaxGalleryWeb.EditorLive do
     end
 
     def handle_event("redirect_edit", _params, socket) do
+        page_id = socket.assigns[:page_id]
+
         {:noreply, 
-            push_navigate(socket, to: "/data")
+            push_navigate(socket, to: "/data/#{page_id}")
         }
     end
 
     def handle_event("confirm_edit", %{"new_content" => content, "new_name" => name}, socket) do
         id = socket.assigns[:id]
         key = LiveServer.get(:auth_key)
+        page_id = socket.assigns[:page_id]
 
         Context.cypher_update(id, %{name: name, blob: content}, key)
         {:noreply, 
-            push_navigate(socket, to: "/data")
+            push_navigate(socket, to: "/data/#{page_id}")
         }
     end
     def handle_event("confirm_edit", %{"new_name" => name}, socket) do
         id = socket.assigns[:id]
         key = LiveServer.get(:auth_key)
+        page_id = socket.assigns[:page_id]
 
         Context.cypher_update(id, %{name: name}, key)
         {:noreply, 
-            push_navigate(socket, to: "/data")
+            push_navigate(socket, to: "/data/#{page_id}")
         }
     end
 
