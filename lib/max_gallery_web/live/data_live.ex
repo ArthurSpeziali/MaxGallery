@@ -21,7 +21,9 @@ defmodule MaxGalleryWeb.DataLive do
         {:ok, socket, layout: false}
     end
     def mount(_params, _session, socket) do
-        {:ok, redirect(socket, to: "/")}
+        {:ok, 
+            push_navigate(socket, to: "/")
+        }
     end
 
     
@@ -39,10 +41,11 @@ defmodule MaxGalleryWeb.DataLive do
 
     def handle_event("confirm_delete", %{"id" => id}, socket) do
         key = LiveServer.get(:auth_key)
+        page_id = socket.assigns[:page_id]
         Context.cypher_delete(id, key)
 
         {:noreply,
-            push_navigate(socket, to: "/data")
+            push_navigate(socket, to: "/data/#{page_id}")
         }
     end
 
@@ -58,9 +61,10 @@ defmodule MaxGalleryWeb.DataLive do
         }
     end
 
-    def handle_event("create_file", _params, socket) do
+    def handle_event("import_file", _params, socket) do
         {:noreply,
-            push_navigate(socket, to: "/import")}
+            push_navigate(socket, to: "/import")
+        }
     end
 
     def handle_event("ask_rename", %{"id" => id, "name" => name}, socket) do
@@ -74,10 +78,11 @@ defmodule MaxGalleryWeb.DataLive do
 
     def handle_event("confirm_rename", %{"id" => id, "new_name" => name}, socket) do
         key = LiveServer.get(:auth_key)
-
+        page_id = socket.assigns[:page_id]
         Context.group_update(id, name, key)
-        {:noreply,
-            push_navigate(socket, to: "/data")
+
+        {:noreply, 
+            push_navigate(socket, to: "/data/#{page_id}")
         }
     end
 
@@ -97,17 +102,20 @@ defmodule MaxGalleryWeb.DataLive do
     end
 
     def handle_event("cancel_remove", _params, socket) do
-        {:noreply,
-            push_navigate(socket, to: "/data")
+        page_id = socket.assigns[:page_id]
+
+        {:noreply, 
+            push_navigate(socket, to: "/data/#{page_id}")
         }
     end
 
     def handle_event("confirm_remove", %{"id" => id}, socket) do
         key = LiveServer.get(:auth_key)
+        page_id = socket.assigns[:page_id]
         Context.group_delete(id, key)
 
-        {:noreply,
-            push_navigate(socket, to: "/data")
+        {:noreply, 
+            push_navigate(socket, to: "/data/#{page_id}")
         }
     end
 
@@ -117,12 +125,31 @@ defmodule MaxGalleryWeb.DataLive do
         }
     end
 
-    def handle_event("back", params, socket) do
+    def handle_event("back", _params, socket) do
         back_id = socket.assigns[:page_id]
                   |> Context.get_back()
 
         {:noreply,
             push_navigate(socket, to: "/data/#{back_id}")
+        }
+    end
+
+    def handle_event("ask_folder", _params, socket) do
+        socket = assign(socket,
+            rename_iframe: :create,
+            name_group: ""
+        )
+
+        {:noreply, socket}
+    end
+
+    def handle_event("confirm_folder", %{"new_name" => name}, socket) do
+        key = LiveServer.get(:auth_key)
+        page_id = socket.assigns[:page_id] |> IO.inspect()
+        Context.group_insert(name, key, group: page_id)
+
+        {:noreply, 
+            push_navigate(socket, to: "/data/#{page_id}")
         }
     end
 end

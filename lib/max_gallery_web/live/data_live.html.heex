@@ -8,24 +8,14 @@
 
             <input/>
 
-            <div class="flex py-1 px-8 gap-3">
-                <div class="flex gap-0">
-                    <button>
-                        <img src="/images/create_folder.png" class="w-auto h-10"/>
-                    </button>
-                    <button>
-                        <img src="/images/import_folder.png" class="w-auto h-10"/>
-                    </button>
-                </div>
+            <div class="flex py-1 px-8 gap-1">
+                <button phx-click="ask_folder">
+                    <img src="/images/create_folder.png" class="w-auto h-10"/>
+                </button>
 
-                <div class="flex gap-0">
-                    <button>
-                        <img src="/images/create_file.png" class="w-auto h-10"/>
-                    </button>
-                    <button phx-click="create_file">
-                        <img src="/images/import_file.png" class="w-auto h-10"/>
-                    </button>
-                </div>
+                <button phx-click="import_file">
+                    <img src="/images/import_file.png" class="w-auto h-10"/>
+                </button>
             </div>
         </div>
 
@@ -101,10 +91,18 @@
                         </button>
                     </div>
 
-                    <form phx-submit="confirm_rename" phx-value-id={@rename_iframe} class="flex gap-2">
-                        <input name="new_name" class="p-2 rounded border border-gray-600" placeholder={@name_group} />
-                        <button type="submit" class="rounded-lg shadow-md bg-orange-600 text-white py-2 px-4">Send</button>
-                    </form>
+                    <%=if @rename_iframe == :create do %>
+                        <form phx-submit="confirm_folder" class="flex gap-2">
+                            <input name="new_name" class="p-2 rounded border border-gray-600"/>
+                            <button type="submit" class="rounded-lg shadow-md bg-orange-600 text-white py-2 px-4">Send</button>
+                        </form>
+                    <% else %>
+                        <form phx-submit="confirm_rename" phx-value-id={@rename_iframe} class="flex gap-2">
+                            <input name="new_name" class="p-2 rounded border border-gray-600" placeholder={@name_group} />
+                            <button type="submit" class="rounded-lg shadow-md bg-orange-600 text-white py-2 px-4">Send</button>
+                        </form>
+                    <% end %>
+
                 </div>
             </div>
         <% end %>

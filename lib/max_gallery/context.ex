@@ -176,6 +176,12 @@ defmodule MaxGallery.Context do
 
     def group_insert(group_name, key, opts \\ []) do
         group = Keyword.get(opts, :group)
+                |> case do
+                    str when is_binary(str) ->
+                        String.to_integer(str)
+
+                    int -> int
+                end
 
         if Phantom.insert_line?(key) do
             {:ok, {name_iv, name}} = Encrypter.encrypt(group_name, key)
