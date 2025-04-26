@@ -3,6 +3,20 @@ defmodule MaxGalleryWeb.ImportLive do
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Context
 
+    def name_files(uploads) do
+        entries = uploads.file_import.entries
+
+        case entries do
+            [] -> 
+                "Nenhum arquivo selecionado."
+
+            _entry -> 
+                Enum.map(entries, fn item -> 
+                    "\"#{item.client_name}\""
+                end) |> Enum.join(", ")
+        end
+    end
+
 
     def mount(params, _session, socket) do
         group_id = Map.get(params, "id")

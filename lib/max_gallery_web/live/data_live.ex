@@ -15,7 +15,8 @@ defmodule MaxGalleryWeb.DataLive do
             page_id: group_id,
             delete_iframe: nil,
             rename_iframe: nil,
-            remove_iframe: nil
+            remove_iframe: nil,
+            more_iframe: nil
         ])
 
         {:ok, socket, layout: false}
@@ -33,10 +34,15 @@ defmodule MaxGalleryWeb.DataLive do
         }
     end
 
-    def handle_event("cancel_delete", _params, socket) do
-        {:noreply,
-            assign(socket, delete_iframe: nil)
-        }
+    def handle_event("cancel", _params, socket) do
+        socket = assign(socket,
+            delete_iframe: nil,
+            rename_iframe: nil,
+            remove_iframe: nil,
+            more_iframe: nil
+        )
+
+        {:noreply, socket}
     end
 
     def handle_event("confirm_delete", %{"id" => id}, socket) do
@@ -88,12 +94,6 @@ defmodule MaxGalleryWeb.DataLive do
         }
     end
 
-    def handle_event("cancel_rename", _params, socket) do
-        {:noreply,
-            assign(socket, rename_iframe: nil)
-        }
-    end
-
     def handle_event("ask_remove", %{"id" => id, "name" => name}, socket) do
         socket = assign(socket, 
             remove_iframe: id,
@@ -103,18 +103,18 @@ defmodule MaxGalleryWeb.DataLive do
         {:noreply, socket} 
     end
 
-    def handle_event("cancel_remove", _params, socket) do
+    def handle_event("confirm_remove", %{"id" => id}, socket) do
+        key = LiveServer.get(:auth_key)
         page_id = socket.assigns[:page_id]
+        Context.group_delete(id, key)
 
         {:noreply, 
             push_navigate(socket, to: "/data/#{page_id}")
         }
     end
 
-    def handle_event("confirm_remove", %{"id" => id}, socket) do
-        key = LiveServer.get(:auth_key)
+    def handle_event("redirect", _params, socket) do
         page_id = socket.assigns[:page_id]
-        Context.group_delete(id, key)
 
         {:noreply, 
             push_navigate(socket, to: "/data/#{page_id}")
@@ -152,6 +152,12 @@ defmodule MaxGalleryWeb.DataLive do
 
         {:noreply, 
             push_navigate(socket, to: "/data/#{page_id}")
+        }
+    end
+
+    def handle_event("more_menu", %{"id" => id}, socket) do
+        {:noreply,
+            assign(socket, more_iframe: id)
         }
     end
 end
