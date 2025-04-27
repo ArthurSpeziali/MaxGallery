@@ -73,7 +73,7 @@ defmodule MaxGallery.Context do
         {:ok, datas} = 
             case {lazy?, only} do
                 {nil, nil} ->
-                    {:ok, groups} = GroupApi.all_group(group) |> IO.inspect()
+                    {:ok, groups} = GroupApi.all_group(group) 
                     {:ok, datas} = DataApi.all_group(group)
 
                     {:ok, groups ++ datas}
@@ -117,31 +117,45 @@ defmodule MaxGallery.Context do
     
     def decrypt_one(id, key, opts \\ []) do
         lazy? = Keyword.get(opts, :lazy)
+        group? = Keyword.get(opts, :group)
 
         {:ok, querry} = 
-            if lazy? do
-                DataApi.get_lazy(id)
-            else
-                DataApi.get(id)
+            case {lazy?, group?} do
+                {true, nil} ->
+                    DataApi.get_lazy(id)
+
+                {nil, nil} ->
+                    DataApi.get(id)
+
+                {_boolean, true} ->
+                    GroupApi.get(id)
             end
 
         with {:ok, name} <- Encrypter.decrypt({querry.name_iv, querry.name}, key) do
 
-            if lazy? do
-                {:ok, %{
-                    id: id,
-                    name: name,
-                    ext: querry.ext
-                }}
-            else
-                {:ok, blob} = Encrypter.decrypt({querry.blob_iv, querry.blob}, key)
+            case {lazy?, group?} do
+                {true, nil} ->
+                    {:ok, %{
+                        id: id,
+                        name: name,
+                        ext: querry.ext
+                    }}
+                
+                {nil, nil} ->
+                    {:ok, blob} = Encrypter.decrypt({querry.blob_iv, querry.blob}, key)
 
-                {:ok, %{
-                    id: id,
-                    name: name,
-                    blob: blob,
-                    ext: querry.ext
-                }}
+                    {:ok, %{
+                        id: id,
+                        name: name,
+                        blob: blob,
+                        ext: querry.ext
+                    }}
+
+                {_boolean, true} ->
+                    {:ok, %{
+                        id: id,
+                        name: name
+                    }}
             end
         else
             error -> error
@@ -174,6 +188,13 @@ defmodule MaxGallery.Context do
 
         if Phantom.valid?(querry, key) do
             DataApi.update(id, params)
+        end
+    end
+    def cypher_update(id, %{group_id: new_group}, key) do
+        {:ok, querry} = DataApi.get(id)
+
+        if Phantom.valid?(querry, key) do
+            DataApi.update(id, %{group_id: new_group})
         end
     end
 

@@ -128,7 +128,7 @@
         <%= if @more_iframe do %>
             <div class="fixed inset-0  dark:bg-black dark:bg-opacity-50 flex items-center justify-center z-50">
                 <div class="bg-white p-2 rounded-lg shadow-lg">
-                    <div class="flex justify-end mb-10">
+                    <div class="flex justify-end mb-8 px-2 py-1">
                         <button phx-click="cancel">
                             <img src="/images/close.png" class="w-auto h-10">
                         </button>
@@ -138,7 +138,7 @@
                         <button class="border rounded-lg font-bold text-blue-600 py-1 px-4 text-lg shadow-md">
                             Download
                         </button>
-                        <button class="border rounded-lg font-bold text-red-600 py-1 px-4 text-lg shadow-md">
+                        <button phx-click="move" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-red-600 py-1 px-4 text-lg shadow-md">
                             Move
                         </button>
                         <button class="border rounded-lg font-bold text-yellow-600 py-1 px-4 text-lg shadow-md">
