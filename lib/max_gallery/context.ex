@@ -245,7 +245,7 @@ defmodule MaxGallery.Context do
     end
 
 
-    def cypher_duplicate(id, params) do
+    def cypher_duplicate(id, params, key) do
         {:ok, querry} = DataApi.get(id)
 
         original = Map.drop(querry, [
@@ -257,11 +257,30 @@ defmodule MaxGallery.Context do
             :updated_at
         ])
         duplicate = Map.merge(original, params)
+        
+        {:ok, dec_name} = Encrypter.decrypt(
+            {duplicate.name_iv, duplicate.name},
+            key
+        ) 
 
-        MaxGallery.Server.LiveServer.put(%{duplicate: duplicate})
+        {:ok, {name_iv, name}} = Encrypter.encrypt(
+            dec_name,
+            key
+        )
 
-        case DataApi.insert(duplicate) do
-            {:ok, querry} -> {:ok, querry.id}
+        {:ok, {msg_iv, msg}} = Phantom.get_text()
+                        |> Encrypter.encrypt(key)
+
+        duplicate = Map.merge(duplicate,
+            %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
+        )
+
+
+        with {:ok, querry} <- DataApi.insert(duplicate),
+             true <- Phantom.insert_line?(key) do 
+
+            {:ok, querry.id}
+        else
             error -> error
         end
     end

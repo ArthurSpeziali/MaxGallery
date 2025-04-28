@@ -20,7 +20,7 @@ defmodule MaxGalleryWeb.MoveLive do
         copy? = Map.get(params, "copy")
         action = 
             if copy? do
-                copy?
+                "copy"
             else
                 "move"
             end
@@ -70,7 +70,8 @@ defmodule MaxGalleryWeb.MoveLive do
                 Context.group_update(object.id, %{group_id: dest_id}, key)
 
             {:data, "copy"} ->
-                {:ok, duplicate_querry} = Context.cypher_duplicate(0, %{})
+                params = %{group_id: String.to_integer(dest_id)}
+                Context.cypher_duplicate(object.id, params, key)
         end
 
 
