@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+    <body>
+        <div class="flex p-2">
+            <button phx-click="back" class="flex justify-center items-center border border-gray-300 rounded-xl w-14 h-12">
+                <img src="/images/back.png" class="w-auto h-8"/>
+            </button>
+        </div>
+
+        <div class="grid grid-rows-2 mt-6">
+            <strong class="text-red-600 text-lg text-center">Where do you want to {@action}?</strong>
+            <strong class="text-gray-600 text-md text-center">From: "{@group_name}"</strong>
+        </div>
+
+        <div class="grid md:grid-cols-3 grid-cols-1 gap-4 px-4 py-2 border rounded shadow m-2">
+            <%= if @groups == [] do %>
+                <strong>No content yet.</strong>
+            <% end %>
+
+
+            <%= for item <- @groups do %>
+
+                <div class="border rounded-xl shadow-md px-4 py-1 bg-white grid grid-rows-[1fr_auto] h-40">
+                    <span class="overflow-hidden break-all self-center text-center font-semibold mb-2">
+                        {item.name}
+                    </span>
+
+                    <div class="flex justify-between">
+
+                        <div class="flex items-center gap-4">
+                            <button phx-click="open" phx-value-id={item.id} class="text-green-600 font-bold hover:underline">
+                                Open
+                            </button>
+
+                            <button phx-click="select" phx-value-id={item.id} class="text-blue-600 font-bold hover:underline">
+                                Select
+                            </button>
+                        </div>
+
+                        <img src={"/images/group.png"} class="w-auto h-6 mt-2">
+                    </div>
+                </div>
+
+            <% end %>
+        </div>
+    </body>
+</html>
