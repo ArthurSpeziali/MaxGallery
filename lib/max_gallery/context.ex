@@ -243,4 +243,26 @@ defmodule MaxGallery.Context do
                 Map.fetch!(querry, :group_id)
         end
     end
+
+
+    def cypher_duplicate(id, params) do
+        {:ok, querry} = DataApi.get(id)
+
+        original = Map.drop(querry, [
+            :__struct__,
+            :__meta__,
+            :id,
+            :group,
+            :inserted_at,
+            :updated_at
+        ])
+        duplicate = Map.merge(original, params)
+
+        MaxGallery.Server.LiveServer.put(%{duplicate: duplicate})
+
+        case DataApi.insert(duplicate) do
+            {:ok, querry} -> {:ok, querry.id}
+            error -> error
+        end
+    end
 end

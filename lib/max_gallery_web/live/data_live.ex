@@ -172,4 +172,16 @@ defmodule MaxGalleryWeb.DataLive do
             push_navigate(socket, to: "/move/#{page_id}")
         }
     end
+
+    def handle_event("copy", %{"id" => id}, socket) do
+        page_id = socket.assigns[:page_id]
+        LiveServer.put(%{data_info: %{
+            id: id,
+            type: :data
+        }})
+
+        {:noreply,
+            push_navigate(socket, to: "/move/#{page_id}?copy=true")
+        }
+    end
 end

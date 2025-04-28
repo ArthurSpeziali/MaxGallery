@@ -22,9 +22,10 @@ defmodule MaxGallery.Core.Data do
 
     def fields() do
         %__MODULE__{}
-        |> Map.delete(:__struct__)
-        |> Map.delete(:__meta__)
-        |> Map.delete(:group)
-        |> Map.keys()
+        |> Map.drop([
+            :__struct__,
+            :__meta__,
+            :group
+        ]) |> Map.keys()
     end
 end
