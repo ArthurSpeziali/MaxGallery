@@ -214,12 +214,19 @@ defmodule MaxGallery.Context do
         end
     end
 
-    def group_update(id, new_name, key) do 
+    def group_update(id, %{name: new_name}, key) do 
         {:ok, querry} = GroupApi.get(id)
         {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
 
         if Phantom.valid?(querry, key) do
             GroupApi.update(id, %{name: name, name_iv: name_iv})
+        end
+    end
+    def group_update(id, %{group_id: group_id}, key) do
+        {:ok, querry} = GroupApi.get(id)
+
+        if Phantom.valid?(querry, key) do
+            GroupApi.update(id, %{group_id: group_id})
         end
     end
 
@@ -275,13 +282,56 @@ defmodule MaxGallery.Context do
             %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
         )
 
-
-        with {:ok, querry} <- DataApi.insert(duplicate),
-             true <- Phantom.insert_line?(key) do 
+        with true <- Phantom.insert_line?(key),
+             {:ok, querry} <- DataApi.insert(duplicate) do
 
             {:ok, querry.id}
         else
             error -> error
         end
+    end
+
+
+    def group_duplicate(id, params, key) do
+        {:ok, querry} = GroupApi.get(id)
+
+        original = Map.drop(querry, [
+            :__struct__,
+            :__meta,
+            :id,
+            :group,
+            :cypher,
+            :subgroup,
+            :inserted_at,
+            :updated_at
+        ])
+
+        duplicate = Map.merge(original, params)
+        
+        {:ok, dec_name} = Encrypter.decrypt(
+            {duplicate.name_iv, duplicate.name},
+            key
+        ) 
+
+        {:ok, {name_iv, name}} = Encrypter.encrypt(
+            dec_name,
+            key
+        )
+
+        {:ok, {msg_iv, msg}} = Phantom.get_text()
+                        |> Encrypter.encrypt(key)
+
+        duplicate = Map.merge(duplicate,
+            %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
+        )
+
+        with true <- Phantom.insert_line?(key), 
+             {:ok, querry} <- GroupApi.insert(duplicate) do
+    
+            {:ok, querry.id}
+        else
+            error -> error
+        end
+             
     end
 end

@@ -28,7 +28,7 @@
 
                 <%= if Map.get(item, :ext) do %>
                     <div class="border rounded-xl shadow-md px-4 py-1 bg-white grid grid-rows-[auto_1fr_auto] h-40">
-                        <button phx-click="more_menu" phx-value-id={item.id} class="flex justify-end font-bold text-orange-600">
+                        <button phx-click="more_menu" phx-value-id={item.id} phx-value-type="data" class="flex justify-end font-bold text-orange-600">
                             ...
                         </button>
 
@@ -49,6 +49,10 @@
 
                 <% else %>
                     <div class="border rounded-xl shadow-md p-4 bg-white grid grid-rows-[1fr_auto] h-40">
+                        <button phx-click="more_menu" phx-value-id={item.id} phx-value-type="group" class="flex justify-end font-bold text-orange-600">
+                            ...
+                        </button>
+
                         <span class="overflow-hidden break-all self-center text-center font-semibold mb-2">
                             <%= item.name %>
                         </span>

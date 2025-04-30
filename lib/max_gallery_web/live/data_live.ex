@@ -87,7 +87,7 @@ defmodule MaxGalleryWeb.DataLive do
     def handle_event("confirm_rename", %{"id" => id, "new_name" => name}, socket) do
         key = LiveServer.get(:auth_key)
         page_id = socket.assigns[:page_id]
-        Context.group_update(id, name, key)
+        Context.group_update(id, %{name: name}, key)
 
         {:noreply, 
             push_navigate(socket, to: "/data/#{page_id}")
@@ -155,33 +155,35 @@ defmodule MaxGalleryWeb.DataLive do
         }
     end
 
-    def handle_event("more_menu", %{"id" => id}, socket) do
+    def handle_event("more_menu", %{"id" => id, "type" => type}, socket) do
         {:noreply,
-            assign(socket, more_iframe: id)
+            assign(socket, more_iframe: id, type: type)
         }
     end
 
     def handle_event("move", %{"id" => id}, socket) do
         page_id = socket.assigns[:page_id]
-        LiveServer.put(%{data_info: %{
+        type = socket.assigns[:type]
+        LiveServer.put(%{object_info: %{
             id: id,
-            type: :data
+            type: type
         }})
 
         {:noreply,
-            push_navigate(socket, to: "/move/#{page_id}")
+            push_navigate(socket, to: "/move/#{page_id}?action=move")
         }
     end
 
     def handle_event("copy", %{"id" => id}, socket) do
         page_id = socket.assigns[:page_id]
-        LiveServer.put(%{data_info: %{
+        type = socket.assigns[:type]
+        LiveServer.put(%{object_info: %{
             id: id,
-            type: :data
+            type: type
         }})
 
         {:noreply,
-            push_navigate(socket, to: "/move/#{page_id}?copy=true")
+            push_navigate(socket, to: "/move/#{page_id}?action=copy")
         }
     end
 end

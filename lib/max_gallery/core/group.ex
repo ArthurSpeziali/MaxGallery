@@ -17,7 +17,7 @@ defmodule MaxGallery.Core.Group do
     end
 
     def changeset(model, params) do
-        Ecto.Changeset.cast(model, params, [:name, :name_iv])
+        Ecto.Changeset.cast(model, params, [:name, :name_iv, :group_id])
     end
 
     def fields() do

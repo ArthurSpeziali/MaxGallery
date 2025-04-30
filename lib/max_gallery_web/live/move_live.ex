@@ -4,7 +4,7 @@ defmodule MaxGalleryWeb.MoveLive do
     alias MaxGallery.Server.LiveServer
 
 
-    def mount(params, _session, socket) do
+    def mount(%{"action" => action} = params, _session, socket) do
         page_id = Map.get(params, "id")
         key = LiveServer.get(:auth_key)
         
@@ -13,17 +13,28 @@ defmodule MaxGalleryWeb.MoveLive do
                 Context.decrypt_one(page_id, key, group: true)
             else
                 {:ok, %{name: "Main"}}
-            end
+            end 
 
-        {:ok, groups} = Context.decrypt_all(key, only: :groups, group: page_id)
+        object = LiveServer.get(:object_info)
+        {:ok, raw_groups} = Context.decrypt_all(key, only: :groups, group: page_id) 
 
-        copy? = Map.get(params, "copy")
-        action = 
-            if copy? do
-                "copy"
-            else
-                "move"
-            end
+        groups = 
+            if object.type == "group" do
+                {:ok, content} = Context.decrypt_one(
+                    object.id,
+                    key,
+                    group: true
+                ) 
+                int_content = Map.update!(
+                    content,
+                    :id,
+                    fn item ->
+                        String.to_integer(item)
+                    end
+                )
+
+                raw_groups -- [int_content] 
+            end 
 
         socket = assign(socket,
             group_name: group_info[:name],
@@ -33,7 +44,7 @@ defmodule MaxGalleryWeb.MoveLive do
         )
 
 
-        if LiveServer.get(:data_info) do
+        if object do
             {:ok, socket, layout: false}
         else
             {:ok,
@@ -41,37 +52,68 @@ defmodule MaxGalleryWeb.MoveLive do
             }
         end
     end
+    def mount(_params, _session, socket) do
+        {:ok,
+            push_navigate(socket, to: "/data")
+        }
+    end
+
 
     def handle_event("open", %{"id" => id}, socket) do
+        action = socket.assigns[:action]
+
         {:noreply,
-            push_navigate(socket, to: "/move/#{id}")
+            push_navigate(socket, to: "/move/#{id}?action=#{action}")
         }
     end
 
     def handle_event("back", _params, socket) do
+        action = socket.assigns[:action]
         back_id = socket.assigns[:page_id]
                   |> Context.get_back()
                   
         {:noreply, 
-            push_navigate(socket, to: "/move/#{back_id}")
+            push_navigate(socket, to: "/move/#{back_id}?action=#{action}")
         }
     end
 
     def handle_event("select", %{"id" => dest_id}, socket) do
         key = LiveServer.get(:auth_key)
-        object = LiveServer.get(:data_info)
+        object = LiveServer.get(:object_info)
         action = socket.assigns[:action]
 
+        dest_id = 
+            if dest_id == "main" do
+                nil
+            else
+                dest_id
+            end
+
         case {object.type, action} do
-            {:data, "move"} ->
+            {"data", "move"} ->
                 Context.cypher_update(object.id, %{group_id: dest_id}, key)
 
-            {:group, "move"} ->
+            {"group", "move"} ->
                 Context.group_update(object.id, %{group_id: dest_id}, key)
 
-            {:data, "copy"} ->
-                params = %{group_id: String.to_integer(dest_id)}
+            {"data", "copy"} ->
+                params = 
+                    if dest_id do 
+                        %{group_id: String.to_integer(dest_id)}
+                    else
+                        %{group_id: nil}
+                    end
                 Context.cypher_duplicate(object.id, params, key)
+
+            {"group", "copy"} ->
+                params = 
+                    if dest_id do 
+                        %{group_id: String.to_integer(dest_id)}
+                    else
+                        %{group_id: nil}
+                    end
+                Context.group_duplicate(object.id, params, key)
+                
         end
 
 
