@@ -105,15 +105,6 @@ defmodule MaxGalleryWeb.MoveLive do
                     end
                 Context.cypher_duplicate(object.id, params, key)
 
-            {"group", "copy"} ->
-                params = 
-                    if dest_id do 
-                        %{group_id: String.to_integer(dest_id)}
-                    else
-                        %{group_id: nil}
-                    end
-                Context.group_duplicate(object.id, params, key)
-                
         end
 
 

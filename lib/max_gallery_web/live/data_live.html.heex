@@ -145,9 +145,13 @@
                         <button phx-click="move" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-red-600 py-1 px-4 text-lg shadow-md">
                             Move
                         </button>
-                        <button phx-click="copy" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-yellow-600 py-1 px-4 text-lg shadow-md">
-                            Copy
-                        </button>
+
+                        <%= if @type == "data" do %>
+                            <button phx-click="copy" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-yellow-600 py-1 px-4 text-lg shadow-md">
+                                Copy
+                            </button>
+                        <% end %>
+
                         <button class="border rounded-lg font-bold text-gray-600 py-1 px-4 text-lg shadow-md">
                             Info
                         </button>
