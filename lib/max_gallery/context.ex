@@ -54,48 +54,25 @@ defmodule MaxGallery.Context do
         {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
 
         if lazy? do
-            %{name: name, ext: item.ext, id: item.id}
+            %{name: name, ext: item.ext, id: item.id, group: item.group_id}
         else
             {:ok, blob} = {item.blob_iv, item.blob} |> Encrypter.decrypt(key)
-            %{name: name, blob: blob, ext: item.ext, id: item.id}
+            %{name: name, blob: blob, ext: item.ext, id: item.id, group: item.group_id}
         end
     end
     defp send_package(item, _lazy, key) do
         {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
-        %{name: name, id: item.id} 
+        %{name: name, id: item.id, group: item.group_id} 
     end
 
     def decrypt_all(key, opts \\ []) do
         lazy? = Keyword.get(opts, :lazy)
         only = Keyword.get(opts, :only)
-        group = Keyword.get(opts, :group)
+        group_id = Keyword.get(opts, :group)
 
-        {:ok, datas} = 
-            case {lazy?, only} do
-                {nil, nil} ->
-                    {:ok, groups} = GroupApi.all_group(group) 
-                    {:ok, datas} = DataApi.all_group(group)
+        {:ok, contents} = get_group(group_id, lazy: lazy?, only: only)
 
-                    {:ok, groups ++ datas}
-
-                {true, nil} ->
-                    {:ok, groups} = GroupApi.all_group(group) 
-                    {:ok, datas} = DataApi.all_group_lazy(group)
-
-                    {:ok, groups ++ datas}
-
-                {nil, :datas} ->
-                    DataApi.all_group(group)
-
-                {true, :datas} ->
-                    DataApi.all_group_lazy(group)
-
-                {_boolean, :groups} ->
-                    GroupApi.all_group(group)
-            end
-
-
-        querry = for item <- datas do
+        querry = for item <- contents do
             send_package(item, lazy?, key)
         end |> Phantom.encode_bin()
 
@@ -138,7 +115,8 @@ defmodule MaxGallery.Context do
                     {:ok, %{
                         id: id,
                         name: name,
-                        ext: querry.ext
+                        ext: querry.ext,
+                        group: querry.group_id
                     }}
                 
                 {nil, nil} ->
@@ -148,13 +126,15 @@ defmodule MaxGallery.Context do
                         id: id,
                         name: name,
                         blob: blob,
-                        ext: querry.ext
+                        ext: querry.ext,
+                        group: querry.group_id
                     }}
 
                 {_boolean, true} ->
                     {:ok, %{
                         id: id,
-                        name: name
+                        name: name,
+                        group: querry.group_id
                     }}
             end
         else
@@ -210,7 +190,8 @@ defmodule MaxGallery.Context do
             {:ok, {name_iv, name}} = Encrypter.encrypt(group_name, key)
             {:ok, {msg_iv, msg}} = Phantom.get_text() |> Encrypter.encrypt(key)
 
-            GroupApi.insert(%{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg, group_id: group})
+            {:ok, querry} = GroupApi.insert(%{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg, group_id: group})
+            {:ok, querry.id}
         end
     end
 
@@ -240,17 +221,6 @@ defmodule MaxGallery.Context do
             error -> error
         end
     end
-
-
-    def get_back(id) do
-        case id do
-            nil -> nil
-            _id ->
-                {:ok, querry} = GroupApi.get(id)
-                Map.fetch!(querry, :group_id)
-        end
-    end
-
 
     def cypher_duplicate(id, params, key) do
         {:ok, querry} = DataApi.get(id)
@@ -333,5 +303,90 @@ defmodule MaxGallery.Context do
             error -> error
         end
              
+    end
+
+
+    def get_back(id) do
+        case id do
+            nil -> nil
+            _id ->
+                {:ok, querry} = GroupApi.get(id)
+                Map.fetch!(querry, :group_id)
+        end
+    end
+
+    def get_group(id, opts \\ []) do
+        only = Keyword.get(opts, :only)
+        lazy? = Keyword.get(opts, :lazy)
+
+        case {lazy?, only} do
+            {true, nil} ->
+                {:ok, datas} = DataApi.all_group_lazy(id)
+                {:ok, groups} = GroupApi.all_group(id)
+
+                {:ok, groups ++ datas}
+
+            {nil, nil} ->
+                {:ok, datas} = DataApi.all_group(id)
+                {:ok, groups} = GroupApi.all_group(id)
+
+                {:ok, groups ++ datas}
+
+            {true, :datas} ->
+                DataApi.all_group_lazy(id)
+
+            {nil, :datas} ->
+                DataApi.all_group(id)
+
+            {_boolean, :groups} ->
+                GroupApi.all_group(id)
+        end
+    end
+
+    def get_size(id, opts \\ []) do
+        group? = Keyword.get(opts, :group)
+
+        if group? do
+            {:ok, contents} = get_group(id, lazy: true)
+
+            if contents == [] do
+                0
+            else
+                Enum.map(contents, fn item ->
+                    subgroup? = 
+                        if Map.get(item, :ext) do
+                            nil
+                        else
+                            true
+                        end
+
+                    get_size(item.id, group: subgroup?)
+                end) |> Enum.sum()
+            end
+        else
+            {:ok, size} = DataApi.get_size(id)
+            size
+        end
+    end
+
+    def get_timestamps(id, opts \\ []) do
+        group? = Keyword.get(opts, :group)
+
+        {:ok, timestamps} = 
+            if group? do
+                GroupApi.get_timestamps(id)
+            else
+                DataApi.get_timestamps(id)
+            end
+
+        local = NaiveDateTime.local_now()
+        utc = NaiveDateTime.utc_now()
+        diff = NaiveDateTime.diff(local, utc, :hour)
+
+        Map.update!(timestamps, :inserted_at, fn item -> 
+            NaiveDateTime.add(item, diff, :hour)
+        end) |> Map.update!(:updated_at, fn item -> 
+            NaiveDateTime.add(item, diff, :hour)
+        end)
     end
 end

@@ -78,4 +78,18 @@ defmodule MaxGallery.PhatomTest do
         assert {:ok, querry} = Api.get(id)
         refute Phantom.valid?(querry, "key2")
     end
+
+    test "If is valid to insert an line", %{msg: msg} do
+        path = create_file(msg)
+        assert {:ok, _id} = Context.cypher_insert(path, "key")
+
+        assert Phantom.insert_line?("key")
+    end
+
+    test "If is not valid to insert an line", %{msg: msg} do
+        path = create_file(msg)
+        assert {:ok, _id} = Context.cypher_insert(path, "key")
+
+        refute Phantom.insert_line?("key2")
+    end
 end

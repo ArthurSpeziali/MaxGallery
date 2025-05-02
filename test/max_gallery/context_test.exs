@@ -29,7 +29,7 @@ defmodule MaxGallery.Data.ContextTest do
         path = create_file(msg)
         
         for _item <- 1..10//1 do 
-            Context.cypher_insert(path, "key")
+            assert {:ok, _querry} = Context.cypher_insert(path, "key")
         end
 
         assert {:ok, querry} = Context.decrypt_all("key")
@@ -42,6 +42,49 @@ defmodule MaxGallery.Data.ContextTest do
         
         assert {:ok, id} = Context.cypher_insert(path, "key")
         assert {:ok, data} = Context.decrypt_one(id, "key")
-        assert {:ok, _q} = Context.cypher_update(id, %{name: data.name <> data.ext, blob: data.blob}, "key")
+        assert {:ok, _querry} = Context.cypher_update(id, %{name: data.name <> data.ext, blob: data.blob}, "key")
+    end
+
+    test "Insert 10 groups, then remove them." do
+        id_list = 
+            for item <- 1..10//1 do
+                assert {:ok, _id} = Context.group_insert("Group#{item}", "key")
+            end
+
+
+        for {:ok, id} <- id_list do
+            assert {:ok, _querry} = Context.group_delete(id, "key")
+        end
+    end
+
+    test "2 forms to update a group." do
+        assert {:ok, group_id} = Context.group_insert("Group0", "key")
+        assert {:ok, id} = Context.group_insert("Group1", "key")
+
+        assert {:ok, _querry} = Context.group_update(id, %{name: "Group2"}, "key")
+        assert {:ok, _querry} = Context.group_update(id, %{group_id: group_id}, "key")
+    end
+
+    test "Duplicate a cypher, and a group", %{msg: msg} do
+        path = create_file(msg)
+
+        assert {:ok, data_id} = Context.cypher_insert(path, "key")
+        assert {:ok, main_id} = Context.group_insert("Main", "key")
+        assert {:ok, group_id} = Context.group_insert("Group1", "key")
+
+        assert {:ok, _querry} = Context.cypher_duplicate(data_id, %{group_id: main_id}, "key")
+        assert {:ok, _querry} = Context.group_duplicate(data_id, %{group_id: group_id}, "key")
+    end
+
+    test "Insert 5 cyphers and 5 groups, then check your size", %{msg: msg} do
+        path = create_file(msg)
+
+        for item <- 1..5//1 do
+            assert {:ok, _querry} = Context.cypher_insert(path, "key")
+            assert {:ok, _querry} = Context.group_insert("Group#{item}", "key")
+        end
+
+        assert {:ok, querry} = Context.decrypt_all("key")
+        assert 10 = length(querry)
     end
 end

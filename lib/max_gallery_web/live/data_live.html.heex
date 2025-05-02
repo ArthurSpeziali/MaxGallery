@@ -152,9 +152,56 @@
                             </button>
                         <% end %>
 
-                        <button class="border rounded-lg font-bold text-gray-600 py-1 px-4 text-lg shadow-md">
+                        <button phx-click="info" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-gray-600 py-1 px-4 text-lg shadow-md">
                             Info
                         </button>
+                    </div>
+                </div>
+            </div>
+        <% end %>
+
+        <%= if @info_iframe do %>
+            <div class="fixed inset-0  dark:bg-black dark:bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-2 rounded-lg shadow-lg">
+                    <div class="flex justify-end mb-4 px-2 py-1">
+                        <button phx-click="cancel">
+                            <img src="/images/close.png" class="w-auto h-10">
+                        </button>
+                    </div>
+
+                    <div class="px-6 py-8">
+                        <strong class="text-blue-900">Name: </strong>
+                        <%= if Map.get(@object, :ext) do %>
+                            <span>"{@object.name <> @object.ext}"</span><br>
+                        <% else %>
+                            <span>"{@object.name}"</span><br>
+                        <% end %>
+
+                        <strong class="text-blue-900">Id: </strong>
+                        <span>{@object.id}</span><br>
+
+                        <strong class="text-blue-900">Group: </strong>
+                        <span>{@group_name}</span><br>
+
+                        <br>
+
+                        <strong class="text-blue-900">Type: </strong>
+                        <%= if Map.get(@object, :ext) do %>
+                            <span>File</span><br>
+                        <% else %>
+                            <span>Folder</span><br>
+                        <% end %>
+
+                        <strong class="text-blue-900">Size: </strong>
+                        <span>{@size}</span><br>
+
+                        <br>
+
+                        <strong class="text-blue-900">Created at: </strong> 
+                        <span>{@timestamps.inserted_at}</span><br>
+
+                        <strong class="text-blue-900">Updated at: </strong> 
+                        <span>{@timestamps.updated_at}</span><br>
                     </div>
                 </div>
             </div>

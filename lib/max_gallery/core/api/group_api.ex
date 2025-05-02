@@ -60,4 +60,14 @@ defmodule MaxGallery.Core.Group.Api do
             error -> error
         end
     end
+
+
+    def get_timestamps(id) do
+        from(g in Group, select: map(g, [:inserted_at, :updated_at]), where: g.id == ^id)
+        |> Repo.one()
+        |> case do
+            nil -> {:error, "not found"}
+            querry -> {:ok, querry}
+        end
+    end
 end

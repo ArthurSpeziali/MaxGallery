@@ -2,6 +2,7 @@ defmodule MaxGalleryWeb.DataLive do
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Context
     alias MaxGallery.Server.LiveServer
+    alias MaxGallery.Extension
 
 
     def mount(params, %{"auth_key" => key}, socket) do
@@ -16,7 +17,8 @@ defmodule MaxGalleryWeb.DataLive do
             delete_iframe: nil,
             rename_iframe: nil,
             remove_iframe: nil,
-            more_iframe: nil
+            more_iframe: nil,
+            info_iframe: nil
         ])
 
         {:ok, socket, layout: false}
@@ -39,7 +41,8 @@ defmodule MaxGalleryWeb.DataLive do
             delete_iframe: nil,
             rename_iframe: nil,
             remove_iframe: nil,
-            more_iframe: nil
+            more_iframe: nil,
+            info_iframe: nil
         )
 
         {:noreply, socket}
@@ -185,5 +188,46 @@ defmodule MaxGalleryWeb.DataLive do
         {:noreply,
             push_navigate(socket, to: "/move/#{page_id}?action=copy")
         }
+    end
+
+    def handle_event("info", %{"id" => id}, socket) do
+        key = LiveServer.get(:auth_key)
+        type = socket.assigns[:type]
+
+        group? = 
+            if type == "group" do
+                true
+            else
+                nil
+            end
+        {:ok, object} = Context.decrypt_one(id, key, group: group?, lazy: true)
+
+        size = Context.get_size(id, group: group?)
+               |> Extension.convert_size()
+
+        group_name = 
+            if object.group do
+                {:ok, querry} = Context.decrypt_one(object.group, key, group: true)
+                "\"#{Map.fetch!(querry, :name)}\""
+            else
+                "Main"
+            end
+
+        %{inserted_at: inserted_at, updated_at: updated_at} = Context.get_timestamps(id, group: group?)
+        timestamps = %{
+            inserted_at: NaiveDateTime.to_string(inserted_at),
+            updated_at: NaiveDateTime.to_string(updated_at)
+        }
+
+        socket = assign(socket,
+            info_iframe: true,
+            more_iframe: nil,
+            object: object,
+            size: size,
+            group_name: group_name,
+            timestamps: timestamps
+        )
+
+        {:noreply, socket}
     end
 end

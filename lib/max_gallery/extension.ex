@@ -68,4 +68,14 @@ defmodule MaxGallery.Extension do
             mime -> mime
         end
     end
+
+
+    def convert_size(bytes) do
+        case bytes do
+            x when x > 1024 * 1024 * 1024 -> "#{x / 1024 ** 3 |> Float.round(2)} Gb"
+            x when x > 1024 * 1024 -> "#{x / 1024 ** 2 |> Float.round(2)} Mb"
+            x when x > 1024 -> "#{x / 1024 |> Float.round(2)} Kb"
+            x -> "#{x} B"
+        end
+    end
 end

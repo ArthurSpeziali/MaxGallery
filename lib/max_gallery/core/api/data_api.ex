@@ -120,4 +120,24 @@ defmodule MaxGallery.Core.Data.Api do
             error -> error
         end
     end
+
+
+    def get_size(id) do
+        from(d in Data, select: fragment("LENGTH(?) + LENGTH(?)", d.blob, d.blob_iv), where: d.id == ^id)
+        |> Repo.one()
+        |> case do
+            nil -> {:error, "not found"}
+            querry -> {:ok, querry}
+        end
+    end
+
+
+    def get_timestamps(id) do
+        from(d in Data, select: map(d, [:inserted_at, :updated_at]), where: d.id == ^id)
+        |> Repo.one()
+        |> case do
+            nil -> {:error, "not found"}
+            querry -> {:ok, querry}
+        end
+    end
 end
