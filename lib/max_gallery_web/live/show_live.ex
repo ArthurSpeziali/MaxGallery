@@ -7,6 +7,7 @@ defmodule MaxGalleryWeb.ShowLive do
 
     def mount(%{"id" => id}, _session, socket) do
         key = LiveServer.get(:auth_key)
+        page_id = LiveServer.get(:page_id)
 
         {:ok, querry} = Context.decrypt_one(id, key) 
         data = Phantom.encode_bin(querry)
@@ -15,6 +16,7 @@ defmodule MaxGalleryWeb.ShowLive do
         
         socket = assign(socket, [
             data: data,
+            page_id: page_id,
             id: id
         ])
 

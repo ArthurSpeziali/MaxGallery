@@ -48,8 +48,8 @@ defmodule MaxGallery.PhatomTest do
 
 
     defp create_file(msg) do
-        path = "/tmp/max_gallery/test#{Enum.random(0..10_000//1)}"
-        File.mkdir("/tmp/max_gallery")
+        path = "/tmp/max_gallery/tests/test#{Enum.random(0..10_000//1)}"
+        File.mkdir("/tmp/max_gallery/tests")
         File.write(path, msg, [:write])
         path
     end

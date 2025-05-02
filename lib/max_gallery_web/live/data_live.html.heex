@@ -139,18 +139,16 @@
                     </div>
 
                     <div class="grid grid-rows-3 gap-4 p-6">
-                        <button class="border rounded-lg font-bold text-blue-600 py-1 px-4 text-lg shadow-md">
+                        <button phx-click="download" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-blue-600 py-1 px-4 text-lg shadow-md">
                             Download
                         </button>
                         <button phx-click="move" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-red-600 py-1 px-4 text-lg shadow-md">
                             Move
                         </button>
 
-                        <%= if @type == "data" do %>
-                            <button phx-click="copy" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-yellow-600 py-1 px-4 text-lg shadow-md">
-                                Copy
-                            </button>
-                        <% end %>
+                        <button phx-click="copy" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-yellow-600 py-1 px-4 text-lg shadow-md">
+                            Copy
+                        </button>
 
                         <button phx-click="info" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-gray-600 py-1 px-4 text-lg shadow-md">
                             Info

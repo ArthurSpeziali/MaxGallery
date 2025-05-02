@@ -3,6 +3,7 @@ defmodule MaxGallery.Context do
     alias MaxGallery.Core.Group.Api, as: GroupApi
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
+    alias MaxGallery.Utils
 
 
     def cypher_insert(path, key, opts \\ []) do
@@ -70,7 +71,7 @@ defmodule MaxGallery.Context do
         only = Keyword.get(opts, :only)
         group_id = Keyword.get(opts, :group)
 
-        {:ok, contents} = get_group(group_id, lazy: lazy?, only: only)
+        {:ok, contents} = Utils.get_group(group_id, lazy: lazy?, only: only)
 
         querry = for item <- contents do
             send_package(item, lazy?, key)
@@ -301,92 +302,7 @@ defmodule MaxGallery.Context do
             {:ok, querry.id}
         else
             error -> error
-        end
-             
+        end         
     end
 
-
-    def get_back(id) do
-        case id do
-            nil -> nil
-            _id ->
-                {:ok, querry} = GroupApi.get(id)
-                Map.fetch!(querry, :group_id)
-        end
-    end
-
-    def get_group(id, opts \\ []) do
-        only = Keyword.get(opts, :only)
-        lazy? = Keyword.get(opts, :lazy)
-
-        case {lazy?, only} do
-            {true, nil} ->
-                {:ok, datas} = DataApi.all_group_lazy(id)
-                {:ok, groups} = GroupApi.all_group(id)
-
-                {:ok, groups ++ datas}
-
-            {nil, nil} ->
-                {:ok, datas} = DataApi.all_group(id)
-                {:ok, groups} = GroupApi.all_group(id)
-
-                {:ok, groups ++ datas}
-
-            {true, :datas} ->
-                DataApi.all_group_lazy(id)
-
-            {nil, :datas} ->
-                DataApi.all_group(id)
-
-            {_boolean, :groups} ->
-                GroupApi.all_group(id)
-        end
-    end
-
-    def get_size(id, opts \\ []) do
-        group? = Keyword.get(opts, :group)
-
-        if group? do
-            {:ok, contents} = get_group(id, lazy: true)
-
-            if contents == [] do
-                0
-            else
-                Enum.map(contents, fn item ->
-                    subgroup? = 
-                        if Map.get(item, :ext) do
-                            nil
-                        else
-                            true
-                        end
-
-                    get_size(item.id, group: subgroup?)
-                end) |> Enum.sum()
-            end
-        else
-            {:ok, size} = DataApi.get_size(id)
-            size
-        end
-    end
-
-    def get_timestamps(id, opts \\ []) do
-        group? = Keyword.get(opts, :group)
-
-        {:ok, timestamps} = 
-            if group? do
-                GroupApi.get_timestamps(id)
-            else
-                DataApi.get_timestamps(id)
-            end
-
-        local = NaiveDateTime.local_now()
-        utc = NaiveDateTime.utc_now()
-        diff = NaiveDateTime.diff(local, utc, :hour)
-
-        Map.update!(timestamps, :inserted_at, fn item -> 
-            NaiveDateTime.add(item, diff, :hour)
-        end) |> Map.update!(:updated_at, fn item -> 
-            NaiveDateTime.add(item, diff, :hour)
-        end)
-    end
 end

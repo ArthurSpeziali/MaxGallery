@@ -8,10 +8,19 @@ defmodule MaxGalleryWeb.EditorLive do
 
     def mount(%{"id" => id}, _session, socket) do
         key = LiveServer.get(:auth_key)
+        page_id = LiveServer.get(:page_id)
 
         {:ok, lazy_data} = Context.decrypt_one(id, key, lazy: true)
-        lazy? = Map.fetch!(lazy_data, :ext) 
-                |> Extension.get_ext() != "text"
+
+        ext = Map.fetch!(lazy_data, :ext) 
+                |> Extension.get_ext()
+
+        lazy? = 
+            if ext == "text" do
+                nil
+            else
+                true
+            end
 
 
         {:ok, querry} = Context.decrypt_one(id, key, lazy: lazy?)
@@ -21,6 +30,7 @@ defmodule MaxGalleryWeb.EditorLive do
         socket = assign(socket, [
             data: data,
             id: id,
+            page_id: page_id,
             edit_iframe: false,
             new_content: false
         ])

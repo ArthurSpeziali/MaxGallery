@@ -3,6 +3,7 @@ defmodule MaxGalleryWeb.DataLive do
     alias MaxGallery.Context
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Extension
+    alias MaxGallery.Utils
 
 
     def mount(params, %{"auth_key" => key}, socket) do
@@ -59,12 +60,18 @@ defmodule MaxGalleryWeb.DataLive do
     end
 
     def handle_event("editor", %{"id" => id}, socket) do
+        page_id = socket.assigns[:page_id]
+        LiveServer.put(%{page_id: page_id})
+
         {:noreply,
             push_navigate(socket, to: "/editor?id=#{id}")
         }
     end
 
     def handle_event("show", %{"id" => id}, socket) do
+        page_id = socket.assigns[:page_id]
+        LiveServer.put(%{page_id: page_id})
+
         {:noreply,
             push_navigate(socket, to: "/show?id=#{id}")
         }
@@ -132,7 +139,7 @@ defmodule MaxGalleryWeb.DataLive do
 
     def handle_event("back", _params, socket) do
         back_id = socket.assigns[:page_id]
-                  |> Context.get_back()
+                  |> Utils.get_back()
 
         {:noreply,
             push_navigate(socket, to: "/data/#{back_id}")
@@ -202,7 +209,7 @@ defmodule MaxGalleryWeb.DataLive do
             end
         {:ok, object} = Context.decrypt_one(id, key, group: group?, lazy: true)
 
-        size = Context.get_size(id, group: group?)
+        size = Utils.get_size(id, group: group?)
                |> Extension.convert_size()
 
         group_name = 
@@ -213,7 +220,7 @@ defmodule MaxGalleryWeb.DataLive do
                 "Main"
             end
 
-        %{inserted_at: inserted_at, updated_at: updated_at} = Context.get_timestamps(id, group: group?)
+        %{inserted_at: inserted_at, updated_at: updated_at} = Utils.get_timestamps(id, group: group?)
         timestamps = %{
             inserted_at: NaiveDateTime.to_string(inserted_at),
             updated_at: NaiveDateTime.to_string(updated_at)
@@ -230,4 +237,15 @@ defmodule MaxGalleryWeb.DataLive do
 
         {:noreply, socket}
     end
+
+    # def handle_event("download", %{"id" => id}, socket) do
+    #     key = LiveServer.get(:auth_key)
+    #     tree = Utils.get_tree(id, key)
+
+
+
+
+
+    #     {:noreply, socket}
+    # end
 end

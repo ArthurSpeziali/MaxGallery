@@ -9,8 +9,8 @@ defmodule MaxGallery.EncrypterTest do
     end
 
     defp create_file(msg) do
-        path = "/tmp/max_gallery/test#{Enum.random(0..10_000//1)}"
-        File.mkdir("/tmp/max_gallery")
+        path = "/tmp/max_gallery/tests/test#{Enum.random(0..10_000//1)}"
+        File.mkdir("/tmp/max_gallery/tests")
         File.write(path, msg, [:write])
         path
     end
@@ -25,8 +25,7 @@ defmodule MaxGallery.EncrypterTest do
         path = create_file(msg)
 
         assert {:ok, {iv, cypher}} = Encrypter.file(:encrypt, path, "key")
-        assert :ok = File.write(path <> "_enc", cypher, [:write])
-        assert {:ok, ^msg} = Encrypter.file(:decrypt, path <> "_enc", path <> "_dec", iv, "key")
+        assert {:ok, ^msg} = Encrypter.file(:decrypt, {iv, cypher}, path <> "_dec", "key")
     end
 
 end

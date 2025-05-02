@@ -1,0 +1,201 @@
+defmodule MaxGallery.Utils do
+    alias MaxGallery.Core.Data.Api, as: DataApi
+    alias MaxGallery.Core.Group.Api, as: GroupApi
+    alias MaxGallery.Encrypter
+    alias MaxGallery.Phantom
+
+    def get_back(id) do
+        case id do
+            nil -> nil
+            _id ->
+                {:ok, querry} = GroupApi.get(id)
+                Map.fetch!(querry, :group_id)
+        end
+    end
+
+    def get_group(id, opts \\ []) do
+        only = Keyword.get(opts, :only)
+        lazy? = Keyword.get(opts, :lazy)
+
+        case {lazy?, only} do
+            {true, nil} ->
+                {:ok, datas} = DataApi.all_group_lazy(id)
+                {:ok, groups} = GroupApi.all_group(id)
+
+                {:ok, groups ++ datas}
+
+            {nil, nil} ->
+                {:ok, datas} = DataApi.all_group(id)
+                {:ok, groups} = GroupApi.all_group(id)
+
+                {:ok, groups ++ datas}
+
+            {true, :datas} ->
+                DataApi.all_group_lazy(id)
+
+            {nil, :datas} ->
+                DataApi.all_group(id)
+
+            {_boolean, :groups} ->
+                GroupApi.all_group(id)
+        end
+    end
+
+    def get_size(id, opts \\ []) do
+        group? = Keyword.get(opts, :group)
+
+        if group? do
+            {:ok, contents} = get_group(id, lazy: true)
+
+            if contents == [] do
+                0
+            else
+                Enum.map(contents, fn item ->
+                    subgroup? = 
+                        if Map.get(item, :ext) do
+                            nil
+                        else
+                            true
+                        end
+
+                    get_size(item.id, group: subgroup?)
+                end) |> Enum.sum()
+            end
+        else
+            {:ok, size} = DataApi.get_size(id)
+            size
+        end
+    end
+
+    def get_timestamps(id, opts \\ []) do
+        group? = Keyword.get(opts, :group)
+
+        {:ok, timestamps} = 
+            if group? do
+                GroupApi.get_timestamps(id)
+            else
+                DataApi.get_timestamps(id)
+            end
+
+        local = NaiveDateTime.local_now()
+        utc = NaiveDateTime.utc_now()
+        diff = NaiveDateTime.diff(local, utc, :hour)
+
+        Map.update!(timestamps, :inserted_at, fn item -> 
+            NaiveDateTime.add(item, diff, :hour)
+        end) |> Map.update!(:updated_at, fn item -> 
+            NaiveDateTime.add(item, diff, :hour)
+        end)
+    end
+
+    def get_tree(id, key) do
+        {:ok, contents} = get_group(id)
+
+        if contents == [] do
+            []
+        else
+            Enum.map(contents, fn item -> 
+                if Map.get(item, :ext) do
+                    {:ok, name} = Encrypter.decrypt(
+                        {item.name_iv, item.name}, 
+                        key
+                    ) 
+
+                    {:ok, blob} = Encrypter.decrypt(
+                        {item.blob_iv, item.blob},
+                        key
+                    )
+
+                    %{data: %{
+                        id: item.id,
+                        name: name,
+                        blob: blob,
+                        ext: item.ext,
+                        group: item.group_id
+                    }}
+                else
+                    {:ok, name} = Encrypter.decrypt(
+                            {item.name_iv, item.name}, 
+                            key
+                    )
+
+                    %{group: {
+                        %{
+                            id: item.id,
+                            name: name,
+                            group: item.group_id
+                        },
+                        get_tree(item.id, key)
+                    }}
+                end
+            end)
+        end
+    end
+
+
+    def mount_tree(tree, params, fun, key) when is_function(fun, 2) do
+        Enum.each(tree, fn item -> 
+
+            case item do
+                %{data: data} -> 
+                    {:ok, {name_iv, name}} = Encrypter.encrypt(data.name, key)
+                    {:ok, {blob_iv, blob}} = Encrypter.encrypt(data.blob, key)
+                    {:ok, {msg_iv, msg}} = Phantom.get_text() 
+                                    |> Encrypter.encrypt(key)
+
+                    %{name: name, name_iv: name_iv, blob: blob, blob_iv: blob_iv, msg: msg, msg_iv: msg_iv, ext: data.ext, group_id: data.group}
+                    |> Map.merge(params)
+                    |> fun.(:data)
+
+
+                %{group: {group, subitems}} -> 
+                    {:ok, {name_iv, name}} = Encrypter.encrypt(group.name, key)
+                    {:ok, {msg_iv, msg}} = Phantom.get_text()
+                                           |> Encrypter.encrypt(key)
+
+                    sub_params = 
+                        %{name: name, name_iv: name_iv, msg: msg, msg_iv: msg_iv, group_id: group.group}
+                        |> Map.merge(params)
+                        |> fun.(:group)
+
+                    mount_tree(subitems, sub_params, fun, key)
+            end
+
+        end)
+    end
+
+    def extract_tree(tree) do
+        Enum.map(tree, fn item -> 
+
+            case item do
+                %{data: data} ->
+                    %{data.name <> data.ext => data.blob}
+
+
+                %{group: {group, subitems}} ->
+                    %{group.name => extract_tree(subitems)}
+            end
+
+        end)
+    end
+
+
+    # def zip_data(id, path, key) do
+    #     File.mkdir("/tmp/max_gallery/files")
+    #     file_path = "/tmp/max_gallery/files/file#{Enum.random(1..10_000//1)}"
+
+    #     {:ok, querry} = DataApi.get(id)
+    #     {:ok, data} = Encrypter.file(
+    #         :decrypt,
+    #         {querry.name_iv, querry.name}
+
+    #     )
+
+    #     name = data.name <> data.ext
+    #     File.mkdir("/tmp/max_gallery/zips")
+
+    #     :zip.create("/tmp/max_gallery/zips/#{name}.zip", [
+    #         {:file, }
+    #     ])
+    # end
+end
