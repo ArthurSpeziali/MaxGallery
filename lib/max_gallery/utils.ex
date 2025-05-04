@@ -180,22 +180,22 @@ defmodule MaxGallery.Utils do
     end
 
 
-    # def zip_data(id, path, key) do
-    #     File.mkdir("/tmp/max_gallery/files")
-    #     file_path = "/tmp/max_gallery/files/file#{Enum.random(1..10_000//1)}"
+    def zip_data(id, path, key) do
+        File.mkdir("/tmp/max_gallery/files")
+        file_path = "/tmp/max_gallery/files/file#{Enum.random(1..10_000//1)}"
 
-    #     {:ok, querry} = DataApi.get(id)
-    #     {:ok, data} = Encrypter.file(
-    #         :decrypt,
-    #         {querry.name_iv, querry.name}
+        {:ok, querry} = DataApi.get(id)
+        {:ok, data} = Encrypter.file(
+            :decrypt,
+            {querry.name_iv, querry.name}
 
-    #     )
+        )
 
-    #     name = data.name <> data.ext
-    #     File.mkdir("/tmp/max_gallery/zips")
+        name = data.name <> data.ext
+        File.mkdir("/tmp/max_gallery/zips")
 
-    #     :zip.create("/tmp/max_gallery/zips/#{name}.zip", [
-    #         {:file, }
-    #     ])
-    # end
+        :zip.create("/tmp/max_gallery/zips/#{name}.zip", [
+            {:file, }
+        ])
+    end
 end
