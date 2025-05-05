@@ -180,22 +180,41 @@ defmodule MaxGallery.Utils do
     end
 
 
-    def zip_data(id, path, key) do
-        File.mkdir("/tmp/max_gallery/files")
+    def zip_data(id, key) do
+        File.mkdir_p("/tmp/max_gallery/files")
         file_path = "/tmp/max_gallery/files/file#{Enum.random(1..10_000//1)}"
 
         {:ok, querry} = DataApi.get(id)
-        {:ok, data} = Encrypter.file(
-            :decrypt,
-            {querry.name_iv, querry.name}
 
-        )
+        if Phantom.valid?(querry, key) do
+            {:ok, name} = Encrypter.file(
+                :decrypt,
+                {querry.name_iv, querry.name},
+                file_path,
+                key
+            )
 
-        name = data.name <> data.ext
-        File.mkdir("/tmp/max_gallery/zips")
+            {:ok, blob} = Encrypter.decrypt(
+                {querry.blob_iv, querry.blob},
+                key
+            )
 
-        :zip.create("/tmp/max_gallery/zips/#{name}.zip", [
-            {:file, }
-        ])
+            name = name <> querry.ext
+            File.mkdir_p("/tmp/max_gallery/zips")
+
+            {:ok, final_path} = 
+                :zip.create(~c"/tmp/max_gallery/zips/#{name}.zip", [
+                    {
+                        name |> String.to_charlist, 
+                        blob
+                    }
+                ])
+
+            File.rm(file_path)
+            {:ok, final_path |> List.to_string()}
+        else
+            {:error, "key invalid"}
+        end
     end
+
 end

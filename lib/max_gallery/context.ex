@@ -88,6 +88,7 @@ defmodule MaxGallery.Context do
             
             {:ok, querry}
         else
+            false -> {:error, "invalid key"}
             error -> error
         end
     end
@@ -156,6 +157,8 @@ defmodule MaxGallery.Context do
 
         if Phantom.valid?(querry, key) do
             DataApi.update(id, params)
+        else
+            {:error, "invalid key"}
         end
     end
     def cypher_update(id, %{name: new_name}, key) do
@@ -169,6 +172,8 @@ defmodule MaxGallery.Context do
 
         if Phantom.valid?(querry, key) do
             DataApi.update(id, params)
+        else
+            {:error, "invalid key"}
         end
     end
     def cypher_update(id, %{group_id: new_group}, key) do
@@ -202,6 +207,8 @@ defmodule MaxGallery.Context do
 
         if Phantom.valid?(querry, key) do
             GroupApi.update(id, %{name: name, name_iv: name_iv})
+        else
+            {:error, "invalid key"}
         end
     end
     def group_update(id, %{group_id: group_id}, key) do
@@ -209,6 +216,8 @@ defmodule MaxGallery.Context do
 
         if Phantom.valid?(querry, key) do
             GroupApi.update(id, %{group_id: group_id})
+        else
+            {:error, "invalid key"}
         end
     end
 
@@ -219,6 +228,7 @@ defmodule MaxGallery.Context do
 
             {:ok, querry}
         else
+            false -> {:error, "invalid key"}
             error -> error
         end
     end

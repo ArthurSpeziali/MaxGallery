@@ -80,7 +80,7 @@ defmodule MaxGallery.PhatomTest do
     end
 
     test "If is valid to insert an line", %{msg: msg} do
-        path = create_file(msg)
+        path = create_file(msg) 
         assert {:ok, _id} = Context.cypher_insert(path, "key")
 
         assert Phantom.insert_line?("key")
