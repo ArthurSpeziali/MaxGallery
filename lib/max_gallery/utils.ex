@@ -143,7 +143,7 @@ defmodule MaxGallery.Utils do
                     {:ok, {msg_iv, msg}} = Phantom.get_text() 
                                     |> Encrypter.encrypt(key)
 
-                    %{name: name, name_iv: name_iv, blob: blob, blob_iv: blob_iv, msg: msg, msg_iv: msg_iv, ext: data.ext, group_id: data.group}
+                    %{id: data.id, name: name, name_iv: name_iv, blob: blob, blob_iv: blob_iv, msg: msg, msg_iv: msg_iv, ext: data.ext, group_id: data.group}
                     |> Map.merge(params)
                     |> fun.(:data)
 
@@ -154,7 +154,7 @@ defmodule MaxGallery.Utils do
                                            |> Encrypter.encrypt(key)
 
                     sub_params = 
-                        %{name: name, name_iv: name_iv, msg: msg, msg_iv: msg_iv, group_id: group.group}
+                        %{id: group.id, name: name, name_iv: name_iv, msg: msg, msg_iv: msg_iv, group_id: group.group}
                         |> Map.merge(params)
                         |> fun.(:group)
 
@@ -169,11 +169,11 @@ defmodule MaxGallery.Utils do
 
             case item do
                 %{data: data} ->
-                    %{data.name <> data.ext => data.blob}
+                    {data.name <> data.ext, data.blob}
 
 
                 %{group: {group, subitems}} ->
-                    %{group.name => extract_tree(subitems)}
+                    {group.name, extract_tree(subitems)}
             end
 
         end)
@@ -181,8 +181,8 @@ defmodule MaxGallery.Utils do
 
 
     def zip_data(id, key) do
-        File.mkdir_p("/tmp/max_gallery/files")
         file_path = "/tmp/max_gallery/files/file#{Enum.random(1..10_000//1)}"
+        File.mkdir_p("/tmp/max_gallery/files")
 
         {:ok, querry} = DataApi.get(id)
 
@@ -203,7 +203,7 @@ defmodule MaxGallery.Utils do
             File.mkdir_p("/tmp/max_gallery/zips")
 
             {:ok, final_path} = 
-                :zip.create(~c"/tmp/max_gallery/zips/#{name}.zip", [
+                :zip.create("/tmp/max_gallery/zips/#{name}#{Enum.random(1..999//1)}.zip" |> String.to_charlist(), [
                     {
                         name |> String.to_charlist, 
                         blob
@@ -215,6 +215,26 @@ defmodule MaxGallery.Utils do
         else
             {:error, "key invalid"}
         end
+    end
+
+    def zip_group(id, key) do 
+        folder = "folder#{Enum.random(1..10_000//1)}"
+        file_path = "/tmp/max_gallery/files/#{folder}/file#{Enum.random(1..10_000//1)}"
+        File.mkdir_p("/tmp/max_gallery/files/#{folder}")
+        File.mkdir_p("/tmp/max_gallery/zips")
+
+        tree = get_tree(id, key)
+               |> extract_tree()
+
+        Enum.map(tree, fn item ->
+
+            case item do
+                {name, content} ->
+                    # :zip.create("/tmp/max_gallery/zips/#{folder}")
+                    :ok
+            end
+
+        end)
     end
 
 end
