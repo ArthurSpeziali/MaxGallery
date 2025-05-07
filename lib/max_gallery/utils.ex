@@ -180,61 +180,37 @@ defmodule MaxGallery.Utils do
     end
 
 
-    def zip_data(id, key) do
-        file_path = "/tmp/max_gallery/files/file#{Enum.random(1..10_000//1)}"
-        File.mkdir_p("/tmp/max_gallery/files")
-
-        {:ok, querry} = DataApi.get(id)
-
-        if Phantom.valid?(querry, key) do
-            {:ok, name} = Encrypter.file(
-                :decrypt,
-                {querry.name_iv, querry.name},
-                file_path,
-                key
-            )
-
-            {:ok, blob} = Encrypter.decrypt(
-                {querry.blob_iv, querry.blob},
-                key
-            )
-
-            name = name <> querry.ext
-            File.mkdir_p("/tmp/max_gallery/zips")
-
-            {:ok, final_path} = 
-                :zip.create("/tmp/max_gallery/zips/#{name}#{Enum.random(1..999//1)}.zip" |> String.to_charlist(), [
-                    {
-                        name |> String.to_charlist, 
-                        blob
-                    }
-                ])
-
-            File.rm(file_path)
-            {:ok, final_path |> List.to_string()}
-        else
-            {:error, "key invalid"}
-        end
-    end
-
-    def zip_group(id, key) do 
-        folder = "folder#{Enum.random(1..10_000//1)}"
-        file_path = "/tmp/max_gallery/files/#{folder}/file#{Enum.random(1..10_000//1)}"
-        File.mkdir_p("/tmp/max_gallery/files/#{folder}")
+    def zip_data(name, blob) do
         File.mkdir_p("/tmp/max_gallery/zips")
 
-        tree = get_tree(id, key)
-               |> extract_tree()
+        {:ok, final_path} = 
+            :zip.create("/tmp/max_gallery/zips/#{name}_#{Enum.random(1..999//1)}.zip" |> String.to_charlist(), [
+                {
+                    name |> String.to_charlist(), 
+                    blob
+                }
+            ])
 
-        Enum.map(tree, fn item ->
-
-            case item do
-                {name, content} ->
-                    # :zip.create("/tmp/max_gallery/zips/#{folder}")
-                    :ok
-            end
-
-        end)
+        {:ok, final_path |> List.to_string()}
     end
+
+    # def zip_group(id, key, subfolder \\ "/") do 
+    #     folder = "folder#{Enum.random(1..10_000//1)}" <> subfolder
+    #     file_path = "/tmp/max_gallery/files/#{folder}/file#{Enum.random(1..10_000//1)}"
+    #     File.mkdir_p("/tmp/max_gallery/files/#{folder}")
+    #     File.mkdir_p("/tmp/max_gallery/zips")
+
+    #     tree = get_tree(id, key)
+    #            |> extract_tree()
+
+    #     Enum.map(tree, fn item ->
+
+    #         case item do
+    #             {name, groups} when is_list(groups)->
+                    
+    #         end
+
+    #     end)
+    # end
 
 end
