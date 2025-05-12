@@ -222,7 +222,7 @@ defmodule MaxGallery.Utils do
 
 
                 {name, content} ->
-                    name <> "/" <> subfolder
+                    subfolder <> "/" <> name
                     |> zip_data(content)
             end
         end)
