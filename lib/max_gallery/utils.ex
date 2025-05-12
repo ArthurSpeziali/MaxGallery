@@ -194,23 +194,39 @@ defmodule MaxGallery.Utils do
         {:ok, final_path |> List.to_string()}
     end
 
-    # def zip_group(id, key, subfolder \\ "/") do 
-    #     folder = "folder#{Enum.random(1..10_000//1)}" <> subfolder
-    #     file_path = "/tmp/max_gallery/files/#{folder}/file#{Enum.random(1..10_000//1)}"
-    #     File.mkdir_p("/tmp/max_gallery/files/#{folder}")
-    #     File.mkdir_p("/tmp/max_gallery/zips")
+    def zip_group(tree, folder) do 
+        folder = folder <> "_#{Enum.random(1..10_000//1)}"
+        File.mkdir_p("/tmp/max_gallery/zips")
 
-    #     tree = get_tree(id, key)
-    #            |> extract_tree()
+        extract_tree(tree)
+        |> parse_zip(folder)
+    end
 
-    #     Enum.map(tree, fn item ->
+    defp parse_zip(tree, subfolder) do
+        Enum.each(tree, fn item ->
+            case item do
+                {_name, []} ->
+                    nil
 
-    #         case item do
-    #             {name, groups} when is_list(groups)->
-                    
-    #         end
 
-    #     end)
-    # end
+                {name, groups} when is_list(groups)->
+                    Enum.each(groups, fn {next_name, next_content} -> 
+
+                        if is_list(next_content) do
+                            parse_zip(next_content, name)
+                        else
+                            name <> "/" <> next_name
+                            |> zip_data(next_content)
+                        end
+                    end)
+
+
+                {name, content} ->
+                    name <> "/" <> subfolder
+                    |> zip_data(content)
+            end
+        end)
+
+    end
 
 end
