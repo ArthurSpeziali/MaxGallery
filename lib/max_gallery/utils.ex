@@ -164,7 +164,7 @@ defmodule MaxGallery.Utils do
         end)
     end
 
-    def extract_tree(tree) do
+    defp extract_tree(tree) do
         Enum.map(tree, fn item -> 
 
             case item do
@@ -180,7 +180,7 @@ defmodule MaxGallery.Utils do
     end
 
 
-    def zip_data(name, blob) do
+    def zip_file(name, blob) do
         File.mkdir_p("/tmp/max_gallery/zips")
 
         {:ok, final_path} = 
@@ -194,39 +194,49 @@ defmodule MaxGallery.Utils do
         {:ok, final_path |> List.to_string()}
     end
 
-    def zip_group(tree, folder) do 
-        folder = folder <> "_#{Enum.random(1..10_000//1)}"
+    def zip_folder(tree, group_name) do 
         File.mkdir_p("/tmp/max_gallery/zips")
+        folder = group_name <> "_#{Enum.random(1..1_000)}"
+                 |> String.replace(" ", "_")
+                 |> String.replace("/", "//")
 
-        extract_tree(tree)
-        |> parse_zip(folder)
+        files = extract_tree(tree) 
+               |> parse_path(group_name)
+
+        {:ok, final_path} = 
+            :zip.create(
+                "/tmp/max_gallery/zips/#{folder}.zip" |> String.to_charlist(), 
+                files
+            )
+
+        {:ok, final_path |> List.to_string()}
     end
 
-    defp parse_zip(tree, subfolder) do
-        Enum.each(tree, fn item ->
-            case item do
-                {_name, []} ->
-                    nil
 
+    defp parse_path(tree, folder, back_folder \\ false)
+    defp parse_path([], _folder, _back_folder), do: []
+    defp parse_path([head | tail], folder, back_folder) do
+        {name, content} = head
 
-                {name, groups} when is_list(groups)->
-                    Enum.each(groups, fn {next_name, next_content} -> 
-
-                        if is_list(next_content) do
-                            parse_zip(next_content, name)
-                        else
-                            name <> "/" <> next_name
-                            |> zip_data(next_content)
-                        end
-                    end)
-
-
-                {name, content} ->
-                    subfolder <> "/" <> name
-                    |> zip_data(content)
+        back_folder = 
+            if back_folder do
+                back_folder
+            else
+                folder
             end
-        end)
 
+        if is_list(content) do
+            parse_path(
+                content, 
+                folder <> "/" <> name,
+                folder
+            )
+        else
+            [{
+                folder <> "/" <> name |> String.to_charlist(), 
+                content
+            }]
+        end ++ parse_path(tail, back_folder, back_folder)
     end
 
 end
