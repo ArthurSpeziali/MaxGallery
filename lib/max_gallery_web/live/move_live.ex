@@ -36,6 +36,8 @@ defmodule MaxGalleryWeb.MoveLive do
                     )
 
                     raw_groups -- [int_content] 
+                else
+                    raw_groups
                 end 
 
             socket = assign(socket,
