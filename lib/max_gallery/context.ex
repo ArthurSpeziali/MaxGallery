@@ -316,4 +316,47 @@ defmodule MaxGallery.Context do
     end
 
 
+    def zip_content(id, key, opts \\ []) do
+        group? = Keyword.get(opts, :group)
+
+        if group? do
+
+            case GroupApi.get(id) do
+                {:ok, querry} ->
+                    {:ok, name} = Encrypter.decrypt(
+                        {querry.name_iv, querry.name},
+                        key
+                    )
+
+                    tree = Utils.get_tree(id, key)
+                    Utils.zip_folder(tree, name)
+
+
+                error -> error
+            end
+        else
+
+            case DataApi.get(id) do
+                {:ok, querry} ->
+                    {:ok, name} = Encrypter.decrypt(
+                        {querry.name_iv, querry.name},
+                        key
+                    )
+                    {:ok, blob} = Encrypter.decrypt(
+                        {querry.blob_iv, querry.blob},
+                        key
+                    )
+
+                    Utils.zip_file(
+                        name <> querry.ext,
+                        blob
+                    )
+
+
+                error -> error
+            end
+        end
+
+    end
+
 end
