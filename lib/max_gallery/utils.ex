@@ -239,4 +239,5 @@ defmodule MaxGallery.Utils do
         end ++ parse_path(tail, back_folder, back_folder)
     end
 
+
 end
