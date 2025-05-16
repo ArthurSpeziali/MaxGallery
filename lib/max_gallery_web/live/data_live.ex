@@ -238,14 +238,4 @@ defmodule MaxGalleryWeb.DataLive do
         {:noreply, socket}
     end
 
-    # def handle_event("download", %{"id" => id}, socket) do
-    #     key = LiveServer.get(:auth_key)
-    #     tree = Utils.get_tree(id, key)
-
-
-
-
-
-    #     {:noreply, socket}
-    # end
 end

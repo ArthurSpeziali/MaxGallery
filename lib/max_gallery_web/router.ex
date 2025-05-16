@@ -20,6 +20,7 @@ defmodule MaxGalleryWeb.Router do
         get "/", PageController, :home
         post "/auth", PageController, :auth
         get "/logout", PageController, :logout
+        get "/download", PageController, :download
 
         live "/data", DataLive
         live "/editor", EditorLive
@@ -30,6 +31,8 @@ defmodule MaxGalleryWeb.Router do
         live "/data/:id", DataLive
         live "/import/:id", ImportLive
         live "/move/:id", MoveLive
+
+        get "/download/:id", PageController, :download
     end
 
     scope "/content", MaxGalleryWeb do

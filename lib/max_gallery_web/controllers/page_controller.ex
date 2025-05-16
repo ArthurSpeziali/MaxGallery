@@ -48,4 +48,20 @@ defmodule MaxGalleryWeb.PageController do
     def audios(conn, %{"id" => id}) do
         content_render(conn, id)
     end
+
+
+    def download(conn, %{"id" => id}) do
+        key = LiveServer.get(:auth_key)
+
+        if key do
+            {:ok, file_path} = Context.zip_content(id, key)
+
+            send_download(conn, {:file, file_path})
+        else
+            redirect(conn, to: ~c"/")
+        end
+    end
+    def download(conn, _params) do
+        redirect(conn, to: "/data")
+    end
 end
