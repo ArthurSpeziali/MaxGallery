@@ -31,8 +31,6 @@ defmodule MaxGalleryWeb.Router do
         live "/data/:id", DataLive
         live "/import/:id", ImportLive
         live "/move/:id", MoveLive
-
-        get "/download/:id", PageController, :download
     end
 
     scope "/content", MaxGalleryWeb do

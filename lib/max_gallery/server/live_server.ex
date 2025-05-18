@@ -2,8 +2,9 @@ defmodule MaxGallery.Server.LiveServer do
     use GenServer
     @mod __MODULE__
 
+
     def start_link(_opts \\ nil) do
-        GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
+        GenServer.start_link(@mod, %{}, name: @mod)
     end
 
     def init(state) do

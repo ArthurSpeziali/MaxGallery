@@ -50,7 +50,18 @@ defmodule MaxGalleryWeb.PageController do
     end
 
 
-    def download(conn, %{"id" => id}) do
+    def download(conn, %{"id" => id, "type" => "group"}) do
+        key = LiveServer.get(:auth_key)
+
+        if key do
+            {:ok, file_path} = Context.zip_content(id, key, group: true)
+
+            send_download(conn, {:file, file_path})
+        else
+            redirect(conn, to: ~c"/")
+        end
+    end
+    def download(conn, %{"id" => id, "type" => "data"}) do
         key = LiveServer.get(:auth_key)
 
         if key do
@@ -64,4 +75,5 @@ defmodule MaxGalleryWeb.PageController do
     def download(conn, _params) do
         redirect(conn, to: "/data")
     end
+
 end
