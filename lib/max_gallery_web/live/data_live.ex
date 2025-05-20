@@ -238,4 +238,7 @@ defmodule MaxGalleryWeb.DataLive do
         {:noreply, socket}
     end
 
+    def handle_event("search", %{"search" => _search}, socket) do
+        {:noreply, socket}
+    end
 end

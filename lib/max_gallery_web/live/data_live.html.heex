@@ -1,14 +1,14 @@
-
-
 <!DOCTYPE html>
 <html lang="pt-BR">
     <body>
-        <div class="flex w-full h-auto justify-between px-2 py-1">
+        <div class="flex w-full h-auto gap-12 justify-between px-2 py-1">
             <button phx-click="back" class="flex justify-center items-center border border-gray-300 rounded-xl w-14">
                 <img src="/images/back.png" class="w-auto h-8"/>
             </button>
 
-            <input/>
+            <form class="flex w-full" phx-submit="search">
+                <input name="search" class="w-full rounded border border-gray-600 text-center" placeholder="File.txt"/>
+            </form>
 
             <div class="flex py-1 px-8 gap-1">
                 <button phx-click="ask_folder">
