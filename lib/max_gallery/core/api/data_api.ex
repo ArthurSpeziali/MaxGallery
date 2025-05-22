@@ -3,6 +3,7 @@ defmodule MaxGallery.Core.Data.Api do
     alias MaxGallery.Core.Data
     alias MaxGallery.Repo
 
+
     def all_group(group_id) do
         querry = 
             case group_id do

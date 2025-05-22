@@ -240,4 +240,15 @@ defmodule MaxGallery.Utils do
     end
 
 
+    # "=~" == Regex
+    def get_like(querry, like) do
+        Enum.filter(querry, fn item -> 
+            String.downcase(
+                item.name
+            ) =~ String.downcase(
+                like
+            )
+        end)
+    end
+
 end

@@ -14,6 +14,7 @@ defmodule MaxGalleryWeb.DataLive do
 
         socket = assign(socket, [
             datas: lazy_datas,
+            lock_datas: lazy_datas,
             page_id: group_id,
             delete_iframe: nil,
             rename_iframe: nil,
@@ -238,7 +239,12 @@ defmodule MaxGalleryWeb.DataLive do
         {:noreply, socket}
     end
 
-    def handle_event("search", %{"search" => _search}, socket) do
-        {:noreply, socket}
+    def handle_event("search", %{"search" => search}, socket) do
+        querry = socket.assigns[:lock_datas]
+                 |> Utils.get_like(search)
+
+        {:noreply, 
+            assign(socket, datas: querry)
+        }
     end
 end
