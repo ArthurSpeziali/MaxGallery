@@ -20,7 +20,8 @@ defmodule MaxGallery.Application do
       MaxGalleryWeb.Endpoint,
         
       ## ADICIONAR O GENSERVER AQUI
-      MaxGallery.Server.LiveServer
+      MaxGallery.Server.LiveServer,
+      MaxGallery.Server.GarbageServer
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

@@ -4,7 +4,7 @@ defmodule MaxGallery.Server.GarbageServer do
     @mod __MODULE__
     @path "/tmp/max_gallery/zips/"
     @time_delete 60 # Minutes
-    @time_check 10 # Minutes
+    @time_check 10 * 60 * 1000  # Miliseconds
 
 
     def start_link(_opts \\ nil) do
@@ -15,7 +15,8 @@ defmodule MaxGallery.Server.GarbageServer do
         count = File.ls!(@path)
                 |> Enum.count()
 
-        spawn(&check/0)
+
+        Process.send_after(self(), :check, @time_check)
         {:ok, count}
     end
 
@@ -24,7 +25,7 @@ defmodule MaxGallery.Server.GarbageServer do
         {:reply, state, state}
     end
 
-    def handle_cast(:check, _state) do
+    def handle_info(:check, _state) do
         now = NaiveDateTime.utc_now()
         files = File.ls!(@path)
 
@@ -46,21 +47,7 @@ defmodule MaxGallery.Server.GarbageServer do
     end
 
 
-    def check() do
-        GenServer.cast(@mod, :check)
-    end
+    def check(), do: send(@mod, :check)
+    def count(), do: GenServer.call(@mod, :count)
 
-    def count() do
-        GenServer.call(@mod, :count)
-    end
-
-
-    def wait() do 
-        receive do
-            :start ->
-                check()
-                Process.sleep(@time_check * 60 * 100) # Miliseconds
-                send(self(), :start)
-        end
-    end
 end
