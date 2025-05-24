@@ -21,6 +21,7 @@ defmodule MaxGalleryWeb.Router do
         post "/auth", PageController, :auth
         get "/logout", PageController, :logout
         get "/download", PageController, :download
+        get "/config", PageController, :config
 
         live "/data", DataLive
         live "/editor", EditorLive

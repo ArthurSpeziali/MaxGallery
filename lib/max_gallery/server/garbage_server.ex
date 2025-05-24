@@ -12,6 +12,7 @@ defmodule MaxGallery.Server.GarbageServer do
     end
 
     def init(_state) do
+        File.mkdir_p(@path)
         count = File.ls!(@path)
                 |> Enum.count()
 

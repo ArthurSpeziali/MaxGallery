@@ -76,4 +76,8 @@ defmodule MaxGalleryWeb.PageController do
         redirect(conn, to: "/data")
     end
 
+
+    def config(conn, _params) do
+        render(conn, :config, layout: false)
+    end
 end

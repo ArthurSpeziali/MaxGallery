@@ -21,11 +21,20 @@
             </button>
         </.form>
 
-        <.form for={%{}} action={"/logout"} method="get">
-            <button>
-                <img src="/images/logout.png" alt="Logout" class="w-auto h-12 px-4">
-            </button>
-        </.form>
+
+        <div class="flex items-center">
+            <.form for={%{}} action={"/config"} method="get">
+                <button>
+                    <img src="/images/config.png" alt="Config" class="w-auto h-10">
+                </button>
+            </.form>
+
+            <.form for={%{}} action={"/logout"} method="get">
+                <button>
+                    <img src="/images/logout.png" alt="Logout" class="w-auto h-12 px-4">
+                </button>
+            </.form>
+        </div>
     </header>
 
 
