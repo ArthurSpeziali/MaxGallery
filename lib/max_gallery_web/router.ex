@@ -21,13 +21,13 @@ defmodule MaxGalleryWeb.Router do
         post "/auth", PageController, :auth
         get "/logout", PageController, :logout
         get "/download", PageController, :download
-        get "/config", PageController, :config
 
         live "/data", DataLive
         live "/editor", EditorLive
         live "/show", ShowLive
         live "/import", ImportLive
         live "/move", MoveLive
+        live "/config", ConfigLive
 
         live "/data/:id", DataLive
         live "/import/:id", ImportLive

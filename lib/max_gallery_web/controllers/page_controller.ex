@@ -6,7 +6,8 @@ defmodule MaxGalleryWeb.PageController do
 
 
     defp content_render(conn, id) do
-        key = LiveServer.get(:auth_key)
+        key = get_session(conn, :auth_key)
+              |> IO.inspect()
         {:ok, querry} = Context.decrypt_one(id, key) 
 
         mime = Map.fetch!(querry, :ext)
@@ -51,7 +52,7 @@ defmodule MaxGalleryWeb.PageController do
 
 
     def download(conn, %{"id" => id, "type" => "group"}) do
-        key = LiveServer.get(:auth_key)
+        key = get_session(conn, :auth_key)
 
         if key do
             {:ok, file_path} = Context.zip_content(id, key, group: true)
@@ -62,7 +63,7 @@ defmodule MaxGalleryWeb.PageController do
         end
     end
     def download(conn, %{"id" => id, "type" => "data"}) do
-        key = LiveServer.get(:auth_key)
+        key = get_session(conn, :auth_key)
 
         if key do
             {:ok, file_path} = Context.zip_content(id, key)
@@ -76,8 +77,4 @@ defmodule MaxGalleryWeb.PageController do
         redirect(conn, to: "/data")
     end
 
-
-    def config(conn, _params) do
-        render(conn, :config, layout: false)
-    end
 end

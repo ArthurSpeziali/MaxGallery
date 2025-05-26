@@ -3,8 +3,14 @@
     <body>
         <div class="flex rounded-lg shadow-lg border-2 border-gray-300 m-6 py-4">
 
-            <div name="database" class="mb-8">
-                <strong class="text-blue-900 text-[1.8rem] ml-4">Database Config.</strong>
+            <div name="database" class="flex flex-col mb-8 w-full">
+                <div class="flex justify-between">
+                    <strong class="text-blue-900 text-[1.8rem] ml-4">Database Config.</strong>
+
+                    <button phx-click="cancel" class="flex justify-end mr-4">
+                        <img src="/images/close.png" class="h-12 w-auto">
+                    </button>
+                </div>
 
                 <div name="acess_key" class="mt-10 ml-8">
                     <h1 class="text-xl font-bold text-gray-800">Change database key.</h1>
@@ -19,3 +25,4 @@
         </div>
     </body>
 </html>
+
