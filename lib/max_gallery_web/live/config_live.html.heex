@@ -7,7 +7,7 @@
                 <div class="flex justify-between">
                     <strong class="text-blue-900 text-[1.8rem] ml-4">Database Config.</strong>
 
-                    <button phx-click="cancel" class="flex justify-end mr-4">
+                    <button phx-click="redirect" class="flex justify-end mr-4">
                         <img src="/images/close.png" class="h-12 w-auto">
                     </button>
                 </div>
@@ -16,7 +16,7 @@
                     <h1 class="text-xl font-bold text-gray-800">Change the Database key.</h1>
                     <p class="text-sm text-gray-500 break-words mb-2">It changes the database access key, which will be used to encrypt your files. This action is permanent and cannot be reversed. Your key will be verified before the action.</p>
 
-                    <button class="text-red-600 bg-transparent border border-red-600 px-2 py-1 rounded-lg text-[1rem] mb-4">
+                    <button phx-click="change_key" class="text-red-600 bg-transparent border border-red-600 px-2 py-1 rounded-lg text-[1rem] mb-4">
                         Change
                     </button>
                 </div>
@@ -25,14 +25,42 @@
                     <h1 class="text-xl font-bold text-gray-800">Drop the Database</h1>
                     <p class="text-sm text-gray-500 break-words mb-2">It completely deletes your inserted files. This action is permanent and cannot be reversed. Your key will be verified before the action.</p>
 
-                    <button class="text-red-600 bg-transparent border border-red-600 px-2 py-1 rounded-lg text-[1rem] mb-4">
+                    <button phx-click="drop_data" class="text-red-600 bg-transparent border border-red-600 px-2 py-1 rounded-lg text-[1rem] mb-4">
                         Drop
                     </button>
                 </div>
 
             </div>
-
         </div>
+
+
+        <%= if @dropdata_iframe do %>
+            <div class="fixed inset-0  dark:bg-black dark:bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-6 rounded shadow-lg">
+                    <div class="flex justify-between items-center gap-8">
+                        <p class="text-lg font-bold text-red-800">Enter your key, to drop your entire database:</p>
+
+                        <button phx-click="cancel">
+                            <img src="/images/close.png" class="h-10 w-auto"/>
+                        </button>
+                    </div>
+
+                    <form phx-submit="submit_dropdata" class="flex flex-col items-center">
+                        <input
+                            name="key"
+                            type="password"
+                            class="text-center mt-8 w-full rounded-lg border border-gray-600 h-12"
+                            placeholder="Key_1234"
+                        />
+
+                        <button class="mt-2 rounded-lg bg-blue-600 text-white transition-colors duration-200 h-10 w-[35%]">
+                            Send
+                        </button>
+                    </form>
+                </div>
+            </div>
+        <% end %>
+
     </body>
 </html>
 

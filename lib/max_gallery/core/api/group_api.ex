@@ -70,4 +70,9 @@ defmodule MaxGallery.Core.Group.Api do
             querry -> {:ok, querry}
         end
     end
+
+
+    def delete_all() do
+        Repo.delete_all(Group)
+    end
 end

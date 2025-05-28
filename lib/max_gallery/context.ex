@@ -359,5 +359,14 @@ defmodule MaxGallery.Context do
 
     end
 
-    
+
+    def delete_all() do
+        with {count_group, nil} <- GroupApi.delete_all(),
+             {count_data, nil} <- DataApi.delete_all() do
+
+            {:ok, count_group + count_data}
+        else
+            error -> error
+        end
+    end
 end

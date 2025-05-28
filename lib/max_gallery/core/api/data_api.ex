@@ -141,4 +141,10 @@ defmodule MaxGallery.Core.Data.Api do
             querry -> {:ok, querry}
         end
     end
+
+
+    def delete_all() do
+        Repo.delete_all(Data)
+    end
+
 end
