@@ -213,7 +213,7 @@ defmodule MaxGallery.Utils do
     end
 
 
-    defp parse_path(tree, folder, back_folder \\ false)
+    defp parse_path(tree, folder, back_folder \\ nil)
     defp parse_path([], _folder, _back_folder), do: []
     defp parse_path([head | tail], folder, back_folder) do
         {name, content} = head
@@ -229,14 +229,14 @@ defmodule MaxGallery.Utils do
             parse_path(
                 content, 
                 folder <> "/" <> name,
-                folder
+                back_folder
             )
         else
             [{
                 folder <> "/" <> name |> String.to_charlist(), 
                 content
-            }]
-        end ++ parse_path(tail, back_folder, back_folder)
+            }] 
+        end ++ parse_path(tail, folder, back_folder) 
     end
 
 

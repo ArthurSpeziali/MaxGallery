@@ -369,4 +369,64 @@ defmodule MaxGallery.Context do
             error -> error
         end
     end
+
+    def update_all(key, new_key) do
+        {:ok, group_list} = GroupApi.all()
+        Enum.each(group_list, fn group ->
+            {:ok, old_name} = Encrypter.decrypt(
+                {group.name_iv, group.name},
+                key
+            )
+            {:ok, {name_iv, name}} = Encrypter.encrypt(
+                old_name,
+                new_key
+            )
+
+            {:ok, {msg_iv, msg}} = Encrypter.encrypt(
+                Phantom.get_text(),
+                new_key
+            )
+
+            GroupApi.update(
+                group.id, 
+                %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
+            )
+        end)
+
+        
+        {:ok, data_list} = DataApi.all()
+        Enum.each(data_list, fn data ->
+            {:ok, old_name} = Encrypter.decrypt(
+                {data.name_iv, data.name},
+                key
+            )
+            {:ok, {name_iv, name}} = Encrypter.encrypt(
+                old_name,
+                new_key
+            )
+
+            {:ok, old_blob} = Encrypter.decrypt(
+                {data.blob_iv, data.blob},
+                key
+            )
+            {:ok, {blob_iv, blob}} = Encrypter.encrypt(
+                old_blob,
+                new_key
+            )
+
+            {:ok, {msg_iv, msg}} = Encrypter.encrypt(
+                Phantom.get_text(),
+                new_key
+            )
+
+            DataApi.update(
+                data.id, 
+                %{name_iv: name_iv, name: name, blob_iv: blob_iv, blob: blob, msg_iv: msg_iv, msg: msg}
+            )
+        end)
+
+        count = Enum.count(group_list) + Enum.count(data_list) 
+        {:ok, count}
+    end
+
 end
