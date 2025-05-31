@@ -59,7 +59,8 @@ defmodule MaxGallery.MixProject do
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"},
 
-      {:ecto_sqlite3, "~> 0.19.0"},
+      # {:ecto_sqlite3, "~> 0.19.0"},
+      {:mongodb_ecto, "~> 2.1"},
       {:mix_test_watch, "~> 1.2", only: [:test], runtime: false}
     ]
   end
