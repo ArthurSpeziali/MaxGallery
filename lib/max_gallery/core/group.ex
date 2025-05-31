@@ -2,6 +2,9 @@ defmodule MaxGallery.Core.Group do
     use Ecto.Schema
     alias MaxGallery.Core.Data
 
+
+    @primary_key {:id, :binary_id, autogenerate: true}
+    @foreign_key_type :binary_id
     schema "groups" do
         field :name_iv, :binary
         field :name, :binary

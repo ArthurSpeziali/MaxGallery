@@ -7,23 +7,19 @@ defmodule MaxGallery.Context do
 
 
     def cypher_insert(path, key, opts \\ []) do
-        key_name = Keyword.get(opts, :name) 
-        key_group = Keyword.get(opts, :group)
-                |> case do
-                    str when is_binary(str) -> String.to_integer(str)
-                    int -> int
-                end
+        name = Keyword.get(opts, :name) 
+        group = Keyword.get(opts, :group)
 
         ext = 
-            if key_name do
-                Path.extname(key_name)
+            if name do
+                Path.extname(name)
             else
                 Path.extname(path)
             end 
 
         {:ok, {name_iv, name}} = 
-            if key_name do
-                Path.basename(key_name, ext)
+            if name do
+                Path.basename(name, ext)
                 |> Encrypter.encrypt(key)
             else
                 Path.basename(path, ext)
@@ -42,7 +38,7 @@ defmodule MaxGallery.Context do
                  ext: ext,
                  msg: msg,
                  msg_iv: msg_iv,
-                 group_id: key_group}) do
+                 group_id: group}) do
 
             {:ok, querry.id}
         else
@@ -187,10 +183,6 @@ defmodule MaxGallery.Context do
 
     def group_insert(group_name, key, opts \\ []) do
         group = Keyword.get(opts, :group)
-                |> case do
-                    str when is_binary(str) -> String.to_integer(str)
-                    int -> int
-                end
 
         if Phantom.insert_line?(key) do
             {:ok, {name_iv, name}} = Encrypter.encrypt(group_name, key)

@@ -4,6 +4,7 @@ defmodule MaxGallery.Utils do
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
 
+
     def get_back(id) do
         case id do
             nil -> nil
@@ -62,8 +63,8 @@ defmodule MaxGallery.Utils do
                 end) |> Enum.sum()
             end
         else
-            {:ok, size} = DataApi.get_size(id)
-            size
+            {:ok, querry} = DataApi.get(id)
+            byte_size(querry.blob)
         end
     end
 
