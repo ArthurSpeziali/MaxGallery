@@ -223,13 +223,13 @@ defmodule MaxGallery.Context do
     def group_delete(id, key) do
         with {:ok, querry} <- GroupApi.get(id),
              true <- Phantom.valid?(querry, key),
-             {:ok, _boolean} <- delete_cascade(id, key) do
+             {:ok, _boolean} <- delete_cascade(id, key) |> IO.inspect() do
 
             {:ok, querry}
         else
             false -> {:error, "invalid key"}
             error -> error
-        end
+        end 
     end
 
 
@@ -260,6 +260,7 @@ defmodule MaxGallery.Context do
 
             contents = groups ++ datas
             if contents == [] do
+                GroupApi.delete(group_id)
                 {:ok, false}
             else
                 repeat_cascate(group_id, key)
