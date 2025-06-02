@@ -1,11 +1,15 @@
 defmodule MaxGallery.PhatomTest do
-    use MaxGallery.DataCase
+    use ExUnit.Case
     alias MaxGallery.Phantom
     alias MaxGallery.Context
     alias MaxGallery.Core.Data.Api
+    alias MaxGallery.Core.Bucket
 
 
     setup do
+        Bucket.drop()
+        Context.delete_all("key")
+
         {:ok,
             msg: "Hello World!",
 

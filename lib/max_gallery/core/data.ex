@@ -6,9 +6,9 @@ defmodule MaxGallery.Core.Data do
     @primary_key {:id, :binary_id, autogenerate: true}
     @foreign_key_type :binary_id
     schema "cyphers" do
+        field :file_id, :binary_id
         field :name, :binary
         field :name_iv, :binary
-        field :blob, :binary
         field :blob_iv, :binary
         field :ext, :string, default: ".txt"
         field :msg, :string
@@ -20,7 +20,7 @@ defmodule MaxGallery.Core.Data do
 
 
     def changeset(model, params) do
-        Ecto.Changeset.cast(model, params, [:name, :name_iv, :blob, :blob_iv, :ext, :group_id, :msg, :msg_iv])
+        Ecto.Changeset.cast(model, params, [:name, :name_iv, :file_id, :blob_iv, :ext, :group_id, :msg, :msg_iv])
     end
 
     def fields() do

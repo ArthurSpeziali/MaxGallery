@@ -3,27 +3,27 @@ defmodule MaxGallery.Phantom do
     alias MaxGallery.Core.Data.Api
 
 
-    defp validate_bin(binary) do
-        if String.valid?(binary) do
+    def validate_bin(binary) do
+        if String.printable?(binary) do
             binary
         else
             Base.encode64(binary)
         end 
     end
 
-    def encode_bin(datas) when is_list(datas) do
-        Enum.map(datas, fn item -> 
-            new_map = Map.update!(item, :name, &validate_bin/1)
+    def encode_bin(contents) when is_list(contents) do
+        Enum.map(contents, fn item -> 
+            new_content = Map.update!(item, :name, &validate_bin/1)
             
-            if new_map[:blob] do
-                Map.update!(new_map, :blob, &validate_bin/1)
+            if new_content[:blob] do
+                Map.update!(new_content, :blob, &validate_bin/1)
             else
-                new_map
+                new_content
             end
         end)
     end
-    def encode_bin(data) do
-       encode_bin([data]) 
+    def encode_bin(content) do
+       encode_bin([content]) 
     end
 
 
@@ -37,7 +37,7 @@ defmodule MaxGallery.Phantom do
 
 
     def insert_line?(key) do
-        case Api.first_lazy() do
+        case Api.first() do
             {:error, nil} -> true
             {:ok, querry} -> valid?(querry, key)
         end

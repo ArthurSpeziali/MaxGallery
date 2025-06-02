@@ -171,17 +171,19 @@
 
                     <div class="px-6 py-8">
                         <strong class="text-blue-900">Name: </strong>
+                        <% name = MaxGallery.Phantom.validate_bin(@object.name) %>
+
                         <%= if Map.get(@object, :ext) do %>
-                            <span>"{@object.name <> @object.ext}"</span><br>
+                            <span>"{name <> @object.ext}"</span><br>
                         <% else %>
-                            <span>"{@object.name}"</span><br>
+                            <span>"{name}"</span><br>
                         <% end %>
 
                         <strong class="text-blue-900">Id: </strong>
                         <span>{@object.id}</span><br>
 
                         <strong class="text-blue-900">Group: </strong>
-                        <span>{@group_name}</span><br>
+                        <span>"{MaxGallery.Phantom.validate_bin(@group_name)}"</span><br>
 
                         <br>
 

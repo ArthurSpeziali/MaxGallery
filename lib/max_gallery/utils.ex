@@ -1,6 +1,7 @@
 defmodule MaxGallery.Utils do
     alias MaxGallery.Core.Data.Api, as: DataApi
     alias MaxGallery.Core.Group.Api, as: GroupApi
+    alias MaxGallery.Core.Bucket
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
 
@@ -16,28 +17,20 @@ defmodule MaxGallery.Utils do
 
     def get_group(id, opts \\ []) do
         only = Keyword.get(opts, :only)
-        lazy? = Keyword.get(opts, :lazy)
 
-        case {lazy?, only} do
-            {true, nil} ->
-                {:ok, datas} = DataApi.all_group_lazy(id)
-                {:ok, groups} = GroupApi.all_group(id)
-
-                {:ok, groups ++ datas}
-
-            {nil, nil} ->
+        case only do
+            nil ->
                 {:ok, datas} = DataApi.all_group(id)
                 {:ok, groups} = GroupApi.all_group(id)
 
                 {:ok, groups ++ datas}
 
-            {true, :datas} ->
-                DataApi.all_group_lazy(id)
 
-            {nil, :datas} ->
+            :datas ->
                 DataApi.all_group(id)
 
-            {_boolean, :groups} ->
+
+            :groups ->
                 GroupApi.all_group(id)
         end
     end
@@ -46,7 +39,7 @@ defmodule MaxGallery.Utils do
         group? = Keyword.get(opts, :group)
 
         if group? do
-            {:ok, contents} = get_group(id, lazy: true)
+            {:ok, contents} = get_group(id)
 
             if contents == [] do
                 0
@@ -64,7 +57,9 @@ defmodule MaxGallery.Utils do
             end
         else
             {:ok, querry} = DataApi.get(id)
-            byte_size(querry.blob)
+
+            {:ok, enc_blob} = Bucket.download(querry.file_id) 
+            byte_size(enc_blob)
         end
     end
 

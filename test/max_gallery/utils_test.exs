@@ -1,5 +1,5 @@
 defmodule MaxGallery.UtilsTest do
-    use MaxGallery.DataCase
+    use ExUnit.Case
     alias MaxGallery.Utils
 
 

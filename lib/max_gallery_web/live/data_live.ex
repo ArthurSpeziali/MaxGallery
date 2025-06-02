@@ -216,7 +216,7 @@ defmodule MaxGalleryWeb.DataLive do
         group_name = 
             if object.group do
                 {:ok, querry} = Context.decrypt_one(object.group, key, group: true)
-                "\"#{Map.fetch!(querry, :name)}\""
+                Map.fetch!(querry, :name)
             else
                 "Main"
             end

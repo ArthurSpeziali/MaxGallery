@@ -47,9 +47,7 @@ defmodule MaxGalleryWeb.ConfigLive do
     end
 
     def handle_event("submit_dropdata", %{"key" => key}, socket) do
-        if Phantom.insert_line?(key) do
-            Context.delete_all()
-        end
+        Context.delete_all(key)
 
         {:noreply, 
             push_navigate(socket, to: "/data")

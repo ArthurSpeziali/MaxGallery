@@ -21,27 +21,6 @@ defmodule MaxGallery.Core.Data.Api do
         end
     end
 
-    def all_group_lazy(group_id) do
-        fields = Data.fields()
-                 |> List.delete(:blob_iv)
-                 |> List.delete(:blob)
-
-        querry = 
-            case group_id do
-                nil ->
-                    from(d in Data, select: map(d, ^fields), where: is_nil(d.group_id))
-
-                id -> 
-                    from(d in Data, select: map(d, ^fields), where: d.group_id == ^id)
-
-            end |> Repo.all()
-
-        case querry do
-            _data when is_list(querry) -> {:ok, querry}
-            error -> error
-        end
-    end
-
 
     def all() do
         Repo.all(Data)
@@ -51,35 +30,9 @@ defmodule MaxGallery.Core.Data.Api do
         end
     end
 
-    def all_lazy() do
+
+    def first() do
         fields = Data.fields()
-                 |> List.delete(:blob)
-                 |> List.delete(:blob_iv)
-
-        from(d in Data, select: map(d, ^fields))
-        |> Repo.all()
-        |> case do
-            data when is_list(data) -> {:ok, data}
-            error -> error
-        end
-    end
-
-    def get_lazy(id) do
-        fields = Data.fields()
-                 |> List.delete(:blob)
-                 |> List.delete(:blob_iv)
-
-        from(d in Data, select: map(d, ^fields))
-        |> Repo.get(id)
-        |> case do
-            nil -> {:error, nil}
-            querry -> {:ok, querry}
-        end
-    end
-
-    def first_lazy() do
-        fields = Data.fields()
-                 |> List.delete(:blob)
                  |> List.delete(:blob_iv)
 
         from(d in Data, select: map(d, ^fields))

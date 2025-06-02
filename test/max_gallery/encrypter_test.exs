@@ -1,5 +1,5 @@
 defmodule MaxGallery.EncrypterTest do
-    use ExUnit.Case, async: true
+    use ExUnit.Case
     alias MaxGallery.Encrypter
 
     setup do
