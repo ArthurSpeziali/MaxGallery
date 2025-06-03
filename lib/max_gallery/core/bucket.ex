@@ -17,15 +17,15 @@ defmodule MaxGallery.Core.Bucket do
     end
 
     
-    def new_bucket(name) do
+    def get_bucket() do
         Bucket.new(
             mongo_pid(),
-            name: name
+            name: @bucket
         )
     end
 
     def drop() do
-        bucket = new_bucket(@bucket)
+        bucket = get_bucket()
         Bucket.drop(bucket)
     end
 
@@ -42,7 +42,7 @@ defmodule MaxGallery.Core.Bucket do
 
 
     def upload(path, name) do
-        bucket = new_bucket(@bucket)
+        bucket = get_bucket()
         upload = Upload.open_upload_stream(bucket, name)
 
         File.stream!(path, [], 512)
@@ -53,7 +53,7 @@ defmodule MaxGallery.Core.Bucket do
     end
 
     def download(id) do
-        bucket = new_bucket(@bucket)
+        bucket = get_bucket()
         {:ok, stream} = Download.open_download_stream(bucket, id)
 
         {:ok, 
@@ -61,7 +61,7 @@ defmodule MaxGallery.Core.Bucket do
         }
     end
     def download(dest, id) do
-        bucket = new_bucket(@bucket)
+        bucket = get_bucket()
         {:ok, stream} = Download.open_download_stream(bucket, id)
 
         Stream.into(
@@ -75,17 +75,25 @@ defmodule MaxGallery.Core.Bucket do
     def replace(id, content) do
         file = write(content)
 
-        bucket = new_bucket(@bucket)
+        bucket = get_bucket()
         Bucket.delete(bucket, id)
 
         upload(file, Path.basename(file))
     end
 
     def delete(id) do
-        bucket = new_bucket(@bucket)
+        bucket = get_bucket()
         {:ok, result} = Bucket.delete(bucket, id)
 
         {:ok, result.deleted_count}
+    end
+
+    def get(id) do
+        bucket = get_bucket()
+
+        {:ok, 
+            Bucket.find_one(bucket, id)
+        }
     end
 
 end

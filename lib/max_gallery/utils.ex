@@ -57,9 +57,9 @@ defmodule MaxGallery.Utils do
             end
         else
             {:ok, querry} = DataApi.get(id)
-
-            {:ok, enc_blob} = Bucket.download(querry.file_id) 
-            byte_size(enc_blob)
+            
+            {:ok, file} = Bucket.get(querry.file_id)
+            file["length"]
         end
     end
 
