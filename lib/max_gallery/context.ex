@@ -82,12 +82,17 @@ defmodule MaxGallery.Context do
     end
 
 
-    def cypher_delete(id, key) do
+    def cypher_delete(id, key, opts \\ []) do
+        shallow? = Keyword.get(opts, :shallow) 
+
         with {:ok, querry} <- DataApi.get(id),
              true <- Phantom.valid?(querry, key),
-             {:ok, _count} <- Bucket.delete(querry.file_id),
              {:ok, _querry} <- DataApi.delete(id) do
-            
+
+            if !shallow? do
+                Bucket.delete(querry.file_id)
+            end
+
             {:ok, querry}
         else
             false -> {:error, "invalid key"}
@@ -223,7 +228,7 @@ defmodule MaxGallery.Context do
     def group_delete(id, key) do
         with {:ok, querry} <- GroupApi.get(id),
              true <- Phantom.valid?(querry, key),
-             {:ok, _boolean} <- delete_cascade(id, key) |> IO.inspect() do
+             {:ok, _boolean} <- delete_cascade(id, key) do
 
             {:ok, querry}
         else
@@ -310,6 +315,7 @@ defmodule MaxGallery.Context do
 
             {:ok, querry.id}
         else
+            false -> {:error, "invalid key"}
             error -> error
         end
     end
@@ -348,13 +354,35 @@ defmodule MaxGallery.Context do
             %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
         )
 
-        with true <- Phantom.insert_line?(key), 
-             {:ok, querry} <- GroupApi.insert(duplicate) do
-    
-            {:ok, querry.id}
+        if Phantom.insert_line?(key) do
+            {:ok, dup_querry} = GroupApi.insert(duplicate)
+
+            duplicate_content = fn
+                (content, :data) ->
+                    {:ok, file_id} = Bucket.write(content.blob) 
+                              |> Bucket.upload(content.name)
+
+                    %{content | file_id: file_id}
+                    |> DataApi.insert()
+
+
+                (content, :group) ->
+                    {:ok, subquerry} = GroupApi.insert(content)
+                    %{group_id: subquerry.id}
+            end
+
+
+            Utils.get_tree(querry.id, key)
+            |> Utils.mount_tree(
+                %{group_id: dup_querry.id}, 
+                duplicate_content, 
+                key
+            )
+
+            {:ok, dup_querry.id}
         else
-            error -> error
-        end         
+            {:error, "invalid key"}
+        end
     end
 
 

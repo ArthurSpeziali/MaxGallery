@@ -27,15 +27,8 @@ defmodule MaxGalleryWeb.MoveLive do
                         key,
                         group: true
                     ) 
-                    int_content = Map.update!(
-                        content,
-                        :id,
-                        fn item ->
-                            String.to_integer(item)
-                        end
-                    )
 
-                    raw_groups -- [int_content] 
+                    raw_groups -- [content] 
                 else
                     raw_groups
                 end 
@@ -44,7 +37,8 @@ defmodule MaxGalleryWeb.MoveLive do
                 group_name: group_info[:name],
                 page_id: page_id,
                 groups: groups,
-                action: action
+                action: action,
+                loading: nil
             )
 
             {:ok, socket, layout: false}
@@ -103,7 +97,7 @@ defmodule MaxGalleryWeb.MoveLive do
             {"data", "copy"} ->
                 params = 
                     if dest_id do 
-                        %{group_id: String.to_integer(dest_id)}
+                        %{group_id: dest_id}
                     else
                         %{group_id: nil}
                     end
@@ -111,36 +105,25 @@ defmodule MaxGalleryWeb.MoveLive do
 
 
             {"group", "copy"} ->
-                insert_content = fn
-                    (content, :data) ->
-                        MaxGallery.Core.Data.Api.insert(content)
-
-                    (content, :group) ->
-                        {:ok, querry} = MaxGallery.Core.Group.Api.insert(content)
-                        %{group_id: querry.id}
-                end
-
                 params = 
                     if dest_id do 
-                        %{group_id: String.to_integer(dest_id)}
+                        %{group_id: dest_id}
                     else
                         %{group_id: nil}
                     end
+                Context.group_duplicate(object.id, params, key)
 
-
-                {:ok, group_id} = Context.group_duplicate(object.id, params, key)
-
-                Utils.get_tree(object.id, key)
-                |> Utils.mount_tree(
-                    %{group_id: group_id}, 
-                    insert_content, 
-                    key
-                )
         end
 
 
         {:noreply,
             push_navigate(socket, to: "/data/#{dest_id}")
+        }
+    end
+
+    def handle_event("loading", _params, socket) do
+        {:noreply, 
+            assign(socket, loading: true)
         }
     end
 end

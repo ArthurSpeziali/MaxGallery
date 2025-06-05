@@ -76,8 +76,8 @@ defmodule MaxGallery.Data.ContextTest do
         assert {:ok, main_id} = Context.group_insert("Main", "key")
         assert {:ok, group_id} = Context.group_insert("Group1", "key")
 
-        assert {:ok, _querry} = Context.cypher_duplicate(data_id, %{group_id: main_id}, "key")
-        assert {:ok, _querry} = Context.group_duplicate(data_id, %{group_id: group_id}, "key")
+        assert {:ok, _id} = Context.cypher_duplicate(data_id, %{group_id: main_id}, "key")
+        assert {:ok, _id} = Context.group_duplicate(group_id, %{group_id: group_id}, "key")
     end
 
     test "Insert 5 cyphers and 5 groups, then check your size", %{msg: msg} do

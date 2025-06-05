@@ -59,7 +59,7 @@ defmodule MaxGallery.Utils do
             {:ok, querry} = DataApi.get(id)
             
             {:ok, file} = Bucket.get(querry.file_id)
-            file["length"]
+            file["length"] 
         end
     end
 
@@ -84,7 +84,8 @@ defmodule MaxGallery.Utils do
         end)
     end
 
-    def get_tree(id, key) do
+    def get_tree(id, key, opts \\ []) do
+        lazy? = Keyword.get(opts, :lazy)
         {:ok, contents} = get_group(id)
 
         if contents == [] do
@@ -97,18 +98,30 @@ defmodule MaxGallery.Utils do
                         key
                     ) 
 
-                    {:ok, blob} = Encrypter.decrypt(
-                        {item.blob_iv, item.blob},
-                        key
-                    )
+                    if lazy? do 
+                        %{data: %{
+                            id: item.id,
+                            name: name,
+                            ext: item.ext,
+                            group: item.group_id,
+                            file: item.file_id
+                        }}
+                    else
+                        {:ok, enc_blob} = Bucket.download(item.file_id)
+                        {:ok, blob} = Encrypter.decrypt(
+                            {item.blob_iv, enc_blob},
+                            key
+                        )
 
-                    %{data: %{
-                        id: item.id,
-                        name: name,
-                        blob: blob,
-                        ext: item.ext,
-                        group: item.group_id
-                    }}
+                        %{data: %{
+                            id: item.id,
+                            name: name,
+                            blob: blob,
+                            ext: item.ext,
+                            group: item.group_id,
+                            file: item.file_id
+                        }}
+                    end
                 else
                     {:ok, name} = Encrypter.decrypt(
                             {item.name_iv, item.name}, 
@@ -121,7 +134,7 @@ defmodule MaxGallery.Utils do
                             name: name,
                             group: item.group_id
                         },
-                        get_tree(item.id, key)
+                        get_tree(item.id, key, lazy: lazy?)
                     }}
                 end
             end)
@@ -134,12 +147,14 @@ defmodule MaxGallery.Utils do
 
             case item do
                 %{data: data} -> 
+                        
                     {:ok, {name_iv, name}} = Encrypter.encrypt(data.name, key)
                     {:ok, {blob_iv, blob}} = Encrypter.encrypt(data.blob, key)
                     {:ok, {msg_iv, msg}} = Phantom.get_text() 
-                                    |> Encrypter.encrypt(key)
+                                           |> Encrypter.encrypt(key)
 
-                    %{id: data.id, name: name, name_iv: name_iv, blob: blob, blob_iv: blob_iv, msg: msg, msg_iv: msg_iv, ext: data.ext, group_id: data.group}
+
+                    %{name: name, name_iv: name_iv, blob: blob, blob_iv: blob_iv, msg: msg, msg_iv: msg_iv, ext: data.ext, group_id: data.group, file_id: data.file}
                     |> Map.merge(params)
                     |> fun.(:data)
 
@@ -150,7 +165,7 @@ defmodule MaxGallery.Utils do
                                            |> Encrypter.encrypt(key)
 
                     sub_params = 
-                        %{id: group.id, name: name, name_iv: name_iv, msg: msg, msg_iv: msg_iv, group_id: group.group}
+                        %{name: name, name_iv: name_iv, msg: msg, msg_iv: msg_iv, group_id: group.group}
                         |> Map.merge(params)
                         |> fun.(:group)
 
