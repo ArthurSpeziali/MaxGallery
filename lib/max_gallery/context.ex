@@ -388,22 +388,28 @@ defmodule MaxGallery.Context do
 
     def zip_content(id, key, opts \\ []) do
         group? = Keyword.get(opts, :group)
+        id = 
+            if id == "main" do
+                nil
+            else
+                id
+            end
+
 
         if group? do
-
-            case GroupApi.get(id) do
-                {:ok, querry} ->
-                    {:ok, name} = Encrypter.decrypt(
+            {:ok, name} = 
+                if id do
+                    {:ok, querry} = GroupApi.get(id)
+                    Encrypter.decrypt(
                         {querry.name_iv, querry.name},
                         key
                     )
+                else
+                    {:ok, "Main"}
+                end
 
-                    tree = Utils.get_tree(id, key)
-                    Utils.zip_folder(tree, name)
-
-
-                error -> error
-            end
+            tree = Utils.get_tree(id, key)
+            Utils.zip_folder(tree, name)
         else
 
             case DataApi.get(id) do

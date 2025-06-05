@@ -13,7 +13,7 @@
                 </div>
 
                 <div name="change_key" class="mt-10 ml-8">
-                    <h1 class="text-xl font-bold text-gray-800">Change the Database key.</h1>
+                    <h1 class="text-xl font-bold text-gray-800">Change the Database key</h1>
                     <p class="text-sm text-gray-500 break-words mb-2">It changes the database access key, which will be used to encrypt your files. This action is permanent and cannot be reversed. Your key will be verified before the action.</p>
 
                     <button phx-click="change_key" class="text-red-600 bg-transparent border border-red-600 px-2 py-1 rounded-lg text-[1rem] mb-4">
@@ -30,8 +30,18 @@
                     </button>
                 </div>
 
+
+                <div name="export_all" class="mt-8 ml-8">
+                    <h1 class="text-xl font-bold text-gray-800">Export all Database</h1>
+                    <p class="text-sm text-gray-500 break-words mb-2">Download the entire database.</p>
+
+                    <a href={"/download?id=main&type=group"} target="_blank" class="text-red-600 bg-transparent border border-red-600 px-2 py-[0.4rem] rounded-lg text-[1rem] mb-4">
+                        Export
+                    </a>
+                </div>
             </div>
         </div>
+
 
 
         <%= if @dropdata_iframe do %>

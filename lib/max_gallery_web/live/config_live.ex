@@ -75,4 +75,5 @@ defmodule MaxGalleryWeb.ConfigLive do
             assign(socket, loading: true)
         }
     end
+
 end
