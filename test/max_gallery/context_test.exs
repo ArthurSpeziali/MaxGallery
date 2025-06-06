@@ -91,4 +91,28 @@ defmodule MaxGallery.Data.ContextTest do
         assert {:ok, querry} = Context.decrypt_all("key")
         assert 10 = length(querry)
     end
+
+    test "Delete all cyphers", %{msg: msg} do
+        path = create_file(msg)
+
+        for item <- 1..5//1 do
+            Context.cypher_insert(path, "key")
+            Context.group_insert("Group#{item}", "key")
+        end
+
+        assert {:ok, 10} = Context.delete_all("key")
+    end
+
+    test "Update all cyphers", %{msg: msg} do
+        path = create_file(msg)
+
+        for item <- 1..5//1 do
+            Context.cypher_insert(path, "key")
+            Context.group_insert("Group#{item}", "key")
+        end
+
+        assert {:ok, 10} = Context.update_all("key", "lock")
+        assert {:error, "invalid key"} = Context.update_all("other_key", "key")
+        assert {:ok, 10} = Context.update_all("lock", "key")
+    end
 end

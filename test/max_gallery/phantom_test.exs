@@ -96,4 +96,9 @@ defmodule MaxGallery.PhatomTest do
 
         refute Phantom.insert_line?("key2")
     end
+
+    test "The validate_bin/1 function is working" do
+        assert "Hello World" = "Hello World" |> Phantom.validate_bin()
+        assert "WzYMBgrR" = <<91, 54, 12, 6, 10, 209>> |> Phantom.validate_bin()
+    end
 end
