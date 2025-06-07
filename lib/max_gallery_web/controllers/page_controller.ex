@@ -7,7 +7,6 @@ defmodule MaxGalleryWeb.PageController do
 
     defp content_render(conn, id) do
         key = get_session(conn, :auth_key)
-              |> IO.inspect()
         {:ok, querry} = Context.decrypt_one(id, key) 
 
         mime = Map.fetch!(querry, :ext)

@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
     <body>
-        <div class="flex w-full h-auto gap-12 justify-between px-2 py-1">
+        <div class="flex w-full h-auto md:gap-12 gap-3 justify-between px-2 py-1">
             <button phx-click="back" class="flex justify-center items-center border border-gray-300 rounded-xl w-14">
                 <img src="/images/back.png" class="w-auto h-8"/>
             </button>
 
-            <form class="flex w-[90%] py-1" phx-change="search">
-                <input name="search" class="w-full rounded-xl shadow-lg border border-gray-600 text-center" placeholder="File.txt"/>
+            <form class="flex md:w-[90%] w-[70%] py-1" phx-change="search">
+                <input name="search" class="w-full rounded-xl shadow-lg border border-gray-600 text-center h-10" placeholder="File.txt"/>
             </form>
 
-            <div class="flex py-1 px-4 gap-1">
+            <div class="flex py-1 md:px-4 px-2 gap-1">
                 <button phx-click="ask_folder">
                     <img src="/images/create_folder.png" class="w-auto h-10"/>
                 </button>
@@ -77,7 +77,7 @@
 
 
         <%= if @delete_iframe do %>
-            <div class="fixed inset-0  dark:bg-black dark:bg-opacity-50 flex items-center justify-center z-50">
+            <div class="fixed inset-0  bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div class="bg-white p-6 rounded shadow-lg">
                     <p>Are you sure you want to delete: </p>
                     <strong class="block text-center">"{@name_data}" ?</strong>
@@ -92,7 +92,7 @@
 
 
         <%= if @rename_iframe do %>
-            <div class="fixed inset-0  dark:bg-black dark:bg-opacity-50 flex items-center justify-center z-50">
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div class="bg-white p-6 rounded shadow-lg">
                     <div class="flex justify-between items-center mb-8">
                         <p>Enter new group name: </p>
@@ -118,7 +118,7 @@
         <% end %>
 
         <%= if @remove_iframe do %>
-            <div class="fixed inset-0  dark:bg-black dark:bg-opacity-50 flex items-center justify-center z-50">
+            <div class="fixed inset-0  bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div class="bg-white p-6 rounded shadow-lg">
                     <p>Are you sure you want to remove: </p>
                     <strong class="block text-center">"{@name_group}" ?</strong>
@@ -132,7 +132,7 @@
         <% end %>
 
         <%= if @more_iframe do %>
-            <div class="fixed inset-0  dark:bg-black dark:bg-opacity-50 flex items-center justify-center z-50">
+            <div class="fixed inset-0  bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div class="bg-white p-2 rounded-lg shadow-lg">
                     <div class="flex justify-end mb-8 px-2 py-1">
                         <button phx-click="cancel">
@@ -141,18 +141,18 @@
                     </div>
 
                     <div class="grid grid-rows-3 gap-4 p-6">
-                        <a href={"/download?id=#{@more_iframe}&type=#{@type}"} target="_blank" class="border rounded-lg font-bold text-blue-600 py-1 px-4 text-lg shadow-md">
+                        <a href={"/download?id=#{@more_iframe}&type=#{@type}"} target="_blank" class="border rounded-lg font-bold text-blue-600 py-1 px-4 md:text-lg text-xl shadow-md">
                             Download
                         </a>
-                        <button phx-click="move" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-red-600 py-1 px-4 text-lg shadow-md">
+                        <button phx-click="move" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-red-600 py-1 px-4 md:text-lg text-xl shadow-md">
                             Move
                         </button>
 
-                        <button phx-click="copy" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-yellow-600 py-1 px-4 text-lg shadow-md">
+                        <button phx-click="copy" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-yellow-600 py-1 px-4 md:text-lg text-xl shadow-md">
                             Copy
                         </button>
 
-                        <button phx-click="info" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-gray-600 py-1 px-4 text-lg shadow-md">
+                        <button phx-click="info" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-gray-600 py-1 px-4 md:text-lg text-xl shadow-md">
                             Info
                         </button>
                     </div>
@@ -161,8 +161,8 @@
         <% end %>
 
         <%= if @info_iframe do %>
-            <div class="fixed inset-0  dark:bg-black dark:bg-opacity-50 flex items-center justify-center z-50">
-                <div class="bg-white p-2 rounded-lg shadow-lg">
+            <div class="fixed inset-0  bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-2 rounded-lg shadow-lg w-[75%] md:w-auto">
                     <div class="flex justify-end mb-4 px-2 py-1">
                         <button phx-click="cancel">
                             <img src="/images/close.png" class="w-auto h-10">
@@ -174,16 +174,16 @@
                         <% name = MaxGallery.Phantom.validate_bin(@object.name) %>
 
                         <%= if Map.get(@object, :ext) do %>
-                            <span>"{name <> @object.ext}"</span><br>
+                            <span class="break-words whitespace-normal">"{name <> @object.ext}"</span><br>
                         <% else %>
-                            <span>"{name}"</span><br>
+                            <span class="break-words whitespace-normal">"{name}"</span><br>
                         <% end %>
 
                         <strong class="text-blue-900">Id: </strong>
-                        <span>{@object.id}</span><br>
+                        <span class="break-words whitespace-normal">{@object.id}</span><br>
 
                         <strong class="text-blue-900">Group: </strong>
-                        <span>"{MaxGallery.Phantom.validate_bin(@group_name)}"</span><br>
+                        <span class="break-words whitespace-normal">"{MaxGallery.Phantom.validate_bin(@group_name)}"</span><br>
 
                         <br>
 
