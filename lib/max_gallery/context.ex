@@ -6,7 +6,62 @@ defmodule MaxGallery.Context do
     alias MaxGallery.Phantom
     alias MaxGallery.Utils
 
+    @moduledoc """
+      This module serves as the context layer for managing encrypted files and groups
+      within the MaxGallery system.
 
+      It provides high-level functions for:
+
+      - Inserting, updating, deleting, and duplicating encrypted files and groups;
+      - Retrieving encrypted data individually or in bulk;
+      - Managing hierarchical group structures;
+      - Zipping files or entire group trees;
+      - Updating encryption keys across all stored records;
+      - Performing cascading deletions safely and recursively.
+
+      Internally, it interacts with:
+
+      - `MaxGallery.Core.Data.Api` for file entries;
+      - `MaxGallery.Core.Group.Api` for group entities;
+      - `MaxGallery.Encrypter` for encryption/decryption;
+      - `MaxGallery.Bucket` for encrypted binary storage;
+      - `MaxGallery.Phantom` for validation and metadata;
+      - `MaxGallery.Utils` for utilities such as tree traversal and zip generation.
+
+    All operations require a valid encryption key to ensure security and integrity.
+    """
+
+
+
+    @doc """
+    Encrypts and inserts a file into the system, storing both its encrypted contents and metadata.
+
+    ## Parameters
+
+      - `path` (string): The local file path of the file to be encrypted and inserted.
+      - `key` (binary/string): The encryption key used to encrypt the filename and file content.
+      - `opts` (keyword list, optional):
+        - `:name` (string) — an optional name to override the file's name extracted from `path`.
+        - `:group` (string) — an optional group ID (binary ID) to associate the file with.
+
+    ## Process
+
+    The function:
+      - Extracts the file extension.
+      - Encrypts the file name (or override name if provided).
+      - Encrypts the file content.
+      - Uploads the encrypted content to a binary bucket.
+      - Stores the encrypted file metadata and group association in the MongoDB database.
+
+    ## Returns
+
+      - `{:ok, id}`: The inserted file's binary ID (`_id`) as a string on success.
+      - `{:error, reason}`: If any step fails (e.g., encryption, upload, or database insert).
+
+    ## Security
+
+    Requires a valid encryption key and passes a `Phantom.insert_line?/1` validation check.
+    """
     def cypher_insert(path, key, opts \\ []) do
         name = Keyword.get(opts, :name) 
         group = Keyword.get(opts, :group)
@@ -66,6 +121,27 @@ defmodule MaxGallery.Context do
         %{name: name, id: item.id, group: item.group_id} 
     end
 
+    @doc """
+    Decrypts and returns all items (files and/or subgroups) from a specific group.
+
+    ## Parameters
+
+      - `key` (binary/string): The encryption key used to decrypt file and group metadata.
+      - `opts` (keyword list, optional):
+        - `:lazy` (boolean) — If `true`, returns only basic metadata (e.g. name, ext, id); skips blob download/decryption.
+        - `:only` (list) — A list of filters to selectively include only certain types (e.g., `[:files]`, `[:groups]`).
+        - `:group` (string) — The group ID (binary ID) from which to retrieve contents. If not provided, retrieves the top-level group.
+
+    ## Behavior
+
+    - Retrieves all items from the specified group using `Utils.get_group/2`.
+    - Decrypts each item's metadata (and optionally its content if `lazy?` is false).
+    - Encodes the full result using `Phantom.encode_bin/1`.
+
+    ## Returns
+
+      - `{:ok, binary}`: A binary-encoded list of decrypted items.
+    """
     def decrypt_all(key, opts \\ []) do
         lazy? = Keyword.get(opts, :lazy)
         only = Keyword.get(opts, :only)
@@ -82,6 +158,30 @@ defmodule MaxGallery.Context do
     end
 
 
+
+    @doc """
+    Deletes an encrypted file and optionally its associated binary data from storage.
+
+    ## Parameters
+
+      - `id` (string): The binary ID of the file to delete.
+      - `key` (binary/string): The encryption key used to validate access to the file.
+      - `opts` (keyword list, optional):
+        - `:shallow` (boolean) — If `true`, only removes the database entry; skips deleting the binary content.
+
+    ## Behavior
+
+    - Retrieves the file by its ID using `Core.Data.Api.get/1`.
+    - Verifies that the provided key is valid for the file using `Phantom.valid?/2`.
+    - Deletes the file entry from the database.
+    - If `:shallow` is not set or is false, also removes the file's encrypted binary blob from storage via `Core.Bucket.delete/1`.
+
+    ## Returns
+
+      - `{:ok, file}`: On successful deletion, returns the deleted file struct.
+      - `{:error, "invalid key"}`: If the key is not authorized to delete the file.
+      - `{:error, reason}`: If any operation (get, delete, etc.) fails.
+    """
     def cypher_delete(id, key, opts \\ []) do
         shallow? = Keyword.get(opts, :shallow) 
 
@@ -101,6 +201,31 @@ defmodule MaxGallery.Context do
     end
 
     
+    @doc """
+    Decrypts a single file or group entry by its ID.
+
+    ## Parameters
+
+      - `id` (string): The binary ID of the file or group to retrieve.
+      - `key` (binary/string): The encryption key used to decrypt the item's name and (if applicable) its contents.
+      - `opts` (keyword list, optional):
+        - `:lazy` (boolean) — If `true`, skips file blob decryption and returns only metadata.
+        - `:group` (boolean) — If `true`, retrieves a group instead of a file.
+
+    ## Behavior
+
+    - Fetches either a file (`Core.Data.Api.get/1`) or group (`GroupApi.get/1`) depending on the `:group` flag.
+    - Decrypts the encrypted name using the provided key.
+    - Returns the result depending on flags:
+      - **File (lazy)**: Returns `id`, `name`, `ext`, and `group_id` only.
+      - **File (full)**: Also includes decrypted `blob` content.
+      - **Group**: Returns `id`, `name`, and `group_id`.
+
+    ## Returns
+
+      - `{:ok, map}`: A map containing the decrypted fields of the requested item.
+      - `{:error, reason}`: If any decryption or retrieval fails.
+    """
     def decrypt_one(id, key, opts \\ []) do
         lazy? = Keyword.get(opts, :lazy)
         group? = Keyword.get(opts, :group)
@@ -149,6 +274,39 @@ defmodule MaxGallery.Context do
     end
 
 
+    @doc """
+    Updates an encrypted file's name, content (blob), or group association.
+
+    ## Parameters
+
+      - `id` (string): The binary ID of the file to update.
+      - `params` (map): One of the following:
+        - `%{name: new_name, blob: new_blob}` — updates both the file name and content.
+        - `%{name: new_name}` — updates only the file name.
+        - `%{group_id: new_group}` — updates only the group association.
+      - `key` (binary/string): The encryption key used to decrypt and validate the current file and re-encrypt updated data.
+
+    ## Behavior
+
+    Depending on the parameters:
+
+    - If `name` and `blob` are given:
+      - Encrypts the new name and blob.
+      - Replaces the stored blob in the bucket.
+      - Updates the file document in the database with new encryption fields and extension.
+
+    - If only `name` is given:
+      - Encrypts the new name.
+      - Updates only the file name and extension.
+
+    - If only `group_id` is given:
+      - Validates the key and updates the group reference for the file.
+
+    ## Returns
+
+      - `{:ok, updated}`: On success, returns the updated file struct.
+      - `{:error, "invalid key"}`: If the provided encryption key is not valid for this file.
+    """
     def cypher_update(id, %{name: new_name, blob: new_blob}, key) do
         ext = Path.extname(new_name)
         new_name = Path.basename(new_name, ext)
@@ -193,6 +351,28 @@ defmodule MaxGallery.Context do
     end
 
 
+    @doc """
+    Creates and inserts a new encrypted group into the system.
+
+    ## Parameters
+
+      - `group_name` (string): The plaintext name of the group to be created.
+      - `key` (binary/string): The encryption key used to encrypt the group name and metadata.
+      - `opts` (keyword list, optional):
+        - `:group` (string) — Optional parent group ID to nest the new group under.
+
+    ## Behavior
+
+    - Validates the encryption key using `Phantom.insert_line?/1`.
+    - Encrypts the group name.
+    - Encrypts a generated message from `Phantom.get_text()`.
+    - Stores the encrypted group in the database via `Core.Group.Api.insert/1`.
+
+    ## Returns
+
+      - `{:ok, id}`: The binary ID of the newly inserted group on success.
+      - `nil`: If the key validation fails (`Phantom.insert_line?/1` returns `false`).
+    """
     def group_insert(group_name, key, opts \\ []) do
         group = Keyword.get(opts, :group)
 
@@ -205,6 +385,32 @@ defmodule MaxGallery.Context do
         end
     end
 
+
+    @doc """
+    Updates an existing encrypted group's name or its parent group reference.
+
+    ## Parameters
+
+      - `id` (string): The binary ID of the group to update.
+      - `params` (map): One of the following:
+        - `%{name: new_name}` — updates the group's name.
+        - `%{group_id: group_id}` — updates the parent group association.
+      - `key` (binary/string): The encryption key used to validate and/or re-encrypt group data.
+
+    ## Behavior
+
+    - Retrieves the group by ID using `Core.Group.Api.get/1`.
+    - Verifies the encryption key using `Phantom.valid?/2`.
+    - If updating the name:
+      - Encrypts the new name and updates the encrypted fields.
+    - If updating the parent group:
+      - Sets the `group_id` reference to the new parent.
+
+    ## Returns
+
+      - `{:ok, updated}`: On successful update.
+      - `{:error, "invalid key"}`: If the encryption key is invalid for the group.
+    """
     def group_update(id, %{name: new_name}, key) do 
         {:ok, querry} = GroupApi.get(id)
         {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
@@ -225,6 +431,35 @@ defmodule MaxGallery.Context do
         end
     end
 
+    @doc """
+    Deletes an encrypted group and all its contents recursively after validation.
+
+    ## Parameters
+
+      - `id` (string): The binary ID of the group to be deleted.
+      - `key` (binary/string): The encryption key used to validate access to the group.
+
+    ## Process
+
+    The function:
+      - Retrieves the group by ID using `Core.Group.Api.get/1`
+      - Validates the encryption key using `Phantom.valid?/2`
+      - Performs a cascading deletion of all nested contents through `delete_cascade/2`:
+        - Recursively deletes all subgroups
+        - Deletes all files within those groups
+        - Cleans up binary storage for any deleted files
+
+    ## Returns
+
+      - `{:ok, group}`: Returns the deleted group struct on success.
+      - `{:error, "invalid key"}`: If the provided encryption key is not valid.
+      - `{:error, reason}`: If any step fails (retrieval, validation, or deletion).
+
+    ## Security
+
+    Requires a valid encryption key that matches the group's encryption scheme.
+    The operation is irreversible and will permanently remove all nested content.
+    """
     def group_delete(id, key) do
         with {:ok, querry} <- GroupApi.get(id),
              true <- Phantom.valid?(querry, key),
@@ -257,7 +492,7 @@ defmodule MaxGallery.Context do
 
         GroupApi.delete(group_id)
     end
-    def delete_cascade(group_id, key) do
+    defp delete_cascade(group_id, key) do
         with {:ok, querry} <- GroupApi.get(group_id),
              true <- Phantom.valid?(querry, key),
              {:ok, groups} <- GroupApi.all_group(group_id),
@@ -279,7 +514,46 @@ defmodule MaxGallery.Context do
 
     end
 
+    @doc """
+    Creates a duplicate of an encrypted file with optional modifications while maintaining security.
 
+    ## Parameters
+
+      - `id` (string): The binary ID of the original file to duplicate.
+      - `params` (map): Modification parameters for the duplicate:
+        - Can include any valid file fields (except protected metadata fields)
+        - Typically used to change `group_id` for the new copy
+      - `key` (binary/string): The encryption key used to:
+        - Decrypt the original file's metadata
+        - Re-encrypt the duplicate's data
+        - Validate operation authorization
+
+    ## Process
+
+    The function:
+      1. Retrieves the original file using `Core.Data.Api.get/1`
+      2. Strips protected metadata fields (`__struct__`, `__meta__`, etc.)
+      3. Merges the provided modification parameters
+      4. Decrypts the original file name using `Encrypter.decrypt/2`
+      5. Re-encrypts all sensitive data for the duplicate:
+         - File name via `Encrypter.encrypt/2`
+         - System message via `Phantom.get_text/0` + encryption
+      6. Validates the encryption key with `Phantom.insert_line?/1`
+      7. Inserts the new duplicate record via `Core.Data.Api.insert/1`
+
+    ## Returns
+
+      - `{:ok, new_id}`: The binary ID of the newly created duplicate file
+      - `{:error, "invalid key"}`: If the encryption key fails validation
+      - `{:error, reason}`: If any decryption, encryption or database operation fails
+
+    ## Security Notes
+
+    - Maintains all encryption standards of the original file
+    - Generates fresh IVs for all encrypted fields
+    - Preserves no direct references to the original's encrypted data
+    - Requires valid encryption key for both read and write operations
+    """
     def cypher_duplicate(id, params, key) do
         {:ok, querry} = DataApi.get(id)
 
@@ -320,7 +594,29 @@ defmodule MaxGallery.Context do
         end
     end
 
+    @doc """
+    Creates a complete duplicate of an encrypted group including all nested contents.
 
+    ## Parameters
+
+      - `id` (string): The binary ID of the original group to duplicate
+      - `params` (map): Modification parameters for the new group (typically `group_id`)
+      - `key` (binary/string): Encryption key for decrypting/encrypting contents
+
+    ## Process
+
+    1. Retrieves and decrypts original group metadata
+    2. Creates new encrypted group with fresh IVs
+    3. Recursively duplicates all nested groups and files using:
+       - `Utils.get_tree/2` to fetch hierarchy
+       - `Utils.mount_tree/4` to rebuild structure
+    4. Maintains original encryption standards for all copies
+
+    ## Returns
+
+      - `{:ok, new_id}`: ID of the new group root
+      - `{:error, "invalid key"}`: If key validation fails
+    """
     def group_duplicate(id, params, key) do
         {:ok, querry} = GroupApi.get(id)
 
@@ -386,6 +682,32 @@ defmodule MaxGallery.Context do
     end
 
 
+    @doc """
+    Generates a ZIP archive of either a single file or an entire group structure.
+
+    ## Parameters
+
+      - `id` (string | "main"): ID of item to zip ("main" for root group)
+      - `key` (binary/string): Decryption key for contents
+      - `opts` (keyword list):
+        - `:group` (boolean): Set true when zipping a group
+
+    ## Behavior
+
+    For groups:
+      - Decrypts group name
+      - Fetches complete tree structure (Using Utils.get_tree/2)
+      - Creates ZIP with preserved hierarchy
+
+    For files:
+      - Decrypts both filename and content
+      - Packages as single file in ZIP
+
+    ## Returns
+
+      - ZIP binary data on success
+      - Original error tuples on failure
+    """
     def zip_content(id, key, opts \\ []) do
         group? = Keyword.get(opts, :group)
         id = 
@@ -438,10 +760,33 @@ defmodule MaxGallery.Context do
     end
 
 
+    @doc """
+    Deletes ALL encrypted groups and files from the system.
+
+    ## Parameters
+      - `key` (binary/string): Admin-level encryption key for validation
+
+    ## Process
+    1. Validates the key via `Phantom.insert_line?/1`
+    2. Performs complete wipe of:
+       - All groups via `Core.Group.Api.delete_all()`
+       - All files via `Core.Data.Api.delete_all()`
+       - All storage content via `Core.Bucket.drop()` 
+
+    ## Returns
+      - `{:ok, count}`: Total number of deleted records (groups + files)
+      - `{:error, reason}`: If key validation fails or deletion encounters errors
+
+    ## Security Warning
+    - This is a DESTRUCTIVE operation with no recovery
+    - Requires valid database key
+    - Should be restricted to maintenance/emergency use
+    """
     def delete_all(key) do
         with true <- Phantom.insert_line?(key),
              {count_group, nil} <- GroupApi.delete_all(),
-             {count_data, nil} <- DataApi.delete_all() do
+             {count_data, nil} <- DataApi.delete_all(),
+             :ok <- Bucket.drop() do
 
             {:ok, count_group + count_data}
         else
@@ -449,6 +794,35 @@ defmodule MaxGallery.Context do
         end
     end
 
+
+    @doc """
+    Performs a system-wide encryption key rotation for all groups and files.
+
+    ## Parameters
+      - `key` (binary/string): Current valid admin encryption key
+      - `new_key` (binary/string): New encryption key to apply system-wide
+
+    ## Process
+    1. Validates current admin key via `Phantom.insert_line?/1`
+    2. For all groups:
+       - Decrypts names with old key
+       - Re-encrypts names and metadata with new key
+    3. For all files:
+       - Decrypts names and content with old key
+       - Re-encrypts with new key
+       - Updates storage with new encrypted blobs
+    4. Maintains all data relationships and structure
+
+    ## Returns
+      - `{:ok, count}`: Total number of updated records
+      - `{:error, "invalid key"}`: If current key validation fails
+
+    ## Security Notes
+    - Requires uninterrupted execution (consider transaction wrapping)
+    - Old key must remain valid during migration
+    - Generates fresh IVs for all encrypted fields
+    - Does NOT maintain ability to decrypt with old key
+    """
     def update_all(key, new_key) do
         if Phantom.insert_line?(key) do
             {:ok, group_list} = GroupApi.all()

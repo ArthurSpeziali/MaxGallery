@@ -2,11 +2,9 @@ defmodule MaxGallery.UtilsTest do
     use ExUnit.Case
     alias MaxGallery.Utils
     alias MaxGallery.Context
-    alias MaxGallery.Core.Bucket
 
 
     setup do
-        Bucket.drop()
         Context.delete_all("key")
 
         {:ok,

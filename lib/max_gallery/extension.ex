@@ -1,4 +1,35 @@
 defmodule MaxGallery.Extension do
+    @moduledoc """
+    Handles file extensions, MIME types, and size formatting for MaxGallery.
+
+    This module provides utilities for:
+
+    ## File Type Management
+    - Categorizes files into types (audio, text, image, video)
+    - Maintains comprehensive lists of supported extensions
+    - Provides MIME type detection
+    - Fallback behavior for unknown types
+
+    ## Core Functionality
+    - `get_ext/1` - Determines file category from extension
+    - `get_mime/1` - Maps extensions to proper MIME types  
+    - `convert_size/1` - Formats byte sizes for human readability
+
+    ## Supported Formats
+    - Audio: MP3, WAV, OGG, FLAC, AAC and others
+    - Text: TXT, CSV, JSON, HTML and many document formats
+    - Image: JPG, PNG, GIF, SVG, WEBP and other image formats
+    - Video: MP4, MKV, AVI, MOV, WEBM and other video formats
+
+    ## Design Features
+    - Internal extension lists are private but comprehensive
+    - Smart fallbacks (unknown files treated as text)
+    - HTML5-compatible MIME types
+    - Human-friendly size formatting
+    - Optimized for fast lookups
+    """
+
+
 
     defp exts(:audio) do 
        [:mp3, :wav, :ogg, :flac, :aac, :m4a, :wma, :alac, :aiff, :amr, :opus, :mid, :midi, :pcm, :ra]
@@ -19,7 +50,7 @@ defmodule MaxGallery.Extension do
           webm: "video/webm",
           mpeg: "video/mpeg",
           avi: "video/x-msvideo",
-          mkv: "video/x-matroska", # This file type does not work in html 5!
+          mkv: "video/x-matroska", # This mime type does not work in Html5!
           wmv: "video/x-ms-wmv",
           mov: "video/quicktime",
           "3gp": "video/3gpp",
@@ -43,6 +74,16 @@ defmodule MaxGallery.Extension do
     end
 
 
+    @doc """
+    Determines the file category based on its extension.
+
+    ## Parameters
+    - `ext`: String - The file extension including dot (e.g. ".mp3")
+
+    ## Returns
+    String - The file category ("audio", "text", "image", or "video").
+             Returns "text" for unknown extensions.
+    """
     def get_ext(ext) do
         atom_ext = String.slice(ext, 1..-1//1)
                    |> String.to_atom()
@@ -56,6 +97,29 @@ defmodule MaxGallery.Extension do
         end
     end
 
+    @doc """
+    Maps a file extension to its corresponding MIME type.
+
+    ## Parameters
+    - `ext`: String - The file extension including the dot (e.g. ".jpg", ".mp4")
+
+    ## Returns
+    String - The corresponding MIME type string. Returns "image/png" as default for:
+             - Unknown extensions
+             - Invalid input formats
+             - nil values
+
+    ## Behavior
+    1. Strips the leading dot from the extension
+    2. Converts to atom for efficient Map lookup
+    3. Performs case-sensitive match against known MIME types
+    4. Falls back to "image/png" when no match found
+
+    ## Performance
+    - Uses atom conversion for fast Map lookup
+    - Minimal string manipulation
+    - Single Map traversal
+    """
     def get_mime(ext) do
         atom_ext = String.slice(ext, 1..-1//1)
                    |> String.to_atom()
@@ -70,7 +134,22 @@ defmodule MaxGallery.Extension do
     end
 
 
-    def convert_size(bytes) do
+    @doc """
+    Converts byte size to human-readable format with appropriate unit.
+
+    ## Parameters
+    - `bytes`: Integer - File size in bytes
+
+    ## Returns
+    String - Formatted size with unit (e.g. "1.23 Mb")
+
+    ## Conversion Rules
+    - < 1 KB: displays in bytes (e.g. "512 B")
+    - 1 KB to 1 MB: displays in kilobytes (e.g. "2.5 KB")
+    - 1 MB to 1 GB: displays in megabytes (e.g. "150.75 MB")
+    - > 1 GB: displays in gigabytes (e.g. "3.5 GB")
+    """
+    def convert_size(bytes) when is_integer(bytes) do
         case bytes do
             x when x > 1024 * 1024 * 1024 -> "#{x / 1024 ** 3 |> Float.round(2)} Gb"
             x when x > 1024 * 1024 -> "#{x / 1024 ** 2 |> Float.round(2)} Mb"

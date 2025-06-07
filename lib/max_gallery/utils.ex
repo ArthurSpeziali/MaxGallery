@@ -5,7 +5,53 @@ defmodule MaxGallery.Utils do
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
 
+    @moduledoc """
+    This module provides utility functions for supporting operations across the MaxGallery system.
 
+    It offers essential helper functions for:
+
+    - Navigating and manipulating group hierarchies and file structures;
+    - Calculating aggregated sizes of groups and files;
+    - Handling timestamps with timezone adjustments;
+    - Building and processing encrypted directory trees;
+    - Generating zip archives from files or entire folder structures;
+    - Performing pattern matching searches on encrypted content.
+
+    Key utilities include:
+
+    - `get_tree/3` - Recursively builds decrypted directory structures;
+    - `mount_tree/4` - Reconstructs encrypted trees for storage;
+    - `zip_file/2` and `zip_folder/2` - Creates zip archives from content;
+    - `get_size/2` - Calculates total size of items/groups;
+    - `get_timestamps/2` - Handles localized timestamp operations.
+
+    The module works closely with:
+
+    - `MaxGallery.Encrypter` for cryptographic operations;
+    - `MaxGallery.Core` APIs for data access;
+    - `MaxGallery.Phantom` for metadata generation.
+
+    All cryptographic operations require proper encryption keys, and file operations
+    are performed in a temporary directory that should be cleaned up after use.
+    """
+
+
+    @doc """
+    Retrieves the parent group ID for a given item ID.
+
+    ## Parameters
+    - `id` - The ID of the item (group or file) to look up. Can be `nil`.
+
+    ## Returns
+    - `nil` if the input ID is `nil`
+    - The parent group ID (`group_id`) if the item exists
+
+    ## Notes
+    - Operates exclusively through the GroupApi module
+    - Will raise an exception if the queried item lacks a group_id field
+    - Does not validate the existence of the returned parent group
+    - Primarily used for navigation within group hierarchies
+    """
     def get_back(id) do
         case id do
             nil -> nil
@@ -15,6 +61,28 @@ defmodule MaxGallery.Utils do
         end
     end
 
+    @doc """
+    Retrieves all items (files and groups) belonging to a specified group.
+
+    ## Parameters
+    - `id` - The ID of the parent group
+    - `opts` - Optional keyword list for filtering:
+      - `:only` - Atom specifying what to return:
+        - `:datas` - Returns only files
+        - `:groups` - Returns only subgroups
+        - `nil` (default) - Returns both files and subgroups
+
+    ## Returns
+    - `{:ok, list}` - Tuple with :ok and a list of items on success
+      - The list contains both file and group structs when no filter is applied
+      - Contains only the requested type when filtered
+
+    ## Notes
+    - Makes parallel calls to DataApi (for files) and GroupApi (for subgroups)
+    - The combined result maintains no particular order
+    - Returns empty list if the group contains no items
+    - Does not recursively fetch items from nested subgroups
+    """
     def get_group(id, opts \\ []) do
         only = Keyword.get(opts, :only)
 
@@ -35,6 +103,29 @@ defmodule MaxGallery.Utils do
         end
     end
 
+    @doc """
+    Calculates the total size of a file or recursively for a group and its contents.
+
+    ## Parameters
+    - `id` - The ID of the item (file or group) to measure
+    - `opts` - Optional keyword list:
+      - `:group` - Boolean flag indicating whether the ID refers to a group
+        - When true, calculates recursively for all contents
+        - When false or omitted for files, returns individual file size
+
+    ## Returns
+    - Integer representing the total size in bytes:
+      - For files: The actual file size from storage
+      - For groups: Sum of all contained items' sizes
+      - 0 for empty groups
+
+    ## Notes
+    - For groups, performs recursive calculation through all nested contents
+    - Determines if items are subgroups by checking for :ext field presence
+    - Uses Bucket.get/1 to retrieve actual file sizes from storage
+    - Returns raw size values without unit conversion
+    - May raise exceptions if the item doesn't exist or lacks required fields
+    """
     def get_size(id, opts \\ []) do
         group? = Keyword.get(opts, :group)
 
@@ -63,6 +154,28 @@ defmodule MaxGallery.Utils do
         end
     end
 
+    @doc """
+    Retrieves and adjusts timestamps for an item (file or group) to local time.
+
+    ## Parameters
+    - `id` - The ID of the item to get timestamps for
+    - `opts` - Optional keyword list:
+      - `:group` - Boolean flag indicating whether the ID refers to a group
+        - When true, uses GroupApi
+        - When false or omitted, uses DataApi
+
+    ## Returns
+    - Map with adjusted timestamps:
+      - `:inserted_at` - Local time when the item was created
+      - `:updated_at` - Local time when the item was last modified
+
+    ## Notes
+    - Automatically converts UTC timestamps to local time
+    - Calculates timezone offset based on system time
+    - Only adjusts the hour component (doesn't handle minutes)
+    - Preserves the original timestamp structure from the database
+    - Will raise if the item doesn't exist or lacks timestamp fields
+    """
     def get_timestamps(id, opts \\ []) do
         group? = Keyword.get(opts, :group)
 
@@ -84,6 +197,33 @@ defmodule MaxGallery.Utils do
         end)
     end
 
+    @doc """
+    Recursively builds a decrypted tree structure of a group's contents.
+
+    ## Parameters
+    - `id` - The ID of the root group to build the tree from
+    - `key` - The encryption key used to decrypt names and content
+    - `opts` - Optional keyword list:
+      - `:lazy` - Boolean flag for lazy loading:
+        - When true, skips downloading and decrypting file contents
+        - When false (default), includes full decrypted content
+
+    ## Returns
+    - List of items with the structure:
+      - For files: `%{data: %{id, name, ext, group, file}}` map
+        - When not lazy: includes `blob` with decrypted content
+      - For groups: `%{group: {group_info, nested_items}}` tuple
+        - `group_info`: `%{id, name, group}` map
+        - `nested_items`: Recursive tree structure
+
+    ## Notes
+    - Uses depth-first recursion to build nested structures
+    - Decrypts both names and content using the provided key
+    - For files, handles both metadata and optional content decryption
+    - Returns empty list for empty groups
+    - Maintains original hierarchy and relationships
+    - Performance scales with group size and depth when not lazy
+    """
     def get_tree(id, key, opts \\ []) do
         lazy? = Keyword.get(opts, :lazy)
         {:ok, contents} = get_group(id)
@@ -138,10 +278,45 @@ defmodule MaxGallery.Utils do
                     }}
                 end
             end)
+
         end
     end
 
 
+    @doc """
+    Reconstructs and encrypts a file/group tree for storage in the database.
+
+    ## Parameters
+    - `tree` - The tree structure (from get_tree/3) to process
+    - `params` - Base parameters to merge with each item's data
+    - `fun` - 2-arity callback function that receives:
+      - The prepared item parameters
+      - Atom specifying item type (:data or :group)
+    - `key` - Encryption key for securing all content
+
+    ## Behavior
+    For each item in the tree:
+    - Files (%{data: data}):
+      - Encrypts filename and content
+      - Merges with base params
+      - Calls fun with :data and prepared params
+    - Groups (%{group: {group, subitems}}):
+      - Encrypts group name
+      - Merges with base params
+      - Calls fun with :group
+      - Recursively processes subgroups
+
+    ## Notes
+    - Uses depth-first traversal
+    - Automatically generates and encrypts phantom metadata for all items
+    - Maintains original hierarchy through recursive processing
+    - The callback function is responsible for persistence
+    - Encryption includes:
+      - Names for both files and groups
+      - Content blobs for files
+      - Phantom metadata text
+    - Callback receives ready-to-store encrypted parameters
+    """
     def mount_tree(tree, params, fun, key) when is_function(fun, 2) do
         Enum.each(tree, fn item -> 
 
@@ -190,7 +365,28 @@ defmodule MaxGallery.Utils do
         end)
     end
 
+    @doc """
+    Creates a ZIP archive containing a single encrypted file in a temporary location.
 
+    ## Parameters
+    - `name` - The filename (without extension) to use in the archive
+    - `blob` - The binary content to compress
+
+    ## Returns
+    - `{:ok, path}` on success where:
+      - `path` is the full filesystem path to the created ZIP file
+    - `{:error, reason}` on failure
+
+    ## Notes
+    - Files are stored in `/tmp/max_gallery/zips/`
+    - Automatically creates directory structure if needed
+    - Appends random suffix to prevent filename collisions
+    - Uses Erlang's `:zip` module for compression
+    - ZIP contents will contain exactly one file
+    - Caller is responsible for cleaning up temporary files
+    - Filenames are converted to charlists for Erlang compatibility
+    - Does not modify or encrypt the content - assumes already encrypted
+    """
     def zip_file(name, blob) do
         File.mkdir_p("/tmp/max_gallery/zips")
 
@@ -205,6 +401,30 @@ defmodule MaxGallery.Utils do
         {:ok, final_path |> List.to_string()}
     end
 
+    @doc """
+    Creates a ZIP archive of an entire folder structure from a decrypted tree.
+
+    ## Parameters
+    - `tree` - The hierarchical tree structure (from `get_tree/3`)
+    - `group_name` - Base name to use for the output zip file
+
+    ## Returns
+    - `{:ok, path}` tuple where:
+      - `path` is the full filesystem path to the created ZIP archive
+    - `{:error, reason}` if compression fails
+
+    ## Notes
+    - Stores archives in `/tmp/max_gallery/zips/` (auto-creates directory)
+    - Appends random number (1-1000) to prevent naming conflicts
+    - Sanitizes group name by replacing spaces and slashes
+    - Preserves full folder structure in the archive
+    - Uses `extract_tree/1` and `parse_path/3` internally to:
+      - Flatten the hierarchical structure
+      - Build proper relative paths for all files
+    - Resulting ZIP will mirror the original folder hierarchy
+    - Uses Erlang's `:zip` module for compression
+    - Maximum archive size depends on available disk space
+    """
     def zip_folder(tree, group_name) do 
         File.mkdir_p("/tmp/max_gallery/zips")
         folder = group_name <> "_#{Enum.random(1..1_000)}"
@@ -251,11 +471,29 @@ defmodule MaxGallery.Utils do
     end
 
 
-    # "=~" == Regex
+    @doc """
+    Filters a query result by name using case-insensitive pattern matching.
+
+    ## Parameters
+    - `query` - Enumerable collection of items to filter
+    - `like` - String pattern to match against item names
+
+    ## Returns
+    - Filtered list of items where the name matches the pattern
+
+    ## Notes
+    - Performs case-insensitive comparison by downcasing both strings
+    - Uses regex pattern matching (=~ operator)
+    - The pattern can include regex special characters
+    - Preserves original item ordering from input query
+    - Useful for implementing search functionality
+    - More efficient than loading all records then filtering
+    """
     def get_like(querry, like) do
         Enum.filter(querry, fn item -> 
             String.downcase(
                 item.name
+            # "=~" == Regex
             ) =~ String.downcase(
                 like
             )

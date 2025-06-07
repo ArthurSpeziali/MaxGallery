@@ -39,7 +39,7 @@ defmodule MaxGallery.Core.Data.Api do
         |> first()
         |> Repo.one()
         |> case do
-            nil -> {:error, nil}
+            nil -> {:error, "not found"}
             querry -> {:ok, querry}
         end
     end
