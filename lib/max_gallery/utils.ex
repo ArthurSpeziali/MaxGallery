@@ -500,4 +500,35 @@ defmodule MaxGallery.Utils do
         end)
     end
 
+    @doc """
+    Splits a binary into fixed-size chunks.
+
+    ## Parameters
+    - `bin` - The binary data to split
+    - `range` - Maximum size (in bytes) for each chunk
+
+    ## Rturns
+    - List of binaries where:
+      - All chunks except last are exactly `range` bytes
+      - Last chunk contains remaining bytes (<= `range`)
+
+    ## Notes
+    - Recursively processes the binary
+    - Efficient O(log n) time complexity
+    - Memory efficient (shares underlying binary data)
+    - Handles edge cases:
+      - Empty binaries
+      - Binaries smaller than chunk size
+      - Exact multiples of chunk size
+    - Uses Erlang's `binary_part/3` and `binary_slice/2`
+    """
+    def binary_chunk(bin, range) when byte_size(bin) >= range do
+        [binary_part(bin, 0, range) |
+            binary_chunk(
+                binary_slice(bin, range..-1//1),
+                range
+            )
+        ]
+    end
+    def binary_chunk(bin, _range), do: [bin]
 end

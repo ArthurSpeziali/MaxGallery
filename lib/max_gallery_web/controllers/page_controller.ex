@@ -3,6 +3,7 @@ defmodule MaxGalleryWeb.PageController do
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Extension
     alias MaxGallery.Context
+    alias MaxGallery.Utils
 
 
     defp content_render(conn, id) do
@@ -42,7 +43,28 @@ defmodule MaxGalleryWeb.PageController do
     end
 
     def videos(conn, %{"id" => id}) do
-        content_render(conn, id)
+        key = get_session(conn, :auth_key)
+
+        case Context.decrypt_one(id, key) do
+            {:ok, %{blob: blob, ext: ext}} ->
+                mime = Extension.get_mime(ext)
+
+                conn = put_resp_content_type(conn, mime)
+                       |> put_resp_header("accept-ranges", "bytes")
+                       |> send_chunked(200)
+
+
+                Utils.binary_chunk(blob, 128 * 1024) # 128KB
+                |> Enum.reduce_while(conn, fn blob_chunk, conn -> 
+    
+                    case chunk(conn, blob_chunk) do
+                        {:ok, conn} -> {:cont, conn}
+                        {:error, _reason} -> {:halt, conn}
+                    end
+                end)
+
+            error -> error
+        end
     end
 
     def audios(conn, %{"id" => id}) do

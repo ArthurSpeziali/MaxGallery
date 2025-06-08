@@ -9,7 +9,7 @@ defmodule MaxGalleryWeb.ShowLive do
         key = LiveServer.get(:auth_key)
         page_id = LiveServer.get(:page_id)
 
-        {:ok, querry} = Context.decrypt_one(id, key) 
+        {:ok, querry} = Context.decrypt_one(id, key, lazy: true) 
         data = Phantom.encode_bin(querry)
                |> List.first()
 

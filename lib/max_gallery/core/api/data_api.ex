@@ -33,7 +33,6 @@ defmodule MaxGallery.Core.Data.Api do
 
     def first() do
         fields = Data.fields()
-                 |> List.delete(:blob_iv)
 
         from(d in Data, select: map(d, ^fields))
         |> first()
