@@ -83,6 +83,7 @@ defmodule MaxGallery.Context do
             end 
 
 
+        ## The `cyphers` table stores the file’s metadata and the identifier to find the content inside the `gridfs` bucket.
         with true <- Phantom.insert_line?(key),
              {:ok, {blob_iv, blob}} <- Encrypter.file(:encrypt, path, key),
              {:ok, file_id} <- Bucket.write(blob) |> Bucket.upload(name),
@@ -104,6 +105,7 @@ defmodule MaxGallery.Context do
     end
 
 
+    ## Private recursive function to return the already encrypted data of each date/group to be stored in the database.
     defp send_package(%{ext: _ext} = item, lazy?, key) do
         {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
 
@@ -189,6 +191,7 @@ defmodule MaxGallery.Context do
              true <- Phantom.valid?(querry, key),
              {:ok, _querry} <- DataApi.delete(id) do
 
+            ## Option to not delete the actual content in the bucket, only its metadata. (Not recoverable).
             if !shallow? do
                 Bucket.delete(querry.file_id)
             end
@@ -463,7 +466,8 @@ defmodule MaxGallery.Context do
     def group_delete(id, key) do
         with {:ok, querry} <- GroupApi.get(id),
              true <- Phantom.valid?(querry, key),
-             {:ok, _boolean} <- delete_cascade(id, key) do
+             {:ok, _boolean} <- delete_cascade(id, key) do 
+             ## Calls the private function `delete_cascade/2` to recursively delete all content within a group.
 
             {:ok, querry}
         else
@@ -711,6 +715,7 @@ defmodule MaxGallery.Context do
     def zip_content(id, key, opts \\ []) do
         group? = Keyword.get(opts, :group)
         id = 
+            ## Since `nil` can’t be passed as a valid value in a .heex (only strings), this conversion is necessary.
             if id == "main" do
                 nil
             else
@@ -824,6 +829,7 @@ defmodule MaxGallery.Context do
     - Does NOT maintain ability to decrypt with old key
     """
     def update_all(key, new_key) do
+        ## This function is poor, if the user cancel the operation in the process, the entire database will be corrupted. Should i refactor that?
         if Phantom.insert_line?(key) do
             {:ok, group_list} = GroupApi.all()
             Enum.each(group_list, fn group ->

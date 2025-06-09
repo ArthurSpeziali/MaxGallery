@@ -332,6 +332,7 @@ defmodule MaxGallery.Utils do
                     %{name: name, name_iv: name_iv, blob: blob, blob_iv: blob_iv, msg: msg, msg_iv: msg_iv, ext: data.ext, group_id: data.group, file_id: data.file}
                     |> Map.merge(params)
                     |> fun.(:data)
+                    ## Uses the recursive function to modify an item for insertion, returns nothing in the end. If it’s a group, the returned item will be the `params` field for its child item.
 
 
                 %{group: {group, subitems}} -> 
@@ -350,6 +351,7 @@ defmodule MaxGallery.Utils do
         end)
     end
 
+    ## FFunction for extract tree's name and content.
     defp extract_tree(tree) do
         Enum.map(tree, fn item -> 
 
@@ -391,6 +393,7 @@ defmodule MaxGallery.Utils do
         File.mkdir_p("/tmp/max_gallery/zips")
 
         {:ok, final_path} = 
+            ## Use `:zip` Erlang module for this operation.
             :zip.create("/tmp/max_gallery/zips/#{name}_#{Enum.random(1..999//1)}.zip" |> String.to_charlist(), [
                 {
                     name |> String.to_charlist(), 
@@ -444,6 +447,7 @@ defmodule MaxGallery.Utils do
     end
 
 
+    ## Function to iterate a tree and create a valid file structure for the `:zip` module.
     defp parse_path(tree, folder, back_folder \\ nil)
     defp parse_path([], _folder, _back_folder), do: []
     defp parse_path([head | tail], folder, back_folder) do
@@ -493,7 +497,7 @@ defmodule MaxGallery.Utils do
         Enum.filter(querry, fn item -> 
             String.downcase(
                 item.name
-            # "=~" == Regex
+            # Use the `=~` sinal. That represents Regex term.
             ) =~ String.downcase(
                 like
             )
@@ -514,7 +518,6 @@ defmodule MaxGallery.Utils do
 
     ## Notes
     - Recursively processes the binary
-    - Efficient O(log n) time complexity
     - Memory efficient (shares underlying binary data)
     - Handles edge cases:
       - Empty binaries
@@ -523,6 +526,7 @@ defmodule MaxGallery.Utils do
     - Uses Erlang's `binary_part/3` and `binary_slice/2`
     """
     def binary_chunk(bin, range) when byte_size(bin) >= range do
+        ## In my mind, this function is O(log n), but my supervisor insists it’s O(n).
         [binary_part(bin, 0, range) |
             binary_chunk(
                 binary_slice(bin, range..-1//1),

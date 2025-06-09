@@ -3,6 +3,7 @@ defmodule MaxGallery.Core.Data do
     alias MaxGallery.Core.Group
 
 
+    ## These `@primary_key` and `foreign_key_type` are nescessary for the Mongo binary_id compatibility.
     @primary_key {:id, :binary_id, autogenerate: true}
     @foreign_key_type :binary_id
     schema "cyphers" do
@@ -23,6 +24,7 @@ defmodule MaxGallery.Core.Data do
         Ecto.Changeset.cast(model, params, [:name, :name_iv, :file_id, :blob_iv, :ext, :group_id, :msg, :msg_iv])
     end
 
+    ## Return all `Data` fields.
     def fields() do
         %__MODULE__{}
         |> Map.drop([

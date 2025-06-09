@@ -1,8 +1,10 @@
 defmodule MaxGalleryWeb.MoveLive do
+    ## Module for the site's moving and copying action in the page.
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Context
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Utils
+
 
 
     def mount(%{"action" => action} = params, _session, socket) do
@@ -28,6 +30,7 @@ defmodule MaxGalleryWeb.MoveLive do
                         group: true
                     ) 
 
+                    ## Removes itself from the list (if it's a group) to avoid infinite recursion.
                     raw_groups -- [content] 
                 else
                     raw_groups
@@ -67,6 +70,7 @@ defmodule MaxGalleryWeb.MoveLive do
         action = socket.assigns[:action]
         back_id = socket.assigns[:page_id]
                   |> Utils.get_back()
+                  ## This is only time that `Utils.get_back/1` is called. Should i delete this function?
                   
         {:noreply, 
             push_navigate(socket, to: "/move/#{back_id}?action=#{action}")

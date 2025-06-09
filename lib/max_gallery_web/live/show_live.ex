@@ -1,4 +1,5 @@
 defmodule MaxGalleryWeb.ShowLive do
+    ## Module for site's contents show page.
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Phantom

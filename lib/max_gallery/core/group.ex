@@ -14,6 +14,7 @@ defmodule MaxGallery.Core.Group do
         has_many :cypher, Data
 
         belongs_to :group, __MODULE__
+        ## `group_id` can be inserted in both structs (Datas and Groups). that represents your parent folder.
         has_many :subgroup, __MODULE__
 
         timestamps()

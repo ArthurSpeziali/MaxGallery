@@ -1,9 +1,11 @@
 defmodule MaxGalleryWeb.EditorLive do
+    ## Module for the site's editor field.
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Context
     alias MaxGallery.Phantom
     alias MaxGallery.Extension
+
 
 
     def mount(%{"id" => id}, _session, socket) do
@@ -15,6 +17,7 @@ defmodule MaxGalleryWeb.EditorLive do
         ext = Map.fetch!(lazy_data, :ext) 
                 |> Extension.get_ext()
 
+        ## If the type is not text, it only allows editing its name (enters lazy mode).
         lazy? = 
             if ext == "text" do
                 nil

@@ -45,13 +45,17 @@
 
         </div>
 
-        <div class="flex items-center justify-center mt-12">
-            <form phx-submit="select" phx-value-id="main">
-                <button phx-click="loading" class="text-lg font-bold text-blue-800 underline">
-                    Select Here
-                </button>
-            </form>
-        </div>
+
+        
+        <%= if !@page_id do %>
+            <div class="flex items-center justify-center mt-12">
+                <form phx-submit="select" phx-value-id="main">
+                    <button phx-click="loading" class="text-lg font-bold text-blue-800 underline">
+                        Select Here
+                    </button>
+                </form>
+            </div>
+        <% end %>
 
 
         <%= if @loading do %>

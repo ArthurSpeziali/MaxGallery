@@ -1,8 +1,10 @@
 defmodule MaxGalleryWeb.ConfigLive do
+    ## Module for the site's settings page.
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Phantom
     alias MaxGallery.Context
+
 
 
     def mount(_params, _session, socket) do

@@ -1,9 +1,11 @@
 defmodule MaxGalleryWeb.DataLive do
+    ## Module for the site's main page.
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Context
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Extension
     alias MaxGallery.Utils
+
 
 
     def mount(params, %{"auth_key" => key}, socket) do
@@ -149,6 +151,7 @@ defmodule MaxGalleryWeb.DataLive do
 
     def handle_event("ask_folder", _params, socket) do
         socket = assign(socket,
+            ## Reuses the same variable to create groups.
             rename_iframe: :create,
             name_group: ""
         )
@@ -188,6 +191,7 @@ defmodule MaxGalleryWeb.DataLive do
     def handle_event("copy", %{"id" => id}, socket) do
         page_id = socket.assigns[:page_id]
         type = socket.assigns[:type]
+
         LiveServer.put(%{object_info: %{
             id: id,
             type: type
@@ -221,6 +225,8 @@ defmodule MaxGalleryWeb.DataLive do
                 "Main"
             end
 
+
+        ## Adjusts the NaiveDateTime to be displayed on the web.
         %{inserted_at: inserted_at, updated_at: updated_at} = Utils.get_timestamps(id, group: group?)
         timestamps = %{
             inserted_at: NaiveDateTime.to_string(inserted_at),

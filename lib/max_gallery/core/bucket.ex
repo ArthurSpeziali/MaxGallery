@@ -7,17 +7,20 @@ defmodule MaxGallery.Core.Bucket do
 
 
     defp mongo_pid() do
+        ## Extract the Mongo operation pid, from Ecto (Using mongodb_driver).
         Ecto.Adapter.lookup_meta(MaxGallery.Repo)
         |> Map.fetch!(:pid)
     end
 
     defp get_id(stream) do
+        ## Get the id from a Mongo Stream, Kind of useless.
         stream.id.value
         |> Base.encode16(case: :lower)
     end
 
     
     def get_bucket() do
+        ## If the bucket dows not exists, create new.
         Bucket.new(
             mongo_pid(),
             name: @bucket
@@ -89,6 +92,7 @@ defmodule MaxGallery.Core.Bucket do
     end
 
     def get(id) do
+        ## Get only the file metadata.
         bucket = get_bucket()
 
         {:ok, 
