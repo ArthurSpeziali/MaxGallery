@@ -52,4 +52,5 @@ defmodule MaxGallery.Server.LiveServer do
     def clr() do
         GenServer.cast(@mod, :clr)
     end
+
 end
