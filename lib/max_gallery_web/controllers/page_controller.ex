@@ -6,6 +6,7 @@ defmodule MaxGalleryWeb.PageController do
     alias MaxGallery.Utils
 
 
+    ## Decrypt the file and shows instantly.
     defp content_render(conn, id) do
         key = get_session(conn, :auth_key)
         {:ok, querry} = Context.decrypt_one(id, key) 
@@ -30,9 +31,11 @@ defmodule MaxGalleryWeb.PageController do
         redirect(conn, to: "/")
     end
 
+    ## Remove assings, cookies, files, etc...
     def logout(conn, _params) do
         LiveServer.clr()
-            
+        File.rm_rf!("/tmp/max_gallery")
+
         configure_session(conn, drop: true)
         |> redirect(to: "/")
     end
@@ -42,6 +45,8 @@ defmodule MaxGalleryWeb.PageController do
         content_render(conn, id)
     end
 
+
+    ## Decrypt the video, and chucked it. It's ensure the videos loads faster.
     def videos(conn, %{"id" => id}) do
         key = get_session(conn, :auth_key)
 
@@ -98,4 +103,9 @@ defmodule MaxGalleryWeb.PageController do
         redirect(conn, to: "/data")
     end
 
+
+    def not_found(conn, _params) do
+        put_status(conn, 404)
+        |> render(:error, layout: false)
+    end
 end

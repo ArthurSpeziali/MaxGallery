@@ -19,7 +19,7 @@ defmodule MaxGallery.Application do
       # Start to serve requests, typically the last entry
       MaxGalleryWeb.Endpoint,
         
-      ## ADICIONAR O GENSERVER AQUI
+      ## Custom GenServers here
       MaxGallery.Server.LiveServer,
       MaxGallery.Server.GarbageServer
     ]

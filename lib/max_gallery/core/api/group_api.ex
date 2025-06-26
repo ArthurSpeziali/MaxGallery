@@ -4,6 +4,7 @@ defmodule MaxGallery.Core.Group.Api do
     alias MaxGallery.Repo
 
 
+    ## Get all groups who are children. It's not recursive.
     def all_group(group_id) do
         querry = 
             case group_id do

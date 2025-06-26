@@ -17,6 +17,7 @@ defmodule MaxGallery.Server.GarbageServer do
                 |> Enum.count()
 
 
+        ## Once an hour, the function checks if exists any "lost" file. 
         Process.send_after(self(), :check, @time_check)
         {:ok, count}
     end
