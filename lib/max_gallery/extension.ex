@@ -45,32 +45,63 @@ defmodule MaxGallery.Extension do
     end
 
     defp mime_map() do
-        %{
-          mp4: "video/mp4",
-          webm: "video/webm",
-          mpeg: "video/mpeg",
-          avi: "video/x-msvideo",
-          mkv: "video/x-matroska", # This mime type does not work in Html5!
-          wmv: "video/x-ms-wmv",
-          mov: "video/quicktime",
-          "3gp": "video/3gpp",
-          jpg: "image/jpeg",
-          jpeg: "image/jpeg",
-          png: "image/png",
-          gif: "image/gif",
-          svg: "image/svg+xml",
-          webp: "image/webp",
-          bmp: "image/bmp",
-          tiff: "image/tiff",
-          ico: "image/x-icon",
-          mp3: "audio/mpeg",
-          ogg: "audio/ogg",
-          wav: "audio/wav",
-          aac: "audio/aac",
-          flac: "audio/flac",
-          midi: "audio/midi",
-          m4a: "audio/mp4",
-        }
+      %{
+        # Video
+        mp4: "video/mp4",
+        m4v: "video/x-m4v",
+        webm: "video/webm",
+        mpeg: "video/mpeg",
+        mpg: "video/mpeg",
+        avi: "video/x-msvideo",
+          mkv: "video/x-matroska", # This MIME don't work in HTML5!
+        wmv: "video/x-ms-wmv",
+        mov: "video/quicktime",
+        "3gp": "video/3gpp",
+        "3g2": "video/3gpp2",
+        ogv: "video/ogg",
+        flv: "video/x-flv",
+        ts: "video/mp2t",
+
+        # Image
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        png: "image/png",
+        gif: "image/gif",
+        svg: "image/svg+xml",
+        webp: "image/webp",
+        bmp: "image/bmp",
+        tiff: "image/tiff",
+        tif: "image/tiff",
+        ico: "image/x-icon",
+        heic: "image/heic",
+        heif: "image/heif",
+        avif: "image/avif",
+
+        # Audio
+        mp3: "audio/mpeg",
+        ogg: "audio/ogg",
+        oga: "audio/ogg",
+        wav: "audio/wav",
+        aac: "audio/aac",
+        flac: "audio/flac",
+        midi: "audio/midi",
+        mid: "audio/midi",
+        m4a: "audio/mp4",
+        opus: "audio/opus",
+        amr: "audio/amr",
+
+        # Documents
+        pdf: "application/pdf",
+        odp: "application/vnd.oasis.opendocument.presentation",
+        ods: "application/vnd.oasis.opendocument.spreadsheet",
+        odt: "application/vnd.oasis.opendocument.text",
+        docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        ppt: "application/vnd.ms-powerpoint",
+        doc: "application/msword",
+        xls: "application/vnd.ms-excel"
+      }
     end
 
 
@@ -128,6 +159,7 @@ defmodule MaxGallery.Extension do
 
         mime = mime_map()
                |> Map.get(atom_ext)
+               |> IO.inspect #*@SJU@DNUI@HD
 
         case mime do
             nil -> "image/png"
