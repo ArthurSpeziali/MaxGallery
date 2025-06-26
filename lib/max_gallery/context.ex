@@ -1,10 +1,14 @@
 defmodule MaxGallery.Context do
     alias MaxGallery.Core.Data.Api, as: DataApi
     alias MaxGallery.Core.Group.Api, as: GroupApi
+    alias MaxGallery.Core.Data
+    alias MaxGallery.Core.Group
     alias MaxGallery.Core.Bucket
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
     alias MaxGallery.Utils
+    @type querry :: [%Data{} | %Group{} | map()] 
+    
 
     @moduledoc """
       This module serves as the context layer for managing encrypted files and groups
@@ -62,6 +66,7 @@ defmodule MaxGallery.Context do
 
     Requires a valid encryption key and passes a `Phantom.insert_line?/1` validation check.
     """
+    @spec cypher_insert(path :: Path.t(), key :: String.t(), opts :: Keyword.t()) :: {:ok, querry()} | {:error, String.t()}
     def cypher_insert(path, key, opts \\ []) do
         name = Keyword.get(opts, :name) 
         group = Keyword.get(opts, :group)
@@ -100,6 +105,7 @@ defmodule MaxGallery.Context do
 
             {:ok, querry.id}
         else
+            false -> {:error, ""}
             error -> error
         end
     end
@@ -144,6 +150,7 @@ defmodule MaxGallery.Context do
 
       - `{:ok, binary}`: A binary-encoded list of decrypted items.
     """
+    @spec decrypt_all(key :: String.t(), opts :: Keyword.t()) :: {:ok, querry()} 
     def decrypt_all(key, opts \\ []) do
         lazy? = Keyword.get(opts, :lazy)
         only = Keyword.get(opts, :only)
@@ -184,6 +191,7 @@ defmodule MaxGallery.Context do
       - `{:error, "invalid key"}`: If the key is not authorized to delete the file.
       - `{:error, reason}`: If any operation (get, delete, etc.) fails.
     """
+    @spec cypher_delete(id :: binary(), key :: String.t(), opts :: Keyword.t()) :: {:ok, querry()} | {:error, String.t()}
     def cypher_delete(id, key, opts \\ []) do
         shallow? = Keyword.get(opts, :shallow) 
 
@@ -229,6 +237,7 @@ defmodule MaxGallery.Context do
       - `{:ok, map}`: A map containing the decrypted fields of the requested item.
       - `{:error, reason}`: If any decryption or retrieval fails.
     """
+    @spec decrypt_one(id :: binary(), key :: String.t(), opts :: Keyword.t()) :: {:ok, querry()} | {:error, String.t()}
     def decrypt_one(id, key, opts \\ []) do
         lazy? = Keyword.get(opts, :lazy)
         group? = Keyword.get(opts, :group)
@@ -310,6 +319,7 @@ defmodule MaxGallery.Context do
       - `{:ok, updated}`: On success, returns the updated file struct.
       - `{:error, "invalid key"}`: If the provided encryption key is not valid for this file.
     """
+    @spec cypher_update(id :: binary(), map(), key :: String.t()) :: {:ok, querry()} | {:error, String.t()}
     def cypher_update(id, %{name: new_name, blob: new_blob}, key) do
         ext = Path.extname(new_name)
         new_name = Path.basename(new_name, ext)
@@ -376,6 +386,7 @@ defmodule MaxGallery.Context do
       - `{:ok, id}`: The binary ID of the newly inserted group on success.
       - `nil`: If the key validation fails (`Phantom.insert_line?/1` returns `false`).
     """
+    @spec group_insert(group_name :: String.t(), key :: String.t(), opts :: Keyword.t()) :: {:ok, querry()} | {:error, String.t()}
     def group_insert(group_name, key, opts \\ []) do
         group = Keyword.get(opts, :group)
 
@@ -414,6 +425,7 @@ defmodule MaxGallery.Context do
       - `{:ok, updated}`: On successful update.
       - `{:error, "invalid key"}`: If the encryption key is invalid for the group.
     """
+    @spec group_update(id :: binary(), map(), key :: String.t()) :: {:ok, querry()} | {:error, String.t()}
     def group_update(id, %{name: new_name}, key) do 
         {:ok, querry} = GroupApi.get(id)
         {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
@@ -463,6 +475,7 @@ defmodule MaxGallery.Context do
     Requires a valid encryption key that matches the group's encryption scheme.
     The operation is irreversible and will permanently remove all nested content.
     """
+    @spec group_delete(id :: binary(), key :: String.t()) :: {:ok, querry()} | {:error, String.t()}
     def group_delete(id, key) do
         with {:ok, querry} <- GroupApi.get(id),
              true <- Phantom.valid?(querry, key),
@@ -558,6 +571,7 @@ defmodule MaxGallery.Context do
     - Preserves no direct references to the original's encrypted data
     - Requires valid encryption key for both read and write operations
     """
+    @spec cypher_duplicate(id :: binary(), params :: map(), key :: String.t()) :: {:ok, querry()} | {:error, String.t()}
     def cypher_duplicate(id, params, key) do
         {:ok, querry} = DataApi.get(id)
 
@@ -621,6 +635,7 @@ defmodule MaxGallery.Context do
       - `{:ok, new_id}`: ID of the new group root
       - `{:error, "invalid key"}`: If key validation fails
     """
+    @spec group_duplicate(id :: binary(), params :: map(), key :: String.t()) :: {:ok, querry()} | {:error, String.t()}
     def group_duplicate(id, params, key) do
         {:ok, querry} = GroupApi.get(id)
 
@@ -712,6 +727,7 @@ defmodule MaxGallery.Context do
       - ZIP binary data on success
       - Original error tuples on failure
     """
+    @spec zip_content(id :: binary(), key :: String.t(), opts :: Keyword.t()) :: {:ok, Path.t()} | {:error, String.t()}
     def zip_content(id, key, opts \\ []) do
         group? = Keyword.get(opts, :group)
         id = 
@@ -787,6 +803,7 @@ defmodule MaxGallery.Context do
     - Requires valid database key
     - Should be restricted to maintenance/emergency use
     """
+    @spec delete_all(key :: String.t()) :: {:ok, non_neg_integer()} | {:error, String.t()}
     def delete_all(key) do
         with true <- Phantom.insert_line?(key),
              {count_group, nil} <- GroupApi.delete_all(),
@@ -828,6 +845,7 @@ defmodule MaxGallery.Context do
     - Generates fresh IVs for all encrypted fields
     - Does NOT maintain ability to decrypt with old key
     """
+    @spec update_all(key :: String.t(), new_key :: String.t()) :: {:ok, non_neg_integer()} | {:error, String.t()}
     def update_all(key, new_key) do
         ## This function is poor, if the user cancel the operation in the process, the entire database will be corrupted. Should i refactor that?
         if Phantom.insert_line?(key) do

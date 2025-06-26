@@ -1,4 +1,5 @@
 defmodule MaxGallery.Encrypter do
+    @type cypher :: {iv :: binary(), ciphertext :: binary()}
     @moduledoc """
     Provides cryptographic operations for the MaxGallery system.
 
@@ -57,6 +58,7 @@ defmodule MaxGallery.Encrypter do
     - Uses cryptographically secure random IV
     - Automatically hashes the provided key
     """
+    @spec file(:encrypt, path :: Path.t(), key :: String.t()) :: {:ok, cypher()}
     def file(:encrypt, path, key) do
         with {:ok, content} <- File.read(path),
              {:ok, {iv, cypher}} <- encrypt(content, key) do
@@ -90,6 +92,7 @@ defmodule MaxGallery.Encrypter do
     - Returns decrypted data even if file write fails
     - Maintains atomic operation (fails if any step fails)
     """
+    @spec file(:decrypt, cypher(), path :: Path.t(), key :: String.t()) :: {:ok, cypher()} | {:error, atom()}
     def file(:decrypt, {iv, cypher}, path, key) do
         with {:ok, data} <- {iv, cypher} |> decrypt(key),
              :ok <- File.write(path, data, [:write]) do
@@ -126,6 +129,7 @@ defmodule MaxGallery.Encrypter do
     - CTR mode doesn't require padding
     - Uses Erlang's :crypto module for core operations
     """
+    @spec encrypt(data :: binary(), key :: String.t()) :: {:ok, cypher()}
     def encrypt(data, key) do
         iv = :crypto.strong_rand_bytes(16)  
         hash_key = hash(key)
@@ -162,6 +166,7 @@ defmodule MaxGallery.Encrypter do
       - Key is incorrect
       - Cyphertext was modified
     """
+    @spec decrypt(cypher(), key :: String.t()) :: {:ok, binary()}
     def decrypt({iv, cypher}, key) do
         hash_key = hash(key)
 
@@ -171,6 +176,7 @@ defmodule MaxGallery.Encrypter do
     end
 
 
+    @spec hash(key :: String.t()) :: binary()
     defp hash(key) do
         :crypto.hash(:sha256, key)      
     end

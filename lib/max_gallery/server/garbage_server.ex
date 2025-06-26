@@ -3,7 +3,7 @@ defmodule MaxGallery.Server.GarbageServer do
 
     @mod __MODULE__
     @path "/tmp/max_gallery/zips/"
-    @time_delete 60 # Minutes
+    @time_delete 10 # Minutes
     @time_check 10 * 60 * 1000  # Miliseconds
 
 
@@ -17,7 +17,7 @@ defmodule MaxGallery.Server.GarbageServer do
                 |> Enum.count()
 
 
-        ## Once an hour, the function checks if exists any "lost" file. 
+        ## Once a 10 minutes, the function checks if exists any "lost" file. 
         Process.send_after(self(), :check, @time_check)
         {:ok, count}
     end

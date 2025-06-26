@@ -64,6 +64,7 @@ defmodule MaxGallery.Phantom do
     - Does not modify the actual stored/encrypted data
     - Pure function with no side effects
     """
+    @spec validate_bin(binary :: binary()) :: String.t()
     def validate_bin(binary) do
         if String.printable?(binary) do
             binary
@@ -106,6 +107,7 @@ defmodule MaxGallery.Phantom do
     - Maintains data structure integrity
     - Safe to use on already-validated content
     """
+    @spec encode_bin(contents :: Context.querry()) :: Context.querry()
     def encode_bin(contents) when is_list(contents) do
         Enum.map(contents, fn item -> 
             new_content = Map.update!(item, :name, &validate_bin/1)
@@ -145,6 +147,7 @@ defmodule MaxGallery.Phantom do
     - Never modified to maintain system consistency
     - Acts as "phantom" metadata for validation
     """
+    @spec get_text() :: String.t()
     def get_text(), do: "encrypted_data"
 
     @doc """
@@ -176,6 +179,7 @@ defmodule MaxGallery.Phantom do
     - Safe to call on any encrypted record
     - Fast-fails if decryption is unsuccessful
     """
+    @spec valid?(map(), key :: String.t()) :: boolean()
     def valid?(%{msg_iv: msg_iv, msg: msg}, key) do
         {:ok, dec_cypher} = Encrypter.decrypt({msg_iv, msg}, key)
 
@@ -212,6 +216,7 @@ defmodule MaxGallery.Phantom do
     - Uses phantom validation pattern
     - Should be checked before all insert operations
     """
+    @spec insert_line?(key :: String.t()) :: boolean()
     def insert_line?(key) do
         case Api.first() do
             {:error, "not found"} -> true

@@ -84,6 +84,7 @@ defmodule MaxGallery.Extension do
     String - The file category ("audio", "text", "image", or "video").
              Returns "text" for unknown extensions.
     """
+    @spec get_ext(ext :: String.t()) :: String.t()
     def get_ext(ext) do
         atom_ext = String.slice(ext, 1..-1//1)
                    |> String.to_atom()
@@ -120,6 +121,7 @@ defmodule MaxGallery.Extension do
     - Minimal string manipulation
     - Single Map traversal
     """
+    @spec get_mime(ext :: String.t()) :: String.t()
     def get_mime(ext) do
         atom_ext = String.slice(ext, 1..-1//1)
                    |> String.to_atom()
@@ -149,6 +151,7 @@ defmodule MaxGallery.Extension do
     - 1 MB to 1 GB: displays in megabytes (e.g. "150.75 MB")
     - > 1 GB: displays in gigabytes (e.g. "3.5 GB")
     """
+    @spec convert_size(bytes :: non_neg_integer()) :: String.t()
     def convert_size(bytes) when is_integer(bytes) do
         case bytes do
             x when x > 1024 * 1024 * 1024 -> "#{x / 1024 ** 3 |> Float.round(2)} Gb"

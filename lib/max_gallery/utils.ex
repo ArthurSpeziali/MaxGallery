@@ -4,6 +4,8 @@ defmodule MaxGallery.Utils do
     alias MaxGallery.Core.Bucket
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
+    @type tree :: [map()]
+
 
     @moduledoc """
     This module provides utility functions for supporting operations across the MaxGallery system.
@@ -52,6 +54,7 @@ defmodule MaxGallery.Utils do
     - Does not validate the existence of the returned parent group
     - Primarily used for navigation within group hierarchies
     """
+    @spec get_back(id :: binary()) :: binary()
     def get_back(id) do
         case id do
             nil -> nil
@@ -83,6 +86,7 @@ defmodule MaxGallery.Utils do
     - Returns empty list if the group contains no items
     - Does not recursively fetch items from nested subgroups
     """
+    @spec get_group(id :: binary(), opts :: Keyword.t()) :: {:ok, Context.querry()}
     def get_group(id, opts \\ []) do
         only = Keyword.get(opts, :only)
 
@@ -126,6 +130,7 @@ defmodule MaxGallery.Utils do
     - Returns raw size values without unit conversion
     - May raise exceptions if the item doesn't exist or lacks required fields
     """
+    @spec get_size(id :: binary(), opts :: Keyword.t()) :: non_neg_integer()
     def get_size(id, opts \\ []) do
         group? = Keyword.get(opts, :group)
 
@@ -176,6 +181,7 @@ defmodule MaxGallery.Utils do
     - Preserves the original timestamp structure from the database
     - Will raise if the item doesn't exist or lacks timestamp fields
     """
+    @spec get_timestamps(id :: binary(), Keyword.t()) :: map()
     def get_timestamps(id, opts \\ []) do
         group? = Keyword.get(opts, :group)
 
@@ -224,6 +230,7 @@ defmodule MaxGallery.Utils do
     - Maintains original hierarchy and relationships
     - Performance scales with group size and depth when not lazy
     """
+    @spec get_tree(id :: binary(), Keyword.t()) :: Context.querry()
     def get_tree(id, key, opts \\ []) do
         lazy? = Keyword.get(opts, :lazy)
         {:ok, contents} = get_group(id)
@@ -317,6 +324,7 @@ defmodule MaxGallery.Utils do
       - Phantom metadata text
     - Callback receives ready-to-store encrypted parameters
     """
+    @spec mount_tree(tree :: tree(), params :: map(), fun :: function(), key :: String.t()) :: any() 
     def mount_tree(tree, params, fun, key) when is_function(fun, 2) do
         Enum.each(tree, fn item -> 
 
@@ -351,7 +359,7 @@ defmodule MaxGallery.Utils do
         end)
     end
 
-    ## FFunction for extract tree's name and content.
+    ## Function for extract tree's name and content.
     defp extract_tree(tree) do
         Enum.map(tree, fn item -> 
 
@@ -389,6 +397,7 @@ defmodule MaxGallery.Utils do
     - Filenames are converted to charlists for Erlang compatibility
     - Does not modify or encrypt the content - assumes already encrypted
     """
+    @spec zip_file(name :: String.t(), blob :: binary()) :: {:ok, Path.t()}
     def zip_file(name, blob) do
         File.mkdir_p("/tmp/max_gallery/zips")
 
@@ -428,6 +437,7 @@ defmodule MaxGallery.Utils do
     - Uses Erlang's `:zip` module for compression
     - Maximum archive size depends on available disk space
     """
+    @spec zip_folder(tree :: tree(), group_name :: String.t()) :: {:ok, Path.t()}
     def zip_folder(tree, group_name) do 
         File.mkdir_p("/tmp/max_gallery/zips")
         folder = group_name <> "_#{Enum.random(1..1_000)}"
@@ -493,6 +503,7 @@ defmodule MaxGallery.Utils do
     - Useful for implementing search functionality
     - More efficient than loading all records then filtering
     """
+    @spec get_like(querry :: Context.querry(), like :: String.t()) :: String.t()
     def get_like(querry, like) do
         Enum.filter(querry, fn item -> 
             String.downcase(
@@ -525,6 +536,7 @@ defmodule MaxGallery.Utils do
       - Exact multiples of chunk size
     - Uses Erlang's `binary_part/3` and `binary_slice/2`
     """
+    @spec binary_chunk(bin :: binary(), range :: pos_integer()) :: [binary()]
     def binary_chunk(bin, range) when byte_size(bin) >= range do
         ## In my mind, this function is O(log n), but my supervisor insists it’s O(n).
         [binary_part(bin, 0, range) |
