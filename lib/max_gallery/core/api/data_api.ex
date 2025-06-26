@@ -76,6 +76,15 @@ defmodule MaxGallery.Core.Data.Api do
     end
 
 
+    def get_length(id) do
+        from(d in Data, select: %{length: fragment("octet_length(?)", d.blob)}, where: d.id == ^id)
+        |> Repo.one()
+
+        |> case do
+            %{length: length} -> {:ok, length}
+        end
+    end
+
     def get_timestamps(id) do
         from(d in Data, select: map(d, [:inserted_at, :updated_at]), where: d.id == ^id)
         |> Repo.one()
@@ -85,9 +94,9 @@ defmodule MaxGallery.Core.Data.Api do
         end
     end
 
-
     def delete_all() do
         Repo.delete_all(Data)
     end
+
 
 end

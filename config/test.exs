@@ -11,9 +11,9 @@ config :max_gallery, MaxGallery.Repo,
   username: "admin",       
   password: "admin",       
   hostname: "localhost",
-  port: 27017,
-  auth_source: "admin",
-  pool_size: 10
+  port: 5432,
+  pool: Ecto.Adapters.SQL.Sandbox,
+  pool_size: System.schedulers_online() * 2
 
 
 # We don't run a server during test. If one is required,

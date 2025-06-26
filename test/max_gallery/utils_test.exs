@@ -1,12 +1,10 @@
 defmodule MaxGallery.UtilsTest do
-    use ExUnit.Case
+    use MaxGallery.DataCase
     alias MaxGallery.Utils
     alias MaxGallery.Context
 
 
     setup do
-        Context.delete_all("key")
-
         {:ok,
             msg: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
             tree: [

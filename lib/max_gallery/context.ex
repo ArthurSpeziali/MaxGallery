@@ -3,7 +3,6 @@ defmodule MaxGallery.Context do
     alias MaxGallery.Core.Group.Api, as: GroupApi
     alias MaxGallery.Core.Data
     alias MaxGallery.Core.Group
-    alias MaxGallery.Core.Bucket
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
     alias MaxGallery.Utils
@@ -28,7 +27,6 @@ defmodule MaxGallery.Context do
       - `MaxGallery.Core.Data.Api` for file entries;
       - `MaxGallery.Core.Group.Api` for group entities;
       - `MaxGallery.Encrypter` for encryption/decryption;
-      - `MaxGallery.Bucket` for encrypted binary storage;
       - `MaxGallery.Phantom` for validation and metadata;
       - `MaxGallery.Utils` for utilities such as tree traversal and zip generation.
 
@@ -70,6 +68,12 @@ defmodule MaxGallery.Context do
     def cypher_insert(path, key, opts \\ []) do
         name = Keyword.get(opts, :name) 
         group = Keyword.get(opts, :group)
+                |> case do
+                    str when is_binary(str) -> 
+                        String.to_integer(str)
+
+                    int -> int
+                end
 
         ext = 
             if name do
@@ -88,15 +92,13 @@ defmodule MaxGallery.Context do
             end 
 
 
-        ## The `cyphers` table stores the file’s metadata and the identifier to find the content inside the `gridfs` bucket.
         with true <- Phantom.insert_line?(key),
              {:ok, {blob_iv, blob}} <- Encrypter.file(:encrypt, path, key),
-             {:ok, file_id} <- Bucket.write(blob) |> Bucket.upload(name),
              {:ok, {msg_iv, msg}} <- Encrypter.encrypt(Phantom.get_text(), key),
              {:ok, querry} <- DataApi.insert(%{
-                 file_id: file_id,
                  name_iv: name_iv,
                  name: name,
+                 blob: blob,
                  blob_iv: blob_iv,
                  ext: ext,
                  msg: msg,
@@ -118,9 +120,7 @@ defmodule MaxGallery.Context do
         if lazy? do
             %{name: name, ext: item.ext, id: item.id, group: item.group_id}
         else
-            {:ok, enc_blob} = Bucket.download(item.file_id)
-
-            {:ok, blob} = {item.blob_iv, enc_blob} |> Encrypter.decrypt(key)
+            {:ok, blob} = {item.blob_iv, item.blob} |> Encrypter.decrypt(key)
             %{name: name, blob: blob, ext: item.ext, id: item.id, group: item.group_id}
         end
     end
@@ -183,7 +183,6 @@ defmodule MaxGallery.Context do
     - Retrieves the file by its ID using `Core.Data.Api.get/1`.
     - Verifies that the provided key is valid for the file using `Phantom.valid?/2`.
     - Deletes the file entry from the database.
-    - If `:shallow` is not set or is false, also removes the file's encrypted binary blob from storage via `Core.Bucket.delete/1`.
 
     ## Returns
 
@@ -191,18 +190,11 @@ defmodule MaxGallery.Context do
       - `{:error, "invalid key"}`: If the key is not authorized to delete the file.
       - `{:error, reason}`: If any operation (get, delete, etc.) fails.
     """
-    @spec cypher_delete(id :: binary(), key :: String.t(), opts :: Keyword.t()) :: {:ok, querry()} | {:error, String.t()}
-    def cypher_delete(id, key, opts \\ []) do
-        shallow? = Keyword.get(opts, :shallow) 
-
+    @spec cypher_delete(id :: binary(), key :: String.t()) :: {:ok, querry()} | {:error, String.t()}
+    def cypher_delete(id, key) do
         with {:ok, querry} <- DataApi.get(id),
              true <- Phantom.valid?(querry, key),
              {:ok, _querry} <- DataApi.delete(id) do
-
-            ## Option to not delete the actual content in the bucket, only its metadata. (Not recoverable).
-            if !shallow? do
-                Bucket.delete(querry.file_id)
-            end
 
             {:ok, querry}
         else
@@ -262,8 +254,7 @@ defmodule MaxGallery.Context do
                     }}
                 
                 {nil, nil} ->
-                    {:ok, enc_blob} = Bucket.download(querry.file_id)
-                    {:ok, blob} = Encrypter.decrypt({querry.blob_iv, enc_blob}, key)
+                    {:ok, blob} = Encrypter.decrypt({querry.blob_iv, querry.blob}, key)
 
                     {:ok, %{
                         id: id,
@@ -330,8 +321,7 @@ defmodule MaxGallery.Context do
         {:ok, querry} = DataApi.get(id)
 
         if Phantom.valid?(querry, key) do
-            {:ok, file_id} = Bucket.replace(querry.file_id, blob)
-            params = %{file_id: file_id, name_iv: name_iv, name: name, blob_iv: blob_iv, ext: ext}
+          params = %{name_iv: name_iv, name: name, blob: blob, blob_iv: blob_iv, ext: ext}
 
             DataApi.update(id, params)
         else
@@ -389,6 +379,12 @@ defmodule MaxGallery.Context do
     @spec group_insert(group_name :: String.t(), key :: String.t(), opts :: Keyword.t()) :: {:ok, querry()} | {:error, String.t()}
     def group_insert(group_name, key, opts \\ []) do
         group = Keyword.get(opts, :group)
+                |> case do
+                    str when is_binary(str) -> 
+                        String.to_integer(str)
+
+                    int -> int
+                end
 
         if Phantom.insert_line?(key) do
             {:ok, {name_iv, name}} = Encrypter.encrypt(group_name, key)
@@ -674,11 +670,7 @@ defmodule MaxGallery.Context do
 
             duplicate_content = fn
                 (content, :data) ->
-                    {:ok, file_id} = Bucket.write(content.blob) 
-                              |> Bucket.upload(content.name)
-
-                    %{content | file_id: file_id}
-                    |> DataApi.insert()
+                    DataApi.insert(content)
 
 
                 (content, :group) ->
@@ -762,9 +754,8 @@ defmodule MaxGallery.Context do
                         key
                     )
 
-                    {:ok, enc_blob} = Bucket.download(querry.file_id)
                     {:ok, blob} = Encrypter.decrypt(
-                        {querry.blob_iv, enc_blob},
+                        {querry.blob_iv, querry.blob},
                         key
                     )
 
@@ -792,7 +783,6 @@ defmodule MaxGallery.Context do
     2. Performs complete wipe of:
        - All groups via `Core.Group.Api.delete_all()`
        - All files via `Core.Data.Api.delete_all()`
-       - All storage content via `Core.Bucket.drop()` 
 
     ## Returns
       - `{:ok, count}`: Total number of deleted records (groups + files)
@@ -807,8 +797,7 @@ defmodule MaxGallery.Context do
     def delete_all(key) do
         with true <- Phantom.insert_line?(key),
              {count_group, nil} <- GroupApi.delete_all(),
-             {count_data, nil} <- DataApi.delete_all(),
-             :ok <- Bucket.drop() do
+             {count_data, nil} <- DataApi.delete_all() do
 
             {:ok, count_group + count_data}
         else
@@ -883,9 +872,8 @@ defmodule MaxGallery.Context do
                     new_key
                 )
 
-                {:ok, enc_blob} = Bucket.download(data.file_id)
                 {:ok, old_blob} = Encrypter.decrypt(
-                    {data.blob_iv, enc_blob},
+                    {data.blob_iv, data.blob},
                     key
                 )
                 {:ok, {blob_iv, blob}} = Encrypter.encrypt(
@@ -898,11 +886,11 @@ defmodule MaxGallery.Context do
                     new_key
                 )
 
-                {:ok, file_id} = Bucket.replace(data.file_id, blob)
                 DataApi.update(
                     data.id, 
-                    %{file_id: file_id, name_iv: name_iv, name: name, blob_iv: blob_iv, msg_iv: msg_iv, msg: msg}
+                    %{name_iv: name_iv, name: name, blob: blob, blob_iv: blob_iv, msg_iv: msg_iv, msg: msg}
                 )
+              
             end)
 
             count = Enum.count(group_list) + Enum.count(data_list) 

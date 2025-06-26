@@ -1,12 +1,10 @@
 defmodule MaxGallery.Data.ContextTest do
-    use ExUnit.Case
+    use MaxGallery.DataCase
     alias MaxGallery.Context
     alias MaxGallery.Core.Data.Api
 
 
     setup do
-        Context.delete_all("key")
-
         {:ok,
             msg: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
             data: %{name: <<0>>, blob: <<0>>, ext: ""}

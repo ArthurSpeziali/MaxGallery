@@ -1,7 +1,6 @@
 defmodule MaxGallery.Utils do
     alias MaxGallery.Core.Data.Api, as: DataApi
     alias MaxGallery.Core.Group.Api, as: GroupApi
-    alias MaxGallery.Core.Bucket
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
     @type tree :: [map()]
@@ -126,7 +125,6 @@ defmodule MaxGallery.Utils do
     ## Notes
     - For groups, performs recursive calculation through all nested contents
     - Determines if items are subgroups by checking for :ext field presence
-    - Uses Bucket.get/1 to retrieve actual file sizes from storage
     - Returns raw size values without unit conversion
     - May raise exceptions if the item doesn't exist or lacks required fields
     """
@@ -152,10 +150,9 @@ defmodule MaxGallery.Utils do
                 end) |> Enum.sum()
             end
         else
-            {:ok, querry} = DataApi.get(id)
+            {:ok, length} = DataApi.get_length(id)
             
-            {:ok, file} = Bucket.get(querry.file_id)
-            file["length"] 
+            length
         end
     end
 
@@ -254,9 +251,8 @@ defmodule MaxGallery.Utils do
                             file: item.file_id
                         }}
                     else
-                        {:ok, enc_blob} = Bucket.download(item.file_id)
                         {:ok, blob} = Encrypter.decrypt(
-                            {item.blob_iv, enc_blob},
+                            {item.blob_iv, item.blob},
                             key
                         )
 
