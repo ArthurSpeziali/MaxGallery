@@ -35,7 +35,7 @@ defmodule MaxGallery.MixProject do
       {:phoenix, "~> 1.7.20"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.10"},
-      # {:postgrex, ">= 0.0.0"},
+      {:postgrex, "~> 0.20.0"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.0.0"},
@@ -60,7 +60,7 @@ defmodule MaxGallery.MixProject do
       {:bandit, "~> 1.5"},
 
       # {:ecto_sqlite3, "~> 0.19.0"},
-      {:mongodb_ecto, "~> 2.1"},
+      # {:mongodb_ecto, "~> 2.1"},
       {:mix_test_watch, "~> 1.2", only: [:test], runtime: false}
     ]
   end
@@ -74,7 +74,7 @@ defmodule MaxGallery.MixProject do
   defp aliases do
     [
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
-      "ecto.setup": ["ecto.create", "run priv/repo/seeds.exs"],
+      "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "test"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
