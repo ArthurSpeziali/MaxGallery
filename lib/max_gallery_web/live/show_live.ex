@@ -2,7 +2,6 @@ defmodule MaxGalleryWeb.ShowLive do
     ## Module for site's contents show page.
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Server.LiveServer
-    alias MaxGallery.Phantom
     alias MaxGallery.Context
     alias MaxGallery.Extension
 
@@ -21,12 +20,10 @@ defmodule MaxGalleryWeb.ShowLive do
 
 
         {:ok, querry} = Context.decrypt_one(id, key, lazy: lazy)
-        data = Phantom.encode_bin(querry)
-               |> List.first()
 
         
         socket = assign(socket, [
-            data: data,
+            data: querry,
             page_id: page_id,
             id: id
         ])

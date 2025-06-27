@@ -3,7 +3,6 @@ defmodule MaxGalleryWeb.EditorLive do
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Context
-    alias MaxGallery.Phantom
     alias MaxGallery.Extension
 
 
@@ -27,11 +26,9 @@ defmodule MaxGalleryWeb.EditorLive do
 
 
         {:ok, querry} = Context.decrypt_one(id, key, lazy: lazy?)
-        data = Phantom.encode_bin(querry)
-               |> List.first()
 
         socket = assign(socket, [
-            data: data,
+            data: querry,
             id: id,
             page_id: page_id,
             edit_iframe: false,

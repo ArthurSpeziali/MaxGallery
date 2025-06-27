@@ -1,5 +1,6 @@
 defmodule MaxGallery.Phantom do
     alias MaxGallery.Encrypter
+    alias MaxGallery.Cache
     alias MaxGallery.Core.Cypher.Api
 
     @moduledoc """
@@ -112,15 +113,24 @@ defmodule MaxGallery.Phantom do
         Enum.map(contents, fn item -> 
             new_content = Map.update!(item, :name, &validate_bin/1)
             
-            if new_content[:blob] do
-                Map.update!(new_content, :blob, &validate_bin/1)
-            else
-                new_content
+            case new_content do
+                %{blob: _blob} ->
+                    Map.update!(new_content, :blob, &validate_bin/1)
+
+
+                %{path: path} = params ->
+                    new_path = Cache.encode_chunk(path)
+                    Map.merge(params, %{path: new_path})
+
+
+                _ ->
+                    new_content
             end
         end)
     end
     def encode_bin(content) do
-       encode_bin([content]) 
+        encode_bin([content]) 
+        |> List.first()
     end
 
 

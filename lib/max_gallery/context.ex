@@ -104,7 +104,7 @@ defmodule MaxGallery.Context do
                  msg: msg,
                  msg_iv: msg_iv,
                  group_id: group}),
-             blob_chunk <- Utils.binary_chunk(blob, Cache.byte_part()),
+             blob_chunk <- Utils.binary_chunk(blob, Cache.chunk_size()),
              :ok <- Cache.insert_chunk(blob_chunk, 0, %{
                  cypher_id: querry.id,
                  length: byte_size(blob)
@@ -122,37 +122,41 @@ defmodule MaxGallery.Context do
     defp send_package(%{ext: _ext} = item, lazy?, memory?, key) do
         {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
 
-        if memory? do
-            if lazy? do
-                %{name: name, ext: item.ext, id: item.id, group: item.group_id}
-            else
-                {:ok, blob} = {item.blob_iv, item.blob} |> Encrypter.decrypt(key)
-                %{name: name, blob: blob, ext: item.ext, id: item.id, group: item.group_id}
-            end
-        else
-            folder_path = "/tmp/max_gallery/cache/"
-            file_path = folder_path <> "#{item.id}"
-            File.mkdir_p!(folder_path)
-
-            {:ok, enc_blob} = Cache.get_chunk(item.id)
-            {:ok, blob} = Encrypter.decrypt(
-                {item.blob_iv, enc_blob},
-                "key"
-            )
-
-            File.write!(file_path, blob, [:write])
-            {:ok, %{
-                id: item.id,
-                name: name,
-                blob: file_path,
-                ext: item.ext,
+        if lazy? do
+            %{
+                name: name, 
+                ext: item.ext, 
+                id: item.id, 
                 group: item.group_id
-            }}
+            } |> Phantom.encode_bin()
+        else
+            if memory? do
+                {:ok, enc_blob} = Cache.get_chunk(item.id)
+                {:ok, blob} = {item.blob_iv, enc_blob} |> Encrypter.decrypt(key)
+
+                %{
+                    name: name, 
+                    blob: blob, 
+                    ext: item.ext, 
+                    id: item.id, 
+                    group: item.group_id
+                } |> Phantom.encode_bin()
+            else
+                {path, _created} = Cache.consume_cache(item.id, item.blob_iv)
+
+                %{
+                    id: item.id,
+                    name: name,
+                    path: path,
+                    ext: item.ext,
+                    group: item.group_id
+                }
+            end
         end
     end
     defp send_package(item, _lazy, _memory, key) do
         {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
-        %{name: name, id: item.id, group: item.group_id} 
+        %{name: name, id: item.id, group: item.group_id} |> Phantom.encode_bin()
     end
 
     @doc """
@@ -189,7 +193,7 @@ defmodule MaxGallery.Context do
         querry = 
             for item <- contents do
                 send_package(item, lazy?, memory?, key)
-            end |> Phantom.encode_bin()
+            end 
 
         {:ok, querry}
     end
@@ -270,7 +274,7 @@ defmodule MaxGallery.Context do
             else
                 CypherApi.get(id)
             end
-
+        
 
         {:ok, name} = Encrypter.decrypt({querry.name_iv, querry.name}, key)
         if memory? do
@@ -281,7 +285,7 @@ defmodule MaxGallery.Context do
                         name: name,
                         ext: querry.ext,
                         group: querry.group_id
-                    }}
+                    } |> Phantom.encode_bin()}
                 
                 {nil, nil} ->
                     {:ok, chunk} = Cache.get_chunk(querry.id)
@@ -293,41 +297,41 @@ defmodule MaxGallery.Context do
                         blob: blob,
                         ext: querry.ext,
                         group: querry.group_id
-                    }}
+                    } |> Phantom.encode_bin()}
 
                 {_boolean, true} ->
                     {:ok, %{
                         id: id,
                         name: name,
                         group: querry.group_id
-                    }}
+                    } |> Phantom.encode_bin()}
             end 
         else
             if !group? do
-                folder_path = "/tmp/max_gallery/cache/"
-                file_path = folder_path <> "#{querry.id}"
-                File.mkdir_p!(folder_path)
+                if lazy? do
+                    {:ok, %{
+                        id: id,
+                        name: name,
+                        ext: querry.ext,
+                        group: querry.group_id
+                    } |> Phantom.encode_bin()}
+                else
+                    {path, _created} = Cache.consume_cache(querry.id, querry.blob_iv)
 
-                {:ok, enc_blob} = Cache.get_chunk(querry.id)
-                {:ok, blob} = Encrypter.decrypt(
-                    {querry.blob_iv, enc_blob},
-                    "key"
-                )
-
-                File.write!(file_path, blob, [:write])
-                {:ok, %{
-                    id: id,
-                    name: name,
-                    blob: file_path,
-                    ext: querry.ext,
-                    group: querry.group_id
-                }}
+                    %{
+                        id: id, 
+                        name: name,
+                        ext: querry.ext,
+                        path: path,
+                        group: querry.group_id
+                    }
+                end
             else
                 {:ok, %{
                     id: id,
                     name: name,
                     group: querry.group_id
-                }}
+                } |> Phantom.encode_bin()}
             end
         end
     end
