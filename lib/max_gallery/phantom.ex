@@ -1,6 +1,6 @@
 defmodule MaxGallery.Phantom do
     alias MaxGallery.Encrypter
-    alias MaxGallery.Core.Data.Api
+    alias MaxGallery.Core.Cypher.Api
 
     @moduledoc """
     Provides validation and integrity checking for encrypted data in MaxGallery.
@@ -19,7 +19,7 @@ defmodule MaxGallery.Phantom do
     - `valid?/2` - Verifies if decrypted data matches expected patterns
     - `insert_line?/1` - Checks if system is in valid state for new entries
 
-    ## Data Handling
+    ## Cypher Handling
     - `validate_bin/1` - Ensures binary data is safely printable
     - `encode_bin/1` - Recursively prepares binary data for storage/display
 
@@ -164,7 +164,7 @@ defmodule MaxGallery.Phantom do
     - `false` if:
       - Decryption fails
       - Wrong key used
-      - Data corrupted
+      - Cypher corrupted
       - Invalid IV
 
     ## Behavior
@@ -195,7 +195,7 @@ defmodule MaxGallery.Phantom do
 
     ## Returns
     - `true` if either:
-      - Database is empty (no existing records)
+      - Cypherbase is empty (no existing records)
       - Existing records decrypt properly with current key
     - `false` if existing records fail to decrypt with current key
 

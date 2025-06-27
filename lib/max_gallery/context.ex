@@ -1,12 +1,15 @@
 defmodule MaxGallery.Context do
-    alias MaxGallery.Core.Data.Api, as: DataApi
+    @byte_part 32 * 1024 ## 64KB
+    alias MaxGallery.Core.Cypher.Api, as: CypherApi
     alias MaxGallery.Core.Group.Api, as: GroupApi
-    alias MaxGallery.Core.Data
+    alias MaxGallery.Core.Chunk.Api, as: ChunkApi
+    alias MaxGallery.Core.Cypher
     alias MaxGallery.Core.Group
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
     alias MaxGallery.Utils
-    @type querry :: [%Data{} | %Group{} | map()] 
+    alias MaxGallery.Repo
+    @type querry :: [%Cypher{} | %Group{} | map()] 
     
 
     @moduledoc """
@@ -24,7 +27,7 @@ defmodule MaxGallery.Context do
 
       Internally, it interacts with:
 
-      - `MaxGallery.Core.Data.Api` for file entries;
+      - `MaxGallery.Core.Cypher.Api` for file entries;
       - `MaxGallery.Core.Group.Api` for group entities;
       - `MaxGallery.Encrypter` for encryption/decryption;
       - `MaxGallery.Phantom` for validation and metadata;
@@ -32,6 +35,30 @@ defmodule MaxGallery.Context do
 
     All operations require a valid encryption key to ensure security and integrity.
     """
+
+
+
+    defp chunck_insert([], _index, _params), do: :ok
+    defp chunck_insert([head | tail], index, params) do
+        Map.merge(
+            %{blob: head, index: index},
+            params
+        ) |> ChunkApi.insert()
+
+        chunck_insert(tail, index + 1, params)
+    end
+
+    def chunck_write(id, path) do
+        File.open!(path, [:write], fn file ->
+            Repo.transaction(fn ->
+                ChunkApi.from_all_cypher(id)
+                |> Repo.stream()
+                |> Stream.each(fn %{blob: blob} ->
+                    IO.binwrite(file, blob)
+                end) |> Stream.run()
+            end)
+        end)
+    end
 
 
 
@@ -95,15 +122,19 @@ defmodule MaxGallery.Context do
         with true <- Phantom.insert_line?(key),
              {:ok, {blob_iv, blob}} <- Encrypter.file(:encrypt, path, key),
              {:ok, {msg_iv, msg}} <- Encrypter.encrypt(Phantom.get_text(), key),
-             {:ok, querry} <- DataApi.insert(%{
+             {:ok, querry} <- CypherApi.insert(%{
                  name_iv: name_iv,
                  name: name,
-                 blob: blob,
                  blob_iv: blob_iv,
                  ext: ext,
                  msg: msg,
                  msg_iv: msg_iv,
-                 group_id: group}) do
+                 group_id: group}),
+             blob_chunk <- Utils.binary_chunk(blob, @byte_part),
+             :ok <- chunck_insert(blob_chunk, 0, %{
+                 cypher_id: querry.id,
+                 length: byte_size(blob)
+             }) do
 
             {:ok, querry.id}
         else
@@ -180,7 +211,7 @@ defmodule MaxGallery.Context do
 
     ## Behavior
 
-    - Retrieves the file by its ID using `Core.Data.Api.get/1`.
+    - Retrieves the file by its ID using `Core.Cypher.Api.get/1`.
     - Verifies that the provided key is valid for the file using `Phantom.valid?/2`.
     - Deletes the file entry from the database.
 
@@ -192,9 +223,9 @@ defmodule MaxGallery.Context do
     """
     @spec cypher_delete(id :: binary(), key :: String.t()) :: {:ok, querry()} | {:error, String.t()}
     def cypher_delete(id, key) do
-        with {:ok, querry} <- DataApi.get(id),
+        with {:ok, querry} <- CypherApi.get(id),
              true <- Phantom.valid?(querry, key),
-             {:ok, _querry} <- DataApi.delete(id) do
+             {:ok, _querry} <- CypherApi.delete(id) do
 
             {:ok, querry}
         else
@@ -217,7 +248,7 @@ defmodule MaxGallery.Context do
 
     ## Behavior
 
-    - Fetches either a file (`Core.Data.Api.get/1`) or group (`GroupApi.get/1`) depending on the `:group` flag.
+    - Fetches either a file (`Core.Cypher.Api.get/1`) or group (`GroupApi.get/1`) depending on the `:group` flag.
     - Decrypts the encrypted name using the provided key.
     - Returns the result depending on flags:
       - **File (lazy)**: Returns `id`, `name`, `ext`, and `group_id` only.
@@ -233,16 +264,19 @@ defmodule MaxGallery.Context do
     def decrypt_one(id, key, opts \\ []) do
         lazy? = Keyword.get(opts, :lazy)
         group? = Keyword.get(opts, :group)
+        memory? = Keyword.get(opts, :memory)
+
 
         {:ok, querry} = 
             if group? do
                 GroupApi.get(id)
             else
-                DataApi.get(id)
+                CypherApi.get(id)
             end
 
 
-        with {:ok, name} <- Encrypter.decrypt({querry.name_iv, querry.name}, key) do
+        with true <- memory?,
+             {:ok, name} <- Encrypter.decrypt({querry.name_iv, querry.name}, key) do
 
             case {lazy?, group?} do
                 {true, nil} ->
@@ -270,8 +304,10 @@ defmodule MaxGallery.Context do
                         name: name,
                         group: querry.group_id
                     }}
-            end
+            end 
         else
+            false -> false
+                
             error -> error
         end
     end
@@ -318,12 +354,12 @@ defmodule MaxGallery.Context do
         {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
         {:ok, {blob_iv, blob}} = Encrypter.encrypt(new_blob, key)
 
-        {:ok, querry} = DataApi.get(id)
+        {:ok, querry} = CypherApi.get(id)
 
         if Phantom.valid?(querry, key) do
           params = %{name_iv: name_iv, name: name, blob: blob, blob_iv: blob_iv, ext: ext}
 
-            DataApi.update(id, params)
+            CypherApi.update(id, params)
         else
             {:error, "invalid key"}
         end
@@ -335,19 +371,19 @@ defmodule MaxGallery.Context do
         {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
 
         params = %{name_iv: name_iv, name: name, ext: ext}
-        {:ok, querry} = DataApi.get(id)
+        {:ok, querry} = CypherApi.get(id)
 
         if Phantom.valid?(querry, key) do
-            DataApi.update(id, params)
+            CypherApi.update(id, params)
         else
             {:error, "invalid key"}
         end
     end
     def cypher_update(id, %{group_id: new_group}, key) do
-        {:ok, querry} = DataApi.get(id)
+        {:ok, querry} = CypherApi.get(id)
 
         if Phantom.valid?(querry, key) do
-            DataApi.update(id, %{group_id: new_group})
+            CypherApi.update(id, %{group_id: new_group})
         else
             {:error, "invalid key"}
         end
@@ -488,7 +524,7 @@ defmodule MaxGallery.Context do
 
     defp repeat_cascate(group_id, key) do
         {:ok, groups} = GroupApi.all_group(group_id)
-        {:ok, datas} = DataApi.all_group(group_id)
+        {:ok, datas} = CypherApi.all_group(group_id)
 
         contents = groups ++ datas
         if contents != [] do
@@ -509,7 +545,7 @@ defmodule MaxGallery.Context do
         with {:ok, querry} <- GroupApi.get(group_id),
              true <- Phantom.valid?(querry, key),
              {:ok, groups} <- GroupApi.all_group(group_id),
-             {:ok, datas} <- DataApi.all_group(group_id) do
+             {:ok, datas} <- CypherApi.all_group(group_id) do
 
             contents = groups ++ datas
             if contents == [] do
@@ -544,7 +580,7 @@ defmodule MaxGallery.Context do
     ## Process
 
     The function:
-      1. Retrieves the original file using `Core.Data.Api.get/1`
+      1. Retrieves the original file using `Core.Cypher.Api.get/1`
       2. Strips protected metadata fields (`__struct__`, `__meta__`, etc.)
       3. Merges the provided modification parameters
       4. Decrypts the original file name using `Encrypter.decrypt/2`
@@ -552,7 +588,7 @@ defmodule MaxGallery.Context do
          - File name via `Encrypter.encrypt/2`
          - System message via `Phantom.get_text/0` + encryption
       6. Validates the encryption key with `Phantom.insert_line?/1`
-      7. Inserts the new duplicate record via `Core.Data.Api.insert/1`
+      7. Inserts the new duplicate record via `Core.Cypher.Api.insert/1`
 
     ## Returns
 
@@ -569,7 +605,7 @@ defmodule MaxGallery.Context do
     """
     @spec cypher_duplicate(id :: binary(), params :: map(), key :: String.t()) :: {:ok, querry()} | {:error, String.t()}
     def cypher_duplicate(id, params, key) do
-        {:ok, querry} = DataApi.get(id)
+        {:ok, querry} = CypherApi.get(id)
 
         original = Map.drop(querry, [
             :__struct__,
@@ -599,7 +635,7 @@ defmodule MaxGallery.Context do
         )
 
         with true <- Phantom.insert_line?(key),
-             {:ok, querry} <- DataApi.insert(duplicate) do
+             {:ok, querry} <- CypherApi.insert(duplicate) do
 
             {:ok, querry.id}
         else
@@ -670,7 +706,7 @@ defmodule MaxGallery.Context do
 
             duplicate_content = fn
                 (content, :data) ->
-                    DataApi.insert(content)
+                    CypherApi.insert(content)
 
 
                 (content, :group) ->
@@ -747,7 +783,7 @@ defmodule MaxGallery.Context do
             Utils.zip_folder(tree, name)
         else
 
-            case DataApi.get(id) do
+            case CypherApi.get(id) do
                 {:ok, querry} ->
                     {:ok, name} = Encrypter.decrypt(
                         {querry.name_iv, querry.name},
@@ -782,7 +818,7 @@ defmodule MaxGallery.Context do
     1. Validates the key via `Phantom.insert_line?/1`
     2. Performs complete wipe of:
        - All groups via `Core.Group.Api.delete_all()`
-       - All files via `Core.Data.Api.delete_all()`
+       - All files via `Core.Cypher.Api.delete_all()`
 
     ## Returns
       - `{:ok, count}`: Total number of deleted records (groups + files)
@@ -797,7 +833,7 @@ defmodule MaxGallery.Context do
     def delete_all(key) do
         with true <- Phantom.insert_line?(key),
              {count_group, nil} <- GroupApi.delete_all(),
-             {count_data, nil} <- DataApi.delete_all() do
+             {count_data, nil} <- CypherApi.delete_all() do
 
             {:ok, count_group + count_data}
         else
@@ -861,7 +897,7 @@ defmodule MaxGallery.Context do
             end)
 
             
-            {:ok, data_list} = DataApi.all()
+            {:ok, data_list} = CypherApi.all()
             Enum.each(data_list, fn data ->
                 {:ok, old_name} = Encrypter.decrypt(
                     {data.name_iv, data.name},
@@ -886,7 +922,7 @@ defmodule MaxGallery.Context do
                     new_key
                 )
 
-                DataApi.update(
+                CypherApi.update(
                     data.id, 
                     %{name_iv: name_iv, name: name, blob: blob, blob_iv: blob_iv, msg_iv: msg_iv, msg: msg}
                 )

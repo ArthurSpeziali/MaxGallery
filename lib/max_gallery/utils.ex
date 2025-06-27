@@ -1,5 +1,5 @@
 defmodule MaxGallery.Utils do
-    alias MaxGallery.Core.Data.Api, as: DataApi
+    alias MaxGallery.Core.Cypher.Api, as: CypherApi
     alias MaxGallery.Core.Group.Api, as: GroupApi
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
@@ -80,7 +80,7 @@ defmodule MaxGallery.Utils do
       - Contains only the requested type when filtered
 
     ## Notes
-    - Makes parallel calls to DataApi (for files) and GroupApi (for subgroups)
+    - Makes parallel calls to CypherApi (for files) and GroupApi (for subgroups)
     - The combined result maintains no particular order
     - Returns empty list if the group contains no items
     - Does not recursively fetch items from nested subgroups
@@ -91,14 +91,14 @@ defmodule MaxGallery.Utils do
 
         case only do
             nil ->
-                {:ok, datas} = DataApi.all_group(id)
+                {:ok, datas} = CypherApi.all_group(id)
                 {:ok, groups} = GroupApi.all_group(id)
 
                 {:ok, groups ++ datas}
 
 
             :datas ->
-                DataApi.all_group(id)
+                CypherApi.all_group(id)
 
 
             :groups ->
@@ -150,7 +150,7 @@ defmodule MaxGallery.Utils do
                 end) |> Enum.sum()
             end
         else
-            {:ok, length} = DataApi.get_length(id)
+            {:ok, length} = CypherApi.get_length(id)
             
             length
         end
@@ -164,7 +164,7 @@ defmodule MaxGallery.Utils do
     - `opts` - Optional keyword list:
       - `:group` - Boolean flag indicating whether the ID refers to a group
         - When true, uses GroupApi
-        - When false or omitted, uses DataApi
+        - When false or omitted, uses CypherApi
 
     ## Returns
     - Map with adjusted timestamps:
@@ -186,7 +186,7 @@ defmodule MaxGallery.Utils do
             if group? do
                 GroupApi.get_timestamps(id)
             else
-                DataApi.get_timestamps(id)
+                CypherApi.get_timestamps(id)
             end
 
         local = NaiveDateTime.local_now()

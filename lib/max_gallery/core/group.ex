@@ -1,6 +1,6 @@
 defmodule MaxGallery.Core.Group do
     use Ecto.Schema
-    alias MaxGallery.Core.Data
+    alias MaxGallery.Core.Cypher
 
 
     schema "groups" do
@@ -9,10 +9,10 @@ defmodule MaxGallery.Core.Group do
         field :msg_iv, :binary
         field :msg, :binary
 
-        has_many :cypher, Data
+        has_many :cypher, Cypher
 
         belongs_to :group, __MODULE__
-        ## `group_id` can be inserted in both structs (Datas and Groups). that represents your parent folder.
+        ## `group_id` can be inserted in both structs (Cyphers and Groups). that represents your parent folder.
         has_many :subgroup, __MODULE__
 
         timestamps()
@@ -24,11 +24,12 @@ defmodule MaxGallery.Core.Group do
 
     def fields() do
         %__MODULE__{}
-        |> Map.delete(:__struct__)
-        |> Map.delete(:__meta__)
-        |> Map.delete(:group)
-        |> Map.delete(:subgroup)
-        |> Map.keys()
+        |> Map.drop([
+            :__struct__,
+            :__meta__,
+            :group,
+            :subgroup
+        ]) |> Map.keys()
     end
 
 end
