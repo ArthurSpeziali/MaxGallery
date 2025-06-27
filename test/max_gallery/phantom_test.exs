@@ -2,7 +2,7 @@ defmodule MaxGallery.PhatomTest do
     use MaxGallery.DataCase
     alias MaxGallery.Phantom
     alias MaxGallery.Context
-    alias MaxGallery.Core.Data.Api
+    alias MaxGallery.Core.Cypher.Api
 
 
     setup do

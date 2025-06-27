@@ -105,7 +105,7 @@ defmodule MaxGallery.Context do
                  msg_iv: msg_iv,
                  group_id: group}),
              blob_chunk <- Utils.binary_chunk(blob, Cache.chunk_size()),
-             :ok <- Cache.insert_chunk(blob_chunk, 0, %{
+             :ok <- Cache.insert_chunk(blob_chunk, %{
                  cypher_id: querry.id,
                  length: byte_size(blob)
              }) do
@@ -131,7 +131,7 @@ defmodule MaxGallery.Context do
             } |> Phantom.encode_bin()
         else
             if memory? do
-                {:ok, enc_blob} = Cache.get_chunk(item.id)
+                {:ok, enc_blob} = Cache.get_chunks(item.id)
                 {:ok, blob} = {item.blob_iv, enc_blob} |> Encrypter.decrypt(key)
 
                 %{
@@ -288,7 +288,7 @@ defmodule MaxGallery.Context do
                     } |> Phantom.encode_bin()}
                 
                 {nil, nil} ->
-                    {:ok, chunk} = Cache.get_chunk(querry.id)
+                    {:ok, chunk} = Cache.get_chunks(querry.id)
                     {:ok, blob} = Encrypter.decrypt({querry.blob_iv, chunk}, key)
 
                     {:ok, %{
@@ -318,12 +318,14 @@ defmodule MaxGallery.Context do
                 else
                     {path, _created} = Cache.consume_cache(querry.id, querry.blob_iv)
 
-                    %{
-                        id: id, 
-                        name: name,
-                        ext: querry.ext,
-                        path: path,
-                        group: querry.group_id
+                    {:ok, 
+                        %{
+                            id: id, 
+                            name: name,
+                            ext: querry.ext,
+                            path: path,
+                            group: querry.group_id
+                        }
                     }
                 end
             else
@@ -381,8 +383,9 @@ defmodule MaxGallery.Context do
         {:ok, querry} = CypherApi.get(id)
 
         if Phantom.valid?(querry, key) do
-          params = %{name_iv: name_iv, name: name, blob: blob, blob_iv: blob_iv, ext: ext}
+            params = %{name_iv: name_iv, name: name, blob_iv: blob_iv, ext: ext}
 
+            Cache.update_chunks(id, blob)
             CypherApi.update(id, params)
         else
             {:error, "invalid key"}
@@ -640,7 +643,9 @@ defmodule MaxGallery.Context do
             :updated_at
         ])
         duplicate = Map.merge(original, params)
-        
+
+
+        ## This process is necessary about the unique name constraint.
         {:ok, dec_name} = Encrypter.decrypt(
             {duplicate.name_iv, duplicate.name},
             key
@@ -657,6 +662,16 @@ defmodule MaxGallery.Context do
         duplicate = Map.merge(duplicate,
             %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
         )
+
+
+        ## Chunk file duplicating
+        {:ok, chunks} = Cache.get_chunks(querry.id)
+
+        Utils.binary_chunk(chunks, Cache.chunk_size())
+        |> Cache.insert_chunk(%{
+            length: byte_size(chunks),
+            cypher_id: querry.id
+        })
 
         with true <- Phantom.insert_line?(key),
              {:ok, querry} <- CypherApi.insert(duplicate) do
@@ -932,8 +947,9 @@ defmodule MaxGallery.Context do
                     new_key
                 )
 
+                {:ok, enc_blob} = Cache.get_chunks(data.id)
                 {:ok, old_blob} = Encrypter.decrypt(
-                    {data.blob_iv, data.blob},
+                    {data.blob_iv, enc_blob},
                     key
                 )
                 {:ok, {blob_iv, blob}} = Encrypter.encrypt(
@@ -946,9 +962,11 @@ defmodule MaxGallery.Context do
                     new_key
                 )
 
+
+                Cache.update_chunks(data.id, blob)
                 CypherApi.update(
                     data.id, 
-                    %{name_iv: name_iv, name: name, blob: blob, blob_iv: blob_iv, msg_iv: msg_iv, msg: msg}
+                    %{name_iv: name_iv, name: name, blob_iv: blob_iv, msg_iv: msg_iv, msg: msg}
                 )
               
             end)

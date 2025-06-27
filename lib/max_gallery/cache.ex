@@ -2,6 +2,7 @@ defmodule MaxGallery.Cache do
     alias MaxGallery.Core.Chunk.Api, as: ChunkApi
     alias MaxGallery.Repo
     alias MaxGallery.Phantom
+    alias MaxGallery.Utils
     alias MaxGallery.Encrypter
     @tmp_path "/tmp/max_gallery/cache/"
 
@@ -11,16 +12,16 @@ defmodule MaxGallery.Cache do
         32 * 1024 ## 32KB
     end
 
-    @spec insert_chunk(list(), index :: non_neg_integer(), params :: map()) :: :ok
-    def insert_chunk(list, index \\ 0, params)
-    def insert_chunk([], _index, _params), do: :ok
-    def insert_chunk([head | tail], index, params) do
+    @spec insert_chunk(list :: list(), params :: map(), index :: non_neg_integer()) :: :ok
+    def insert_chunk(list, params, index \\ 0)
+    def insert_chunk([], _params, _index), do: :ok
+    def insert_chunk([head | tail], params, index) do
         Map.merge(
-            %{blob: head, index: index},
-            params
+            params,
+            %{blob: head, index: index}
         ) |> ChunkApi.insert()
 
-        insert_chunk(tail, index + 1, params)
+        insert_chunk(tail, params, index + 1)
     end
 
     @spec write_chunk(id :: pos_integer(), blob_iv :: binary()) :: Path.t()
@@ -30,7 +31,7 @@ defmodule MaxGallery.Cache do
         File.mkdir_p!(folder_path)
 
 
-        {:ok, enc_blob} = get_chunk(id)
+        {:ok, enc_blob} = get_chunks(id)
         {:ok, blob} = Encrypter.decrypt(
             {blob_iv, enc_blob},
             "key"
@@ -43,8 +44,8 @@ defmodule MaxGallery.Cache do
         )
     end
 
-    @spec get_chunk(id :: pos_integer()) :: binary()
-    def get_chunk(id) do
+    @spec get_chunks(id :: pos_integer()) :: binary()
+    def get_chunks(id) do
         Repo.transaction(fn ->
             ChunkApi.from_all_cypher(id)
             |> Repo.stream()
@@ -77,6 +78,24 @@ defmodule MaxGallery.Cache do
         else
             write_chunk(id, blob_iv)
             {path, true}
-        end|> IO.inspect()
+        end
+    end
+
+    def get_length(id) do
+        ChunkApi.first_length(id)
+        |> Repo.one()
+        |> case do
+            querry -> {:ok, querry}
+        end
+    end
+
+    def update_chunks(id, blob) do
+        ChunkApi.delete_cypher(id)
+
+        Utils.binary_chunk(blob, chunk_size())
+        |> insert_chunk(%{
+            length: byte_size(blob),
+            cypher_id: id
+        })
     end
 end

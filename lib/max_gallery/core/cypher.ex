@@ -19,7 +19,7 @@ defmodule MaxGallery.Core.Cypher do
 
 
     def changeset(model, params) do
-        Ecto.Changeset.cast(model, params, [:name, :name_iv, :blob_iv, :blob, :ext, :group_id, :msg, :msg_iv])
+        Ecto.Changeset.cast(model, params, [:name, :name_iv, :blob_iv, :ext, :group_id, :msg, :msg_iv])
     end
 
     ## Return all `Cypher` fields.

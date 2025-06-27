@@ -3,6 +3,7 @@ defmodule MaxGallery.Utils do
     alias MaxGallery.Core.Group.Api, as: GroupApi
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
+    alias MaxGallery.Cache
     @type tree :: [map()]
 
 
@@ -150,8 +151,7 @@ defmodule MaxGallery.Utils do
                 end) |> Enum.sum()
             end
         else
-            {:ok, length} = CypherApi.get_length(id)
-            
+            {:ok, length} = Cache.get_length(id)
             length
         end
     end

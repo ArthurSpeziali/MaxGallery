@@ -4,22 +4,18 @@ defmodule MaxGallery.Core.Chunk.Api do
     import Ecto.Query
 
 
+    def first_length(id) do
+        from(Chunk)
+        |> where(cypher_id: ^id)
+        |> first()
+        |> select([c], c.length)
+    end
+
     def from_all_cypher(id) do
         from(Chunk)
         |> where(cypher_id: ^id)
         |> order_by(asc: :index)
         |> select([c], c.blob)
-    end
-
-    def all_cypher(id) do
-        from(Chunk)
-        |> where(cypher_id: ^id)
-        |> order_by(asc: :index)
-        |> Repo.all()
-
-        |> case do
-            querry -> {:ok, querry}
-        end
     end
 
     def all() do
@@ -58,6 +54,12 @@ defmodule MaxGallery.Core.Chunk.Api do
     def insert(params) do
         struct(%Chunk{}, params)
         |> Repo.insert()
+    end
+
+    def delete_cypher(id) do
+        from(Chunk)
+        |> where(cypher_id: ^id)
+        |> Repo.delete_all()
     end
 
 end

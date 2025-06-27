@@ -1,7 +1,7 @@
-defmodule MaxGallery.Data.ContextTest do
+defmodule MaxGallery.ContextTest do
     use MaxGallery.DataCase
     alias MaxGallery.Context
-    alias MaxGallery.Core.Data.Api
+    alias MaxGallery.Core.Cypher.Api
 
 
     setup do
@@ -33,7 +33,8 @@ defmodule MaxGallery.Data.ContextTest do
         end
 
         assert {:ok, querry} = Context.decrypt_all("key")
-        assert %{name: name, blob: ^msg} = List.first(querry)
+        assert %{name: name, path: file_path} = List.first(querry)
+        assert ^msg = File.read!(file_path)
         assert ^name = Path.basename(path)
     end
 
@@ -42,7 +43,8 @@ defmodule MaxGallery.Data.ContextTest do
         
         assert {:ok, id} = Context.cypher_insert(path, "key")
         assert {:ok, data} = Context.decrypt_one(id, "key")
-        assert {:ok, _querry} = Context.cypher_update(id, %{name: data.name <> data.ext, blob: data.blob}, "key")
+        assert blob = File.read!(data.path)
+        assert {:ok, _querry} = Context.cypher_update(id, %{name: data.name <> data.ext, blob: blob}, "key")
     end
 
     test "Insert 10 groups, then remove them." do

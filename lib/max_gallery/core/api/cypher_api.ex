@@ -75,16 +75,6 @@ defmodule MaxGallery.Core.Cypher.Api do
         end
     end
 
-
-    def get_length(id) do
-        from(d in Cypher, select: %{length: fragment("octet_length(?)", d.blob)}, where: d.id == ^id)
-        |> Repo.one()
-
-        |> case do
-            %{length: length} -> {:ok, length}
-        end
-    end
-
     def get_timestamps(id) do
         from(d in Cypher, select: map(d, [:inserted_at, :updated_at]), where: d.id == ^id)
         |> Repo.one()
