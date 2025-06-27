@@ -1,14 +1,12 @@
 defmodule MaxGallery.Context do
-    @byte_part 32 * 1024 ## 64KB
     alias MaxGallery.Core.Cypher.Api, as: CypherApi
     alias MaxGallery.Core.Group.Api, as: GroupApi
-    alias MaxGallery.Core.Chunk.Api, as: ChunkApi
     alias MaxGallery.Core.Cypher
     alias MaxGallery.Core.Group
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
     alias MaxGallery.Utils
-    alias MaxGallery.Repo
+    alias MaxGallery.Cache
     @type querry :: [%Cypher{} | %Group{} | map()] 
     
 
@@ -35,30 +33,6 @@ defmodule MaxGallery.Context do
 
     All operations require a valid encryption key to ensure security and integrity.
     """
-
-
-
-    defp chunck_insert([], _index, _params), do: :ok
-    defp chunck_insert([head | tail], index, params) do
-        Map.merge(
-            %{blob: head, index: index},
-            params
-        ) |> ChunkApi.insert()
-
-        chunck_insert(tail, index + 1, params)
-    end
-
-    def chunck_write(id, path) do
-        File.open!(path, [:write], fn file ->
-            Repo.transaction(fn ->
-                ChunkApi.from_all_cypher(id)
-                |> Repo.stream()
-                |> Stream.each(fn %{blob: blob} ->
-                    IO.binwrite(file, blob)
-                end) |> Stream.run()
-            end)
-        end)
-    end
 
 
 
@@ -130,8 +104,8 @@ defmodule MaxGallery.Context do
                  msg: msg,
                  msg_iv: msg_iv,
                  group_id: group}),
-             blob_chunk <- Utils.binary_chunk(blob, @byte_part),
-             :ok <- chunck_insert(blob_chunk, 0, %{
+             blob_chunk <- Utils.binary_chunk(blob, Cache.byte_part()),
+             :ok <- Cache.insert_chunk(blob_chunk, 0, %{
                  cypher_id: querry.id,
                  length: byte_size(blob)
              }) do
@@ -145,17 +119,38 @@ defmodule MaxGallery.Context do
 
 
     ## Private recursive function to return the already encrypted data of each date/group to be stored in the database.
-    defp send_package(%{ext: _ext} = item, lazy?, key) do
+    defp send_package(%{ext: _ext} = item, lazy?, memory?, key) do
         {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
 
-        if lazy? do
-            %{name: name, ext: item.ext, id: item.id, group: item.group_id}
+        if memory? do
+            if lazy? do
+                %{name: name, ext: item.ext, id: item.id, group: item.group_id}
+            else
+                {:ok, blob} = {item.blob_iv, item.blob} |> Encrypter.decrypt(key)
+                %{name: name, blob: blob, ext: item.ext, id: item.id, group: item.group_id}
+            end
         else
-            {:ok, blob} = {item.blob_iv, item.blob} |> Encrypter.decrypt(key)
-            %{name: name, blob: blob, ext: item.ext, id: item.id, group: item.group_id}
+            folder_path = "/tmp/max_gallery/cache/"
+            file_path = folder_path <> "#{item.id}"
+            File.mkdir_p!(folder_path)
+
+            {:ok, enc_blob} = Cache.get_chunk(item.id)
+            {:ok, blob} = Encrypter.decrypt(
+                {item.blob_iv, enc_blob},
+                "key"
+            )
+
+            File.write!(file_path, blob, [:write])
+            {:ok, %{
+                id: item.id,
+                name: name,
+                blob: file_path,
+                ext: item.ext,
+                group: item.group_id
+            }}
         end
     end
-    defp send_package(item, _lazy, key) do
+    defp send_package(item, _lazy, _memory, key) do
         {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
         %{name: name, id: item.id, group: item.group_id} 
     end
@@ -170,6 +165,7 @@ defmodule MaxGallery.Context do
         - `:lazy` (boolean) — If `true`, returns only basic metadata (e.g. name, ext, id); skips blob download/decryption.
         - `:only` (list) — A list of filters to selectively include only certain types (e.g., `[:files]`, `[:groups]`).
         - `:group` (string) — The group ID (binary ID) from which to retrieve contents. If not provided, retrieves the top-level group.
+        - `:memory` (boolean) — If `false`, put the blob in a file, and return the file path.
 
     ## Behavior
 
@@ -186,12 +182,13 @@ defmodule MaxGallery.Context do
         lazy? = Keyword.get(opts, :lazy)
         only = Keyword.get(opts, :only)
         group_id = Keyword.get(opts, :group)
+        memory? = Keyword.get(opts, :memory)
 
         {:ok, contents} = Utils.get_group(group_id, only: only)
 
         querry = 
             for item <- contents do
-                send_package(item, lazy?, key)
+                send_package(item, lazy?, memory?, key)
             end |> Phantom.encode_bin()
 
         {:ok, querry}
@@ -275,9 +272,8 @@ defmodule MaxGallery.Context do
             end
 
 
-        with true <- memory?,
-             {:ok, name} <- Encrypter.decrypt({querry.name_iv, querry.name}, key) do
-
+        {:ok, name} = Encrypter.decrypt({querry.name_iv, querry.name}, key)
+        if memory? do
             case {lazy?, group?} do
                 {true, nil} ->
                     {:ok, %{
@@ -288,7 +284,8 @@ defmodule MaxGallery.Context do
                     }}
                 
                 {nil, nil} ->
-                    {:ok, blob} = Encrypter.decrypt({querry.blob_iv, querry.blob}, key)
+                    {:ok, chunk} = Cache.get_chunk(querry.id)
+                    {:ok, blob} = Encrypter.decrypt({querry.blob_iv, chunk}, key)
 
                     {:ok, %{
                         id: id,
@@ -306,9 +303,32 @@ defmodule MaxGallery.Context do
                     }}
             end 
         else
-            false -> false
-                
-            error -> error
+            if !group? do
+                folder_path = "/tmp/max_gallery/cache/"
+                file_path = folder_path <> "#{querry.id}"
+                File.mkdir_p!(folder_path)
+
+                {:ok, enc_blob} = Cache.get_chunk(querry.id)
+                {:ok, blob} = Encrypter.decrypt(
+                    {querry.blob_iv, enc_blob},
+                    "key"
+                )
+
+                File.write!(file_path, blob, [:write])
+                {:ok, %{
+                    id: id,
+                    name: name,
+                    blob: file_path,
+                    ext: querry.ext,
+                    group: querry.group_id
+                }}
+            else
+                {:ok, %{
+                    id: id,
+                    name: name,
+                    group: querry.group_id
+                }}
+            end
         end
     end
 
