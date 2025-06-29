@@ -14,8 +14,15 @@ defmodule MaxGalleryWeb.PageController do
         mime = Map.fetch!(querry, :ext)
                |> Extension.get_mime()
 
-        put_resp_content_type(conn, mime)
-        |> send_resp(200, querry.blob)
+        file = File.read(querry.path)
+        case file do
+            {:ok, cont} ->
+                put_resp_content_type(conn, mime)
+                |> send_resp(200, cont)
+
+            {:error, :enoent} ->
+                redirect(conn, to: "/data")
+        end
     end
 
 

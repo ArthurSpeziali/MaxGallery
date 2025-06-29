@@ -3,6 +3,7 @@ defmodule MaxGallery.Context do
     alias MaxGallery.Core.Group.Api, as: GroupApi
     alias MaxGallery.Core.Cypher
     alias MaxGallery.Core.Group
+    alias MaxGallery.Repo
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
     alias MaxGallery.Utils
@@ -664,17 +665,15 @@ defmodule MaxGallery.Context do
         )
 
 
-        ## Chunk file duplicating
         {:ok, chunks} = Cache.get_chunks(querry.id)
-
-        Utils.binary_chunk(chunks, Cache.chunk_size())
-        |> Cache.insert_chunk(%{
-            length: byte_size(chunks),
-            cypher_id: querry.id
-        })
-
         with true <- Phantom.insert_line?(key),
-             {:ok, querry} <- CypherApi.insert(duplicate) do
+             {:ok, querry} <- CypherApi.insert(duplicate),
+             :ok <- Utils.binary_chunk(chunks, Cache.chunk_size()) 
+                |> Cache.insert_chunk(%{
+                    length: byte_size(chunks),
+                    cypher_id: querry.id
+                }) do
+
 
             {:ok, querry.id}
         else
@@ -913,66 +912,71 @@ defmodule MaxGallery.Context do
     def update_all(key, new_key) do
         ## This function is poor, if the user cancel the operation in the process, the entire database will be corrupted. Should i refactor that?
         if Phantom.insert_line?(key) do
-            {:ok, group_list} = GroupApi.all()
-            Enum.each(group_list, fn group ->
-                {:ok, old_name} = Encrypter.decrypt(
-                    {group.name_iv, group.name},
-                    key
-                )
-                {:ok, {name_iv, name}} = Encrypter.encrypt(
-                    old_name,
-                    new_key
-                )
+            Repo.transaction(fn ->
+                try do
+                    {:ok, group_list} = GroupApi.all()
+                    Enum.each(group_list, fn group ->
+                        {:ok, old_name} = Encrypter.decrypt(
+                            {group.name_iv, group.name},
+                            key
+                        )
+                        {:ok, {name_iv, name}} = Encrypter.encrypt(
+                            old_name,
+                            new_key
+                        )
 
-                {:ok, {msg_iv, msg}} = Encrypter.encrypt(
-                    Phantom.get_text(),
-                    new_key
-                )
+                        {:ok, {msg_iv, msg}} = Encrypter.encrypt(
+                            Phantom.get_text(),
+                            new_key
+                        )
 
-                GroupApi.update(
-                    group.id, 
-                    %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
-                )
+                        GroupApi.update(
+                            group.id, 
+                            %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
+                        )
+                    end)
+
+                    
+                    {:ok, data_list} = CypherApi.all()
+                    Enum.each(data_list, fn data ->
+                        {:ok, old_name} = Encrypter.decrypt(
+                            {data.name_iv, data.name},
+                            key
+                        )
+                        {:ok, {name_iv, name}} = Encrypter.encrypt(
+                            old_name,
+                            new_key
+                        )
+
+                        {:ok, enc_blob} = Cache.get_chunks(data.id)
+                        {:ok, old_blob} = Encrypter.decrypt(
+                            {data.blob_iv, enc_blob},
+                            key
+                        )
+                        {:ok, {blob_iv, blob}} = Encrypter.encrypt(
+                            old_blob,
+                            new_key
+                        )
+
+                        {:ok, {msg_iv, msg}} = Encrypter.encrypt(
+                            Phantom.get_text(),
+                            new_key
+                        )
+
+
+                        Cache.update_chunks(data.id, blob)
+                        CypherApi.update(
+                            data.id, 
+                            %{name_iv: name_iv, name: name, blob_iv: blob_iv, msg_iv: msg_iv, msg: msg}
+                        )
+                    end)
+
+                    Enum.count(group_list) + Enum.count(data_list) 
+                rescue
+                    _error ->
+                        Repo.rollback("error in transaction")
+                end
             end)
-
-            
-            {:ok, data_list} = CypherApi.all()
-            Enum.each(data_list, fn data ->
-                {:ok, old_name} = Encrypter.decrypt(
-                    {data.name_iv, data.name},
-                    key
-                )
-                {:ok, {name_iv, name}} = Encrypter.encrypt(
-                    old_name,
-                    new_key
-                )
-
-                {:ok, enc_blob} = Cache.get_chunks(data.id)
-                {:ok, old_blob} = Encrypter.decrypt(
-                    {data.blob_iv, enc_blob},
-                    key
-                )
-                {:ok, {blob_iv, blob}} = Encrypter.encrypt(
-                    old_blob,
-                    new_key
-                )
-
-                {:ok, {msg_iv, msg}} = Encrypter.encrypt(
-                    Phantom.get_text(),
-                    new_key
-                )
-
-
-                Cache.update_chunks(data.id, blob)
-                CypherApi.update(
-                    data.id, 
-                    %{name_iv: name_iv, name: name, blob_iv: blob_iv, msg_iv: msg_iv, msg: msg}
-                )
-              
-            end)
-
-            count = Enum.count(group_list) + Enum.count(data_list) 
-            {:ok, count}
         else
             {:error, "invalid key"}
         end
