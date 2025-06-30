@@ -4,6 +4,7 @@ defmodule MaxGalleryWeb.ShowLive do
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Context
     alias MaxGallery.Extension
+    alias MaxGallery.Phantom
 
 
     def mount(%{"id" => id}, _session, socket) do
@@ -20,10 +21,9 @@ defmodule MaxGalleryWeb.ShowLive do
 
 
         {:ok, querry} = Context.decrypt_one(id, key, lazy: lazy)
-
         
         socket = assign(socket, [
-            data: querry,
+            data: Map.update!(querry, :name, fn item -> Phantom.validate_bin(item) end),
             page_id: page_id,
             id: id
         ])

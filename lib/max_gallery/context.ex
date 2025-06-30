@@ -129,7 +129,7 @@ defmodule MaxGallery.Context do
                 ext: item.ext, 
                 id: item.id, 
                 group: item.group_id
-            } |> Phantom.encode_bin()
+            }
         else
             if memory? do
                 {:ok, enc_blob} = Cache.get_chunks(item.id)
@@ -141,7 +141,7 @@ defmodule MaxGallery.Context do
                     ext: item.ext, 
                     id: item.id, 
                     group: item.group_id
-                } |> Phantom.encode_bin()
+                } 
             else
                 {path, _created} = Cache.consume_cache(item.id, item.blob_iv)
 
@@ -153,7 +153,7 @@ defmodule MaxGallery.Context do
                     group: item.group_id
                 }
             end
-        end
+        end |> Map.update!(:name, fn item -> Phantom.validate_bin(item) end)
     end
     defp send_package(item, _lazy, _memory, key) do
         {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
@@ -286,7 +286,7 @@ defmodule MaxGallery.Context do
                         name: name,
                         ext: querry.ext,
                         group: querry.group_id
-                    } |> Phantom.encode_bin()}
+                    }}
                 
                 {nil, nil} ->
                     {:ok, chunk} = Cache.get_chunks(querry.id)
@@ -298,14 +298,14 @@ defmodule MaxGallery.Context do
                         blob: blob,
                         ext: querry.ext,
                         group: querry.group_id
-                    } |> Phantom.encode_bin()}
+                    }}
 
                 {_boolean, true} ->
                     {:ok, %{
                         id: id,
                         name: name,
                         group: querry.group_id
-                    } |> Phantom.encode_bin()}
+                    }}
             end 
         else
             if !group? do
@@ -315,7 +315,7 @@ defmodule MaxGallery.Context do
                         name: name,
                         ext: querry.ext,
                         group: querry.group_id
-                    } |> Phantom.encode_bin()}
+                    }}
                 else
                     {path, _created} = Cache.consume_cache(querry.id, querry.blob_iv)
 
@@ -334,7 +334,7 @@ defmodule MaxGallery.Context do
                     id: id,
                     name: name,
                     group: querry.group_id
-                } |> Phantom.encode_bin()}
+                }}
             end
         end
     end

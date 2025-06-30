@@ -27,7 +27,7 @@ defmodule MaxGallery.Cache do
     @spec write_chunk(id :: pos_integer(), blob_iv :: binary()) :: Path.t()
     def write_chunk(id, blob_iv) do
         folder_path = "/tmp/max_gallery/cache/"
-        file_path = folder_path <> "#{Mix.env()}_#{id}_encode"
+        file_path = folder_path <> "#{Mix.env()}_#{id}"
         File.mkdir_p!(folder_path)
 
 
@@ -39,7 +39,7 @@ defmodule MaxGallery.Cache do
 
         File.write!(
             file_path,
-            Phantom.validate_bin(blob),
+            blob,
             [:write]
         )
     end
@@ -57,7 +57,7 @@ defmodule MaxGallery.Cache do
 
     @spec encode_chunk(path :: Path.t()) :: Path.t()
     def encode_chunk(path) do
-        File.open!(inspect(Mix.env()) <> "_" <> path <> "_encode", [:write], fn output ->
+        File.open!(path <> "_encode", [:write], fn output ->
             File.stream!(path, [], chunk_size())
             |> Stream.each(fn chunk ->
                 encoded_data = Phantom.validate_bin(chunk)
@@ -71,7 +71,7 @@ defmodule MaxGallery.Cache do
 
     @spec consume_cache(id :: pos_integer(), blob_iv :: binary()) :: {:ok, boolean()}
     def consume_cache(id, blob_iv) do
-        path = @tmp_path <> "#{Mix.env}_#{id}_encode"
+        path = @tmp_path <> "#{Mix.env}_#{id}"
 
         if File.exists?(path) do
             {path, false}

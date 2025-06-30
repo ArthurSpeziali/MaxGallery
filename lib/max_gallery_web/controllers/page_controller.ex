@@ -3,7 +3,7 @@ defmodule MaxGalleryWeb.PageController do
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Extension
     alias MaxGallery.Context
-    alias MaxGallery.Utils
+    alias MaxGallery.Cache
 
 
     ## Decrypt the file and shows instantly.
@@ -53,29 +53,28 @@ defmodule MaxGalleryWeb.PageController do
     end
 
 
-    ## Decrypt the video, and chucked it. It's ensure the videos loads faster.
+    ## Load the file, and chucked it. It's ensure the videos loads faster.
     def videos(conn, %{"id" => id}) do
         key = get_session(conn, :auth_key)
+        {:ok, querry} = Context.decrypt_one(id, key)
 
-        case Context.decrypt_one(id, key) do
-            {:ok, %{blob: blob, ext: ext}} ->
-                mime = Extension.get_mime(ext)
-
-                conn = put_resp_content_type(conn, mime)
-                       |> put_resp_header("accept-ranges", "bytes")
-                       |> send_chunked(200)
+        if File.exists?(querry.path) do 
+            mime = Extension.get_mime(querry.ext)
+            conn = put_resp_content_type(conn, mime)
+                   |> put_resp_header("accept-ranges", "bytes")
+                   |> send_chunked(200)
 
 
-                Utils.binary_chunk(blob, 128 * 1024) # 128KB
-                |> Enum.reduce_while(conn, fn blob_chunk, conn -> 
-    
-                    case chunk(conn, blob_chunk) do
-                        {:ok, conn} -> {:cont, conn}
-                        {:error, _reason} -> {:halt, conn}
-                    end
-                end)
+            File.stream!(querry.path, [], Cache.chunk_size())
+            |> Enum.reduce_while(conn, fn blob_chunk, conn -> 
+                case chunk(conn, blob_chunk) do
+                    {:ok, conn} -> {:cont, conn}
+                    {:error, _reason} -> {:halt, conn}
+                end
+            end)
 
-            error -> error
+        else
+            redirect(conn, to: "/data")
         end
     end
 

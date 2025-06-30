@@ -159,7 +159,6 @@ defmodule MaxGallery.Extension do
 
         mime = mime_map()
                |> Map.get(atom_ext)
-               |> IO.inspect #*@SJU@DNUI@HD
 
         case mime do
             nil -> "image/png"
