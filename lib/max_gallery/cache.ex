@@ -81,6 +81,7 @@ defmodule MaxGallery.Cache do
         end
     end
 
+    @spec get_length(id :: pos_integer()) :: {:ok, integer()}
     def get_length(id) do
         ChunkApi.first_length(id)
         |> Repo.one()
@@ -89,6 +90,7 @@ defmodule MaxGallery.Cache do
         end
     end
 
+    @spec update_chunks(id :: pos_integer(), blob :: binary()) :: :ok
     def update_chunks(id, blob) do
         ChunkApi.delete_cypher(id)
 

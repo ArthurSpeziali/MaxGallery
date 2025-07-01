@@ -820,7 +820,6 @@ defmodule MaxGallery.Context do
             tree = Utils.get_tree(id, key)
             Utils.zip_folder(tree, name)
         else
-
             case CypherApi.get(id) do
                 {:ok, querry} ->
                     {:ok, name} = Encrypter.decrypt(
@@ -828,8 +827,9 @@ defmodule MaxGallery.Context do
                         key
                     )
 
+                    {:ok, chunks} = Cache.get_chunks(querry.id)
                     {:ok, blob} = Encrypter.decrypt(
-                        {querry.blob_iv, querry.blob},
+                        {querry.blob_iv, chunks},
                         key
                     )
 

@@ -543,4 +543,187 @@ defmodule MaxGallery.Utils do
         ]
     end
     def binary_chunk(bin, _range), do: [bin]
+
+
+    @spec unzip_file(path :: Path.t(), key :: binary(), opts :: Keyword.t()) :: pos_integer()    
+    def unzip_file(path, key, opts \\ []) do
+        group = Keyword.get(opts, :group)
+        zip_path = "/tmp/max_gallery/zips/"
+
+        {:ok, path_charlist} = :zip.extract(
+            path |> String.to_charlist(),
+            cwd: zip_path |> String.to_charlist()
+        )
+
+        path_string = Enum.map(path_charlist, fn item -> 
+            List.to_string(item)
+        end)
+
+        {:ok, agent} = Agent.start_link(fn -> %{} end)
+        count = 
+            for item <- path_string do
+                create_folder(item, key, agent: agent, group: group)
+            end |> Enum.count()
+
+        
+        exclude_path = 
+            Path.relative_to(
+                List.first(path_string),
+                zip_path
+            ) |> Path.split()
+            |> List.first()
+
+
+        File.rm_rf!(zip_path <> exclude_path)
+        count
+    end
+
+    @spec create_folder(folder :: Path.t(), key :: binary(), opts :: Keyword.t()) :: :ok
+    def create_folder(folder, key, opts \\ [])  do
+        group = Keyword.get(opts, :group)
+        agent = Keyword.get(opts, :agent)
+
+        {:ok, agent} = 
+            if agent do
+                {:ok, agent}
+            else
+                Agent.start_link(fn -> %{} end)
+            end
+
+
+        zip_path = "/tmp/max_gallery/zips/"
+        fpath = Path.relative_to(folder, zip_path) 
+
+        exists_path = zip_path <> fpath 
+                      |> Path.dirname() 
+
+        response = find_group(exists_path, agent, exists_path, nil)
+        if response do
+            {new_group, new_path, persists} = response
+
+            recursive_path(
+                new_path ++ [Path.basename(fpath)],
+                folder,
+                persists,
+                agent,
+                new_group,
+                key
+            )
+        else
+            recursive_path(
+                fpath |> String.split("/"), 
+                folder, 
+                zip_path,
+                agent,
+                group, 
+                key
+            )
+        end
+
+        :ok
+    end
+
+
+    defp find_group("/tmp/max_gallery/zips", _agent, _lock, _last), do: nil
+    defp find_group(path, agent, lock, last) do
+        group = 
+            Agent.get(agent, &(&1))
+            |> Map.get(path)
+
+        if group do
+            if last do
+                {group, Path.relative_to(lock, path) |> Path.split(), path}
+            else
+                {group, [], path}
+            end
+        else
+            Path.split(path)
+            |> Enum.slice(0..-2//1)
+            |> Path.join()
+            |> find_group(agent, lock, true)
+        end
+    end
+
+    defp recursive_path([head | []], lock, _persists, _agent, group, key) do
+        file = File.read!(lock)
+
+        {:ok, {name_iv, name}} = Encrypter.encrypt(
+            Path.basename(head, Path.extname(head)),
+            key
+        )
+        {:ok, {msg_iv, msg}} = Encrypter.encrypt(
+            Phantom.get_text(),
+            key
+        )
+        {:ok, {blob_iv, blob}} = Encrypter.encrypt(
+            file,
+            key
+        )
+
+        ext = Path.extname(head)
+        ext = 
+            if ext == "" do
+                ".txt"
+            else
+                ext
+            end
+
+
+        {:ok, %{id: id}} = CypherApi.insert(%{
+            name: name,
+            name_iv: name_iv,
+            blob_iv: blob_iv,
+            msg: msg,
+            msg_iv: msg_iv,
+            ext: ext,
+            group_id: group
+        })
+
+        binary_chunk(blob, Cache.chunk_size())
+        |> Cache.insert_chunk(%{
+            length: byte_size(file),
+            cypher_id: id
+        })
+    end
+    defp recursive_path([head | tail], lock, persists, agent, group, key) do
+        {:ok, {name_iv, name}} = Encrypter.encrypt(
+            head,
+            key
+        )
+        {:ok, {msg_iv, msg}} = Encrypter.encrypt(
+            Phantom.get_text(),
+            key
+        )
+
+        {:ok, %{id: id}} = GroupApi.insert(%{
+            name: name,
+            name_iv: name_iv,
+            msg: msg,
+            msg_iv: msg_iv,
+            group_id: group
+        })
+
+        new_path = Path.join(persists, head)
+                   |> Path.split()
+                   |> Path.join()
+
+        exists? = Agent.get(agent, &(&1))
+                  |> Map.get(
+                      new_path
+                  ) 
+
+        
+        if !exists? do
+            Agent.update(agent, fn value -> 
+                Map.put(
+                    value, 
+                    new_path,
+                    id
+                ) 
+            end)
+
+        end
+        
+        recursive_path(tail, lock, new_path, agent, id, key)
+    end
 end

@@ -91,7 +91,7 @@ defmodule MaxGalleryWeb.PageController do
 
             send_download(conn, {:file, file_path})
         else
-            redirect(conn, to: ~c"/")
+            redirect(conn, to: "/")
         end
     end
     def download(conn, %{"id" => id, "type" => "data"}) do
@@ -102,7 +102,7 @@ defmodule MaxGalleryWeb.PageController do
 
             send_download(conn, {:file, file_path})
         else
-            redirect(conn, to: ~c"/")
+            redirect(conn, to: "/")
         end
     end
     def download(conn, _params) do
