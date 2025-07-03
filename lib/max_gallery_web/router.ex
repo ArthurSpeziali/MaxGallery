@@ -17,8 +17,14 @@ defmodule MaxGalleryWeb.Router do
     scope "/", MaxGalleryWeb do
         pipe_through :browser
 
-        get "/", PageController, :home
+        get "/", PageController, :landing
         post "/auth", PageController, :auth
+    end
+
+    scope "/user", MaxGalleryWeb do
+        pipe_through :browser
+
+        get "/", PageController, :home
         get "/logout", PageController, :logout
         get "/download", PageController, :download
 

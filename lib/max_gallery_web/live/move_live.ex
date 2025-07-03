@@ -47,13 +47,13 @@ defmodule MaxGalleryWeb.MoveLive do
             {:ok, socket, layout: false}
         else
             {:ok,
-                push_navigate(socket, to: "/data/#{page_id}")
+                push_navigate(socket, to: "/user/data/#{page_id}")
             }
         end
     end
     def mount(_params, _session, socket) do
         {:ok,
-            push_navigate(socket, to: "/data")
+            push_navigate(socket, to: "/user/data")
         }
     end
 
@@ -62,7 +62,7 @@ defmodule MaxGalleryWeb.MoveLive do
         action = socket.assigns[:action]
 
         {:noreply,
-            push_navigate(socket, to: "/move/#{id}?action=#{action}")
+            push_navigate(socket, to: "/user/move/#{id}?action=#{action}")
         }
     end
 
@@ -73,7 +73,7 @@ defmodule MaxGalleryWeb.MoveLive do
                   ## This is only time that `Utils.get_back/1` is called. Should i delete this function?
                   
         {:noreply, 
-            push_navigate(socket, to: "/move/#{back_id}?action=#{action}")
+            push_navigate(socket, to: "/user/move/#{back_id}?action=#{action}")
         }
     end
 
@@ -121,7 +121,7 @@ defmodule MaxGalleryWeb.MoveLive do
 
 
         {:noreply,
-            push_navigate(socket, to: "/data/#{dest_id}")
+            push_navigate(socket, to: "/user/data/#{dest_id}")
         }
     end
 

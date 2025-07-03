@@ -6,7 +6,6 @@ defmodule MaxGalleryWeb.ConfigLive do
     alias MaxGallery.Context
 
 
-
     def mount(_params, _session, socket) do
         key = LiveServer.get(:auth_key)
 
@@ -20,7 +19,7 @@ defmodule MaxGalleryWeb.ConfigLive do
             {:ok, socket, layout: false}
         else
             {:ok, 
-                push_navigate(socket, to: "/")
+                push_navigate(socket, to: "/user")
             }
         end
     end
@@ -28,7 +27,7 @@ defmodule MaxGalleryWeb.ConfigLive do
 
     def handle_event("redirect", _params, socket) do
         {:noreply, 
-            push_navigate(socket, to: "/data")
+            push_navigate(socket, to: "/user/data")
         }
     end
 
@@ -52,7 +51,7 @@ defmodule MaxGalleryWeb.ConfigLive do
         Context.delete_all(key)
 
         {:noreply, 
-            push_navigate(socket, to: "/data")
+            push_navigate(socket, to: "/user/data")
         }
     end
 
@@ -68,7 +67,7 @@ defmodule MaxGalleryWeb.ConfigLive do
         end
 
         {:noreply,
-            push_navigate(socket, to: "/data")
+            push_navigate(socket, to: "/user/data")
         }
     end
 

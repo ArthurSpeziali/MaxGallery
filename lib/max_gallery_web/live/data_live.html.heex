@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
     <body>
         <div class="flex w-full h-auto md:gap-12 gap-3 justify-between px-2 py-1">
             <button phx-click="back" class="flex justify-center items-center border border-gray-300 rounded-xl w-14">
@@ -155,7 +155,7 @@
                     </div>
 
                     <div class="grid grid-rows-3 gap-4 p-6">
-                        <a href={"/download?id=#{@more_iframe}&type=#{@type}"} target="_blank" class="border rounded-lg font-bold text-blue-600 py-1 px-4 md:text-lg text-xl shadow-md">
+                        <a href={"/user/download?id=#{@more_iframe}&type=#{@type}"} target="_blank" class="border rounded-lg font-bold text-blue-600 py-1 px-4 md:text-lg text-xl shadow-md">
                             Download
                         </a>
                         <button phx-click="move" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-red-600 py-1 px-4 md:text-lg text-xl shadow-md">

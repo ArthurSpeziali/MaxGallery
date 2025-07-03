@@ -21,7 +21,7 @@ defmodule MaxGalleryWeb.PageController do
                 |> send_resp(200, cont)
 
             {:error, :enoent} ->
-                redirect(conn, to: "/data")
+                redirect(conn, to: "/user/data")
         end
     end
 
@@ -31,11 +31,13 @@ defmodule MaxGalleryWeb.PageController do
     end
 
     def auth(conn, %{"key" => key}) do
+        LiveServer.put(%{auth_key: key})
+
         put_session(conn, :auth_key, key)
-        |> redirect(to: "/data")
+        |> redirect(to: "/user/data")
     end
     def auth(conn, _params) do
-        redirect(conn, to: "/")
+        redirect(conn, to: "/user")
     end
 
     ## Remove assings, cookies, files, etc...
@@ -44,7 +46,7 @@ defmodule MaxGalleryWeb.PageController do
         File.rm_rf!(Variables.tmp_dir)
 
         configure_session(conn, drop: true)
-        |> redirect(to: "/")
+        |> redirect(to: "/user")
     end
 
 
@@ -74,7 +76,7 @@ defmodule MaxGalleryWeb.PageController do
             end)
 
         else
-            redirect(conn, to: "/data")
+            redirect(conn, to: "/user/data")
         end
     end
 
@@ -91,7 +93,7 @@ defmodule MaxGalleryWeb.PageController do
 
             send_download(conn, {:file, file_path})
         else
-            redirect(conn, to: "/")
+            redirect(conn, to: "/user")
         end
     end
     def download(conn, %{"id" => id, "type" => "data"}) do
@@ -102,16 +104,20 @@ defmodule MaxGalleryWeb.PageController do
 
             send_download(conn, {:file, file_path})
         else
-            redirect(conn, to: "/")
+            redirect(conn, to: "/user")
         end
     end
     def download(conn, _params) do
-        redirect(conn, to: "/data")
+        redirect(conn, to: "/user/data")
     end
 
 
     def not_found(conn, _params) do
         put_status(conn, 404)
         |> render(:error, layout: false)
+    end
+
+    def landing(conn, _params) do
+        render(conn, :landing, layout: false, hide_header: true)
     end
 end

@@ -33,7 +33,7 @@ defmodule MaxGalleryWeb.ShowLive do
     def mount(_params, _session, socket) do
         page_id = socket.assigns[:page_id]
 
-        {:ok, push_navigate(socket, to: "/data/#{page_id}")}
+        {:ok, push_navigate(socket, to: "/user/data/#{page_id}")}
     end
 
 
@@ -41,7 +41,7 @@ defmodule MaxGalleryWeb.ShowLive do
         page_id = socket.assigns[:page_id]
         
         {:noreply,
-            push_navigate(socket, to: "/data/#{page_id}")
+            push_navigate(socket, to: "/user/data/#{page_id}")
         }
     end
 end

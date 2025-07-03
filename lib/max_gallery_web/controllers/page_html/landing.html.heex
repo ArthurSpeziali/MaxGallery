@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Max Gallery - Secure Encrypted File Storage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --orange: #ff5c1c;
+        }
+    </style>
+</head>
+
+<body class="bg-[#1b2533] text-white font-sans">
+    <header class="bg-[#1b2533] border-b-4 border-[var(--orange)] py-6 text-center flex justify-between items-center px-[10%]">
+        <div>
+            <h1 class="text-3xl font-bold text-[var(--orange)]">Max Gallery</h1>
+            <p class="text-gray-100">Secure Encrypted File Storage Solution</p>
+        </div>
+        <div>
+            <a href="/user" class="inline-block bg-white text-[var(--orange)] hover:bg-gray-100 font-semibold py-3 px-6 rounded transition">Get Started</a>
+        </div>
+    </header>
+
+    <section class="relative isolate overflow-hidden py-24 sm:py-32">
+        <div class="mx-auto max-w-4xl px-6 text-center lg:px-8">
+            <h2 class="text-4xl font-bold tracking-tight text-gray-800 sm:text-5xl mb-6">
+                Your Files, Your Control
+            </h2>
+            <p class="mt-2 text-lg leading-8 text-gray-700">
+                Max Gallery is a secure file storage system that encrypts all your files before they leave your device.
+                With military-grade AES-256 encryption, your data remains private — even from us.
+            </p>
+        </div>
+    </section>
+
+    <section id="features" class="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 px-4 pb-16">
+        <div class="bg-[#263241] rounded-lg p-6 shadow hover:ring-2 hover:ring-[var(--orange)] transition">
+            <h3 class="text-xl font-semibold mb-2 text-white">🔒 End-to-End Encryption</h3>
+            <p class="text-white/90">All files and metadata are encrypted with AES-256-CTR before storage. Only you hold the keys.</p>
+        </div>
+        <div class="bg-[#263241] rounded-lg p-6 shadow hover:ring-2 hover:ring-[var(--orange)] transition">
+            <h3 class="text-xl font-semibold mb-2 text-white">📁 Smart Organization</h3>
+            <p class="text-white/90">Hierarchical structure with groups and subgroups makes file management intuitive and efficient.</p>
+        </div>
+        <div class="bg-[#263241] rounded-lg p-6 shadow hover:ring-2 hover:ring-[var(--orange)] transition">
+            <h3 class="text-xl font-semibold mb-2 text-white">⚡ Blazing Fast</h3>
+            <p class="text-white/90">Optimized chunk loading and caching system ensures quick access to your files, no matter the size.</p>
+        </div>
+        <div class="bg-[#263241] rounded-lg p-6 shadow hover:ring-2 hover:ring-[var(--orange)] transition">
+            <h3 class="text-xl font-semibold mb-2 text-white">🛡️ Phantom Mode</h3>
+            <p class="text-white/90">If an invalid key is detected, the system locks down automatically to protect your data.</p>
+        </div>
+        <div class="bg-[#263241] rounded-lg p-6 shadow hover:ring-2 hover:ring-[var(--orange)] transition">
+            <h3 class="text-xl font-semibold mb-2 text-white">🔍 Powerful Search</h3>
+            <p class="text-white/90">Find what you need instantly with our encrypted search capabilities.</p>
+        </div>
+        <div class="bg-[#263241] rounded-lg p-6 shadow hover:ring-2 hover:ring-[var(--orange)] transition">
+            <h3 class="text-xl font-semibold mb-2 text-white">📦 Easy Export</h3>
+            <p class="text-white/90">Download individual files or entire folder structures as encrypted ZIP archives.</p>
+        </div>
+    </section>
+
+    <section class="bg-[var(--orange)] text-white py-16 text-center">
+        <h2 class="text-3xl font-bold mb-4">Ready to Secure Your Files?</h2>
+        <p class="mb-8 text-lg">Take control of your data privacy today with Max Gallery's secure storage solution.</p>
+        <a href="/user" class="inline-block bg-white text-[var(--orange)] hover:bg-gray-100 font-semibold py-3 px-6 rounded transition">Get Started</a>
+    </section>
+
+    <footer class="bg-[#1b2533] border-t-4 border-[var(--orange)] text-center py-6 text-white/60 text-sm">
+        <a href="https://github.com/ArthurSpeziali/MaxGallery" target="_blank" class="text-blue-600 hover:underline">This website is open-source. Look at my Github.</a>
+        <p>Max Gallery - Secure Encrypted File Storage</p>
+        <p>© 2023 Max Gallery. All rights reserved for Arthur Speziali. Licensed under GPLv3.</p>
+    </footer>
+</body>
+</html>

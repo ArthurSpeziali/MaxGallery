@@ -30,7 +30,7 @@ defmodule MaxGalleryWeb.DataLive do
     end
     def mount(_params, _session, socket) do
         {:ok, 
-            push_navigate(socket, to: "/")
+            push_navigate(socket, to: "/user")
         }
     end
 
@@ -60,7 +60,7 @@ defmodule MaxGalleryWeb.DataLive do
         Context.cypher_delete(id, key)
 
         {:noreply,
-            push_navigate(socket, to: "/data/#{page_id}")
+            push_navigate(socket, to: "/user/data/#{page_id}")
         }
     end
 
@@ -69,7 +69,7 @@ defmodule MaxGalleryWeb.DataLive do
         LiveServer.put(%{page_id: page_id})
 
         {:noreply,
-            push_navigate(socket, to: "/editor?id=#{id}")
+            push_navigate(socket, to: "/user/editor?id=#{id}")
         }
     end
 
@@ -78,7 +78,7 @@ defmodule MaxGalleryWeb.DataLive do
         LiveServer.put(%{page_id: page_id})
 
         {:noreply,
-            push_navigate(socket, to: "/show?id=#{id}")
+            push_navigate(socket, to: "/user/show?id=#{id}")
         }
     end
 
@@ -86,7 +86,7 @@ defmodule MaxGalleryWeb.DataLive do
         page_id = socket.assigns[:page_id]
 
         {:noreply,
-            push_navigate(socket, to: "/import/#{page_id}")
+            push_navigate(socket, to: "/user/import/#{page_id}")
         }
     end
 
@@ -105,7 +105,7 @@ defmodule MaxGalleryWeb.DataLive do
         Context.group_update(id, %{name: name}, key)
 
         {:noreply, 
-            push_navigate(socket, to: "/data/#{page_id}")
+            push_navigate(socket, to: "/user/data/#{page_id}")
         }
     end
 
@@ -124,7 +124,7 @@ defmodule MaxGalleryWeb.DataLive do
         Context.group_delete(id, key)
 
         {:noreply, 
-            push_navigate(socket, to: "/data/#{page_id}")
+            push_navigate(socket, to: "/user/data/#{page_id}")
         }
     end
 
@@ -132,13 +132,13 @@ defmodule MaxGalleryWeb.DataLive do
         page_id = socket.assigns[:page_id]
 
         {:noreply, 
-            push_navigate(socket, to: "/data/#{page_id}")
+            push_navigate(socket, to: "/user/data/#{page_id}")
         }
     end
 
     def handle_event("open", %{"id" => id}, socket) do
         {:noreply,
-            push_navigate(socket, to: "/data/#{id}")
+            push_navigate(socket, to: "/user/data/#{id}")
         }
     end
 
@@ -147,7 +147,7 @@ defmodule MaxGalleryWeb.DataLive do
                   |> Utils.get_back()
 
         {:noreply,
-            push_navigate(socket, to: "/data/#{back_id}")
+            push_navigate(socket, to: "/user/data/#{back_id}")
         }
     end
 
@@ -167,7 +167,7 @@ defmodule MaxGalleryWeb.DataLive do
         Context.group_insert(name, key, group: page_id)
 
         {:noreply, 
-            push_navigate(socket, to: "/data/#{page_id}")
+            push_navigate(socket, to: "/user/data/#{page_id}")
         }
     end
 
@@ -186,7 +186,7 @@ defmodule MaxGalleryWeb.DataLive do
         }})
 
         {:noreply,
-            push_navigate(socket, to: "/move/#{page_id}?action=move")
+            push_navigate(socket, to: "/user/move/#{page_id}?action=move")
         }
     end
 
@@ -200,7 +200,7 @@ defmodule MaxGalleryWeb.DataLive do
         }})
 
         {:noreply,
-            push_navigate(socket, to: "/move/#{page_id}?action=copy")
+            push_navigate(socket, to: "/user/move/#{page_id}?action=copy")
         }
     end
 
@@ -271,7 +271,7 @@ defmodule MaxGalleryWeb.DataLive do
 
         Context.cypher_insert(path, key, name: name, group: group)
         {:noreply,
-            push_navigate(socket, to: "/data/#{group}")
+            push_navigate(socket, to: "/user/data/#{group}")
         }
     end
 
@@ -279,7 +279,7 @@ defmodule MaxGalleryWeb.DataLive do
         page_id = socket.assigns[:page_id]
 
         {:noreply,
-            push_navigate(socket, to: "/import/#{page_id}?zip=true")
+            push_navigate(socket, to: "/user/import/#{page_id}?zip=true")
         }
     end
 end

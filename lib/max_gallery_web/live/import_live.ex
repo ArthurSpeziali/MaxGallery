@@ -45,10 +45,10 @@ defmodule MaxGalleryWeb.ImportLive do
 
         case {entries, zip?} do
             {[], nil} -> 
-                "Nenhum arquivo selecionado."
+                "No files select."
 
             {[], _zip} ->
-                "Nenhum arquivo \".zip\" selecionado."
+                "No files \".zip\" select."
 
             _entry -> 
                 Enum.map(entries, fn item -> 
@@ -83,7 +83,7 @@ defmodule MaxGalleryWeb.ImportLive do
             end)
 
         {:noreply, 
-            push_navigate(socket, to: "/data/#{group_id}")
+            push_navigate(socket, to: "/user/data/#{group_id}")
         }
     end
 
@@ -92,7 +92,7 @@ defmodule MaxGalleryWeb.ImportLive do
 
         socket = assign(socket, loading: false)
         {:noreply,
-            push_navigate(socket, to: "/data/#{page_id}")
+            push_navigate(socket, to: "/user/data/#{page_id}")
         }
     end
 

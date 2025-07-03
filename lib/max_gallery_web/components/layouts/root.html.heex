@@ -14,28 +14,28 @@
     </head>
 
 
-    <header class="bg-gray-800 text-white p-1 flex items-center justify-between">
-        <.form for={%{}} action={"/data"} method="get">
-            <button>
+    <%= unless Map.get(@conn.assigns, :hide_header) do %>
+        <header class="bg-gray-800 text-white p-1 flex items-center justify-between">
+            <a href="/user/data">
                 <img src="/images/logo.png" alt="Logo" class="w-auto h-14 px-2">
-            </button>
-        </.form>
+            </a>
 
 
-        <div class="flex items-center">
-            <.form for={%{}} action={"/config"} method="get">
-                <button>
-                    <img src="/images/config.png" alt="Config" class="w-auto h-10">
-                </button>
-            </.form>
+            <div class="flex items-center">
+                <a href="/user/config">
+                    <button>
+                        <img src="/images/config.png" alt="Config" class="w-auto h-10">
+                    </button>
+                </a>
 
-            <.form for={%{}} action={"/logout"} method="get">
-                <button>
-                    <img src="/images/logout.png" alt="Logout" class="w-auto h-12 px-4">
-                </button>
-            </.form>
-        </div>
-    </header>
+                <a href="/user/logout">
+                    <button>
+                        <img src="/images/logout.png" alt="Logout" class="w-auto h-12 px-4">
+                    </button>
+                </a>
+            </div>
+        </header>
+    <% end %>
 
 
     <body class="bg-white">
