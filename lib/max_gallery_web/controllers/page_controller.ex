@@ -3,7 +3,7 @@ defmodule MaxGalleryWeb.PageController do
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Extension
     alias MaxGallery.Context
-    alias MaxGallery.Cache
+    alias MaxGallery.Variables
 
 
     ## Decrypt the file and shows instantly.
@@ -41,7 +41,7 @@ defmodule MaxGalleryWeb.PageController do
     ## Remove assings, cookies, files, etc...
     def logout(conn, _params) do
         LiveServer.clr()
-        File.rm_rf!("/tmp/max_gallery")
+        File.rm_rf!(Variables.tmp_dir)
 
         configure_session(conn, drop: true)
         |> redirect(to: "/")
@@ -65,7 +65,7 @@ defmodule MaxGalleryWeb.PageController do
                    |> send_chunked(200)
 
 
-            File.stream!(querry.path, [], Cache.chunk_size())
+            File.stream!(querry.path, [], Variables.chunk_size)
             |> Enum.reduce_while(conn, fn blob_chunk, conn -> 
                 case chunk(conn, blob_chunk) do
                     {:ok, conn} -> {:cont, conn}

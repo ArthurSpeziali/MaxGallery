@@ -10,14 +10,27 @@
                 <input name="search" class="w-full rounded-xl shadow-lg border border-gray-600 text-center h-10" placeholder="File.txt"/>
             </form>
 
-            <div class="flex py-1 md:px-4 px-2 gap-1">
-                <button phx-click="ask_folder">
-                    <img src="/images/create_folder.png" class="w-auto h-10"/>
-                </button>
+            <div class="flex py-1 md:px-4 px-2 gap-2">
+                <div class="flex">
+                    <button phx-click="import_folder">
+                        <img src="/images/import_folder.png" class="w-auto h-10"/>
+                    </button>
 
-                <button phx-click="import_file">
-                    <img src="/images/import_file.png" class="w-auto h-10"/>
-                </button>
+                    <button phx-click="ask_folder">
+                        <img src="/images/create_folder.png" class="w-auto h-10"/>
+                    </button>
+                </div>
+
+
+                <div class="flex">
+                    <button phx-click="ask_file">
+                        <img src="/images/create_file.png" class="w-auto h-10"/>
+                    </button>
+
+                    <button phx-click="import_file">
+                        <img src="/images/import_file.png" class="w-auto h-10"/>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -210,5 +223,22 @@
             </div>
         <% end %>
 
+        <%= if @create_iframe do %>
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-6 rounded shadow-lg">
+                    <div class="flex justify-between items-center mb-8">
+                        <p>Enter the file name: </p>
+                        <button phx-click="cancel">
+                            <img src="/images/close.png" class="w-auto h-8" />
+                        </button>
+                    </div>
+
+                    <form phx-submit="confirm_createfile" class="flex gap-2">
+                        <input name="name" class="p-2 rounded border border-gray-600"/>
+                        <button type="submit" class="rounded-lg shadow-md bg-orange-600 text-white py-2 px-4">Send</button>
+                    </form>
+                </div>
+            </div>
+        <% end %>
     </body>
 </html>

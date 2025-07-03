@@ -1,8 +1,9 @@
 defmodule MaxGallery.Server.GarbageServer do
     use GenServer
+    alias MaxGallery.Variables
 
     @mod __MODULE__
-    @path %{zips: "/tmp/max_gallery/zips/", cache: "/tmp/max_gallery/zips/"}
+    @path %{zips: Variables.tmp_dir <> "zips/", cache: Variables.tmp_dir <> "cache/"}
     @time_delete %{zips: 75, cache: 120} # 75-120 Minutes
     @time_check 5 * 60 * 1000  # 5 Minutes
 

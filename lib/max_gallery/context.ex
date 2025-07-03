@@ -8,6 +8,7 @@ defmodule MaxGallery.Context do
     alias MaxGallery.Phantom
     alias MaxGallery.Utils
     alias MaxGallery.Cache
+    alias MaxGallery.Variables
     @type querry :: [%Cypher{} | %Group{} | map()] 
     
 
@@ -84,6 +85,13 @@ defmodule MaxGallery.Context do
                 Path.extname(path)
             end 
 
+        ext = 
+            if ext == "" do
+                ".txt"
+            else
+                ext
+            end
+
         {:ok, {name_iv, name}} = 
             if name do
                 Path.basename(name, ext)
@@ -105,7 +113,7 @@ defmodule MaxGallery.Context do
                  msg: msg,
                  msg_iv: msg_iv,
                  group_id: group}),
-             blob_chunk <- Utils.binary_chunk(blob, Cache.chunk_size()),
+             blob_chunk <- Utils.binary_chunk(blob, Variables.chunk_size),
              :ok <- Cache.insert_chunk(blob_chunk, %{
                  cypher_id: querry.id,
                  length: byte_size(blob)
@@ -387,6 +395,7 @@ defmodule MaxGallery.Context do
             params = %{name_iv: name_iv, name: name, blob_iv: blob_iv, ext: ext}
 
             Cache.update_chunks(id, blob)
+            Cache.write_chunk(id, blob_iv)
             CypherApi.update(id, params)
         else
             {:error, "invalid key"}
@@ -668,7 +677,7 @@ defmodule MaxGallery.Context do
         {:ok, chunks} = Cache.get_chunks(querry.id)
         with true <- Phantom.insert_line?(key),
              {:ok, querry} <- CypherApi.insert(duplicate),
-             :ok <- Utils.binary_chunk(chunks, Cache.chunk_size()) 
+             :ok <- Utils.binary_chunk(chunks, Variables.chunk_size) 
                 |> Cache.insert_chunk(%{
                     length: byte_size(chunks),
                     cypher_id: querry.id
@@ -977,6 +986,45 @@ defmodule MaxGallery.Context do
                         Repo.rollback("error in transaction")
                 end
             end)
+        else
+            {:error, "invalid key"}
+        end
+    end
+
+
+    @spec unzip_content(path :: Path.t(), key :: binary(), opts :: Keyword.t()) :: pos_integer()    
+    def unzip_content(path, key, opts \\ []) do
+        group = Keyword.get(opts, :group)
+        zip_path = Variables.tmp_dir <> "zips/"
+
+        if Phantom.insert_line?(key) do
+            {:ok, path_charlist} = :zip.extract(
+                path |> String.to_charlist(),
+                cwd: zip_path |> String.to_charlist()
+            )
+
+            path_string = Enum.map(path_charlist, fn item -> 
+                List.to_string(item)
+            end)
+
+            {:ok, agent} = Agent.start_link(fn -> %{} end)
+            count = 
+                for item <- path_string do
+                    Utils.create_folder(item, key, agent: agent, group: group)
+                end |> Enum.count()
+
+            
+            exclude_path = 
+                Path.relative_to(
+                    List.first(path_string),
+                    zip_path
+                ) |> Path.split()
+                |> List.first()
+
+
+            File.rm_rf!(zip_path <> exclude_path)
+            count
+
         else
             {:error, "invalid key"}
         end

@@ -5,7 +5,7 @@ defmodule MaxGalleryWeb.DataLive do
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Extension
     alias MaxGallery.Utils
-
+    alias MaxGallery.Variables
 
 
     def mount(params, %{"auth_key" => key}, socket) do
@@ -22,7 +22,8 @@ defmodule MaxGalleryWeb.DataLive do
             rename_iframe: nil,
             remove_iframe: nil,
             more_iframe: nil,
-            info_iframe: nil
+            info_iframe: nil,
+            create_iframe: nil
         ])
 
         {:ok, socket, layout: false}
@@ -46,7 +47,8 @@ defmodule MaxGalleryWeb.DataLive do
             rename_iframe: nil,
             remove_iframe: nil,
             more_iframe: nil,
-            info_iframe: nil
+            info_iframe: nil,
+            create_iframe: nil
         )
 
         {:noreply, socket}
@@ -251,6 +253,33 @@ defmodule MaxGalleryWeb.DataLive do
 
         {:noreply, 
             assign(socket, datas: querry)
+        }
+    end
+
+    def handle_event("ask_file", _params, socket) do
+        {:noreply, 
+            assign(socket, create_iframe: true)
+        }
+    end
+
+    def handle_event("confirm_createfile", %{"name" => name}, socket) do
+        key = LiveServer.get(:auth_key)
+        group = socket.assigns[:page_id]
+
+        path = Variables.tmp_dir <> "cache/sys_#{Enum.random(1..999//1)}"
+        File.write(path, "", [:write])
+
+        Context.cypher_insert(path, key, name: name, group: group)
+        {:noreply,
+            push_navigate(socket, to: "/data/#{group}")
+        }
+    end
+
+    def handle_event("import_folder", _params, socket) do
+        page_id = socket.assigns[:page_id]
+
+        {:noreply,
+            push_navigate(socket, to: "/import/#{page_id}?zip=true")
         }
     end
 end

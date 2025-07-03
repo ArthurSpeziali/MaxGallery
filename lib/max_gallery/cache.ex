@@ -4,13 +4,9 @@ defmodule MaxGallery.Cache do
     alias MaxGallery.Phantom
     alias MaxGallery.Utils
     alias MaxGallery.Encrypter
-    @tmp_path "/tmp/max_gallery/cache/"
+    alias MaxGallery.Variables
+    @tmp_path Variables.tmp_dir <> "cache/"
 
-
-    @spec chunk_size() :: pos_integer()
-    def chunk_size() do
-        1 * 1024 * 1024 ## 1MB
-    end
 
     @spec insert_chunk(list :: list(), params :: map(), index :: non_neg_integer()) :: :ok
     def insert_chunk(list, params, index \\ 0)
@@ -26,9 +22,8 @@ defmodule MaxGallery.Cache do
 
     @spec write_chunk(id :: pos_integer(), blob_iv :: binary()) :: Path.t()
     def write_chunk(id, blob_iv) do
-        folder_path = "/tmp/max_gallery/cache/"
-        file_path = folder_path <> "#{Mix.env()}_#{id}"
-        File.mkdir_p!(folder_path)
+        file_path = @tmp_path <> "#{Mix.env()}_#{id}"
+        File.mkdir_p!(@tmp_path)
 
 
         {:ok, enc_blob} = get_chunks(id)
@@ -58,7 +53,7 @@ defmodule MaxGallery.Cache do
     @spec encode_chunk(path :: Path.t()) :: Path.t()
     def encode_chunk(path) do
         File.open!(path <> "_encode", [:write], fn output ->
-            File.stream!(path, [], chunk_size())
+            File.stream!(path, [], Variables.chunk_size)
             |> Stream.each(fn chunk ->
                 encoded_data = Phantom.validate_bin(chunk)
                 IO.binwrite(output, encoded_data)
@@ -94,7 +89,7 @@ defmodule MaxGallery.Cache do
     def update_chunks(id, blob) do
         ChunkApi.delete_cypher(id)
 
-        Utils.binary_chunk(blob, chunk_size())
+        Utils.binary_chunk(blob, Variables.chunk_size)
         |> insert_chunk(%{
             length: byte_size(blob),
             cypher_id: id

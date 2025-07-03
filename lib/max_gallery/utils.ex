@@ -4,7 +4,9 @@ defmodule MaxGallery.Utils do
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
     alias MaxGallery.Cache
+    alias MaxGallery.Variables
     @type tree :: [map()]
+    @zip_path Variables.tmp_dir <> "zips"
 
 
     @moduledoc """
@@ -395,11 +397,12 @@ defmodule MaxGallery.Utils do
     """
     @spec zip_file(name :: String.t(), blob :: binary()) :: {:ok, Path.t()}
     def zip_file(name, blob) do
-        File.mkdir_p("/tmp/max_gallery/zips")
+        zip_path = Variables.tmp_dir <> "zips/"
+        File.mkdir_p(zip_path)
 
         {:ok, final_path} = 
             ## Use `:zip` Erlang module for this operation.
-            :zip.create("/tmp/max_gallery/zips/#{name}_#{Enum.random(1..999//1)}.zip" |> String.to_charlist(), [
+            :zip.create(zip_path <> "#{name}_#{Enum.random(1..999//1)}.zip" |> String.to_charlist(), [
                 {
                     name |> String.to_charlist(), 
                     blob
@@ -435,7 +438,9 @@ defmodule MaxGallery.Utils do
     """
     @spec zip_folder(tree :: tree(), group_name :: String.t()) :: {:ok, Path.t()}
     def zip_folder(tree, group_name) do 
-        File.mkdir_p("/tmp/max_gallery/zips")
+        zip_path = Variables.tmp_dir <> "zips/"
+
+        File.mkdir_p(zip_path)
         folder = group_name <> "_#{Enum.random(1..1_000)}"
                  |> String.replace(" ", "_")
                  |> String.replace("/", "//")
@@ -445,7 +450,7 @@ defmodule MaxGallery.Utils do
 
         {:ok, final_path} = 
             :zip.create(
-                "/tmp/max_gallery/zips/#{folder}.zip" |> String.to_charlist(), 
+                zip_path <> "#{folder}.zip" |> String.to_charlist(), 
                 files
             )
 
@@ -545,39 +550,6 @@ defmodule MaxGallery.Utils do
     def binary_chunk(bin, _range), do: [bin]
 
 
-    @spec unzip_file(path :: Path.t(), key :: binary(), opts :: Keyword.t()) :: pos_integer()    
-    def unzip_file(path, key, opts \\ []) do
-        group = Keyword.get(opts, :group)
-        zip_path = "/tmp/max_gallery/zips/"
-
-        {:ok, path_charlist} = :zip.extract(
-            path |> String.to_charlist(),
-            cwd: zip_path |> String.to_charlist()
-        )
-
-        path_string = Enum.map(path_charlist, fn item -> 
-            List.to_string(item)
-        end)
-
-        {:ok, agent} = Agent.start_link(fn -> %{} end)
-        count = 
-            for item <- path_string do
-                create_folder(item, key, agent: agent, group: group)
-            end |> Enum.count()
-
-        
-        exclude_path = 
-            Path.relative_to(
-                List.first(path_string),
-                zip_path
-            ) |> Path.split()
-            |> List.first()
-
-
-        File.rm_rf!(zip_path <> exclude_path)
-        count
-    end
-
     @spec create_folder(folder :: Path.t(), key :: binary(), opts :: Keyword.t()) :: :ok
     def create_folder(folder, key, opts \\ [])  do
         group = Keyword.get(opts, :group)
@@ -591,7 +563,7 @@ defmodule MaxGallery.Utils do
             end
 
 
-        zip_path = "/tmp/max_gallery/zips/"
+        zip_path = Variables.tmp_dir <> "zips/"
         fpath = Path.relative_to(folder, zip_path) 
 
         exists_path = zip_path <> fpath 
@@ -624,7 +596,7 @@ defmodule MaxGallery.Utils do
     end
 
 
-    defp find_group("/tmp/max_gallery/zips", _agent, _lock, _last), do: nil
+    defp find_group(@zip_path, _agent, _lock, _last), do: nil
     defp find_group(path, agent, lock, last) do
         group = 
             Agent.get(agent, &(&1))
@@ -679,7 +651,7 @@ defmodule MaxGallery.Utils do
             group_id: group
         })
 
-        binary_chunk(blob, Cache.chunk_size())
+        binary_chunk(blob, Variables.chunk_size)
         |> Cache.insert_chunk(%{
             length: byte_size(file),
             cypher_id: id
@@ -725,5 +697,21 @@ defmodule MaxGallery.Utils do
         end
         
         recursive_path(tail, lock, new_path, agent, id, key)
+    end
+
+
+    @spec zip_valid?(path :: Path.t()) :: boolean()
+    def zip_valid?(path) do
+        String.to_charlist(path)
+        |> :zip.zip_open()
+
+        |> case do
+            {:ok, pid} ->
+                :zip.zip_close(pid)
+                true
+
+            {:error, :einval} ->
+                false
+        end
     end
 end

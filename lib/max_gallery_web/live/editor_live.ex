@@ -64,6 +64,13 @@ defmodule MaxGalleryWeb.EditorLive do
 
     def handle_event("confirm_edit", %{"new_content" => content, "new_name" => name}, socket) do
         id = socket.assigns[:id]
+             |> case do
+                 str when is_binary(str) ->
+                     String.to_integer(str)
+
+                 int -> int
+             end
+
         key = LiveServer.get(:auth_key)
         page_id = socket.assigns[:page_id]
 
