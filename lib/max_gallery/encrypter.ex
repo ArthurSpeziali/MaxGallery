@@ -177,7 +177,12 @@ defmodule MaxGallery.Encrypter do
 
 
     @spec hash(key :: String.t()) :: binary()
-    defp hash(key) do
+    def hash(key) do
         :crypto.hash(:sha256, key)      
+    end
+
+    @spec random(bytes :: pos_integer()) :: binary()
+    def random(bytes \\ 16) when bytes > 0 do
+        :crypto.strong_rand_bytes(bytes)
     end
 end

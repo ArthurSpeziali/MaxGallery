@@ -2,6 +2,7 @@ defmodule MaxGallery.Core.Cypher do
     use Ecto.Schema
     alias MaxGallery.Core.Group
     alias MaxGallery.Core.Chunk
+    alias MaxGallery.Core.User
 
 
     schema "cyphers" do
@@ -12,6 +13,7 @@ defmodule MaxGallery.Core.Cypher do
         field :msg, :string
         field :msg_iv, :string
 
+        belongs_to :user, User
         belongs_to :group, Group
         has_many :chunck, Chunk
         timestamps()
@@ -29,7 +31,8 @@ defmodule MaxGallery.Core.Cypher do
             :__struct__,
             :__meta__,
             :group,
-            :chunck
+            :chunck,
+            :user
         ]) |> Map.keys()
     end
 end

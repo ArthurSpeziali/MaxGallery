@@ -1,8 +1,10 @@
 defmodule MaxGallery.Context do
     alias MaxGallery.Core.Cypher.Api, as: CypherApi
     alias MaxGallery.Core.Group.Api, as: GroupApi
+    alias MaxGallery.Core.User.Api, as: UserApi
     alias MaxGallery.Core.Cypher
     alias MaxGallery.Core.Group
+    # alias MaxGallery.Core.User
     alias MaxGallery.Repo
     alias MaxGallery.Encrypter
     alias MaxGallery.Phantom
@@ -1030,4 +1032,50 @@ defmodule MaxGallery.Context do
         end
     end
 
+
+    @spec user_insert(name :: String.t(), email :: String.t(), password :: String.t()) :: {:ok, querry()} | {:error, String.t()}
+    def user_insert(name, email, password) do
+        femail = String.trim(email)
+                 |> String.downcase()
+
+        fname = String.trim(name)
+               |> String.capitalize()
+
+
+        case UserApi.get_email(email) do
+            {:ok, _querry} -> {:error, "email alredy been taken"}
+
+            {:error, _reason} ->
+                salt = Encrypter.random()
+                passhash = salt <> Encrypter.hash(password)
+
+                {:ok, querry} = UserApi.insert(%{
+                    name: fname,
+                    email: femail,
+                    passhash: passhash
+                })
+
+                {:ok, querry.id}
+        end
+    end
+
+    def user_validate(email, password) do
+        femail = String.trim(email)
+                 |> String.downcase()
+
+
+        case UserApi.get_email(femail) do
+            {:error, _reason} -> false
+
+            {:ok, querry} ->
+                <<_salt::binary-size(16), passhash::binary>> = querry.passhash
+
+
+                if Encrypter.hash(password) == passhash do
+                    true
+                else
+                    false
+                end
+        end
+    end
 end
