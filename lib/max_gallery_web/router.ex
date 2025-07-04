@@ -18,7 +18,11 @@ defmodule MaxGalleryWeb.Router do
         pipe_through :browser
 
         get "/", PageController, :landing
-        post "/auth", PageController, :auth
+
+        get "/login", PageController, :login
+        get "/register", PageController, :register
+        get "/forget", PageController, :forget
+        get "/check", PageController, :check
     end
 
     scope "/user", MaxGalleryWeb do
@@ -26,7 +30,7 @@ defmodule MaxGalleryWeb.Router do
 
         get "/", PageController, :home
         get "/logout", PageController, :logout
-        get "/download", PageController, :download
+        get "/download", RenderController, :download
 
         live "/data", DataLive
         live "/editor", EditorLive
@@ -43,9 +47,16 @@ defmodule MaxGalleryWeb.Router do
     scope "/content", MaxGalleryWeb do
         pipe_through :browser
 
-        get "/imgs/:id", PageController, :images
-        get "/vids/:id", PageController, :videos
-        get "/auds/:id", PageController, :audios
+        get "/imgs/:id", RenderController, :images
+        get "/vids/:id", RenderController, :videos
+        get "/auds/:id", RenderController, :audios
+    end
+
+    scope "/request", MaxGalleryWeb do
+        pipe_through :browser
+
+        post "/auth", RequestController, :auth
+        post "/email-forget", RequestController, :email_forget
     end
 
     scope "/", MaxGalleryWeb do

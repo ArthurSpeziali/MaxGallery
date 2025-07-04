@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+    <body>
+        <div class="text-[1.8rem] text-center font-bold text-orange-600 mt-16">
+            Login Page.
+        </div>
+
+        <div class="flex border border-2 rounded-xl shadow-2xl h-[50vh] w-[35vw] mt-2 mx-auto">
+            <form class="flex flex-col py-6 px-8 h-full w-full">
+
+                <div class="mb-8 mt-4">
+                    <p class="text-sm text-gray-800">E-mail.</p>
+                    <input 
+                        name="email"
+                        type="email"
+                        placeholder="john@smith.com"
+                        class="rounded-lg border border-gray-300 border-1 focus:border-blue-600 px-4 py-2"
+                        required
+                    />
+                </div>
+                <div class="mb-4">
+                    <p class="text-sm text-gray-800">Password.</p>
+                    <input 
+                        name="passwd"
+                        type="password"
+                        placeholder="John_Smith123"
+                        class="rounded-lg border border-gray-300 border-1 focus:border-blue-600 px-4 py-2"
+                        required
+                    />
+
+                    <br>
+                    <a href="/forget" class="px-2 text-sm text-blue-600">Did you forget your password?</a>
+                </div>
+
+
+                <div class="flex justify-between items-end mt-auto">
+                    <a href="/register" class="text-sm bg-transparent rounded-lg border border-blue-600 shadow-md text-blue-600 py-2 px-4">Register instead</a>
+
+                    <button type="submit" class="rounded-lg shadow-md bg-blue-700 text-white py-2 px-4">
+                        Send
+                    </button>
+                </div>
+            </form>
+        </div>
+    </body>
+</html>
