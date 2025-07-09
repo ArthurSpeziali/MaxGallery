@@ -19,10 +19,14 @@ defmodule MaxGalleryWeb.Router do
 
         get "/", PageController, :landing
 
-        get "/login", PageController, :login
-        get "/register", PageController, :register
         get "/forget", PageController, :forget
         get "/check", PageController, :check
+    end
+
+    scope "/", MaxGalleryWeb.Live do
+        pipe_through :browser
+
+        live "/login", LoginLive
     end
 
     scope "/user", MaxGalleryWeb do
@@ -31,6 +35,10 @@ defmodule MaxGalleryWeb.Router do
         get "/", PageController, :home
         get "/logout", PageController, :logout
         get "/download", RenderController, :download
+    end
+
+    scope "/user", MaxGalleryWeb.Live do
+        pipe_through :browser
 
         live "/data", DataLive
         live "/editor", EditorLive

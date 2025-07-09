@@ -1,4 +1,4 @@
-defmodule MaxGalleryWeb.EditorLive do
+defmodule MaxGalleryWeb.Live.EditorLive do
     ## Module for the site's editor field.
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Server.LiveServer
@@ -64,7 +64,7 @@ defmodule MaxGalleryWeb.EditorLive do
 
     def handle_event("confirm_edit", %{"new_content" => content, "new_name" => name}, socket) do
         id = socket.assigns[:id]
-             |> Validate.int()
+             |> Validate.int!()
 
         key = LiveServer.get(:auth_key)
         page_id = socket.assigns[:page_id]

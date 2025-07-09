@@ -1,4 +1,4 @@
-defmodule MaxGalleryWeb.MoveLive do
+defmodule MaxGalleryWeb.Live.MoveLive do
     ## Module for the site's moving and copying action in the page.
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Context
@@ -8,6 +8,13 @@ defmodule MaxGalleryWeb.MoveLive do
 
 
     def mount(%{"action" => action} = params, _session, socket) do
+        action = 
+            if action in ~w(move copy) do
+                action
+            else
+                "move"
+            end
+
         object = LiveServer.get(:object_info)
         page_id = Map.get(params, "id")
         key = LiveServer.get(:auth_key)

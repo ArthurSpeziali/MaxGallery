@@ -1,4 +1,4 @@
-defmodule MaxGalleryWeb.ImportLive do
+defmodule MaxGalleryWeb.Live.ImportLive do
     ## Module for site's import files page.
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Server.LiveServer

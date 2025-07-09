@@ -59,12 +59,11 @@ defmodule MaxGallery.MixProject do
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"},
 
-      # {:ecto_sqlite3, "~> 0.19.0"},
-      # {:mongodb_ecto, "~> 2.1"},
       {:mix_test_watch, "~> 1.2", only: [:test], runtime: false},
       {:mail, "~> 0.5.1"},
       {:dotenv, "~> 3.1"},
-      {:httpoison, "~> 2.2"}
+      {:httpoison, "~> 2.2"},
+      {:email_checker, "~> 0.2.4"}
     ]
   end
 

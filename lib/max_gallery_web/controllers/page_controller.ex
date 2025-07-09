@@ -27,16 +27,8 @@ defmodule MaxGalleryWeb.PageController do
         render(conn, :landing, layout: false, hide_header: true)
     end
 
-    def login(conn, _params) do
-        render(conn, :login, layout: false, hide_header: true)
-    end
-
     def forget(conn, _params) do
         render(conn, :forget, layout: false, hide_header: true)
-    end
-
-    def register(conn, _params) do
-        render(conn, :register, layout: false, hide_header: true)
     end
 
     def check(conn, _params) do

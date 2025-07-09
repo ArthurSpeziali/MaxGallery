@@ -1,4 +1,4 @@
-defmodule MaxGalleryWeb.DataLive do
+defmodule MaxGalleryWeb.Live.DataLive do
     ## Module for the site's main page.
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Context

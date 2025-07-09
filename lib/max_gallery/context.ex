@@ -13,7 +13,8 @@ defmodule MaxGallery.Context do
     alias MaxGallery.Variables
     alias MaxGallery.Validate
     @type querry :: [%Cypher{} | %Group{} | map()] 
-    
+    @type response :: {:ok, querry()} | {:error, String.t()}
+
 
     @moduledoc """
       This module serves as the context layer for managing encrypted files and groups
@@ -70,11 +71,11 @@ defmodule MaxGallery.Context do
 
     Requires a valid encryption key and passes a `Phantom.insert_line?/1` validation check.
     """
-    @spec cypher_insert(path :: Path.t(), key :: String.t(), opts :: Keyword.t()) :: {:ok, querry()} | {:error, String.t()}
+    @spec cypher_insert(path :: Path.t(), key :: String.t(), opts :: Keyword.t()) :: response()
     def cypher_insert(path, key, opts \\ []) do
         name = Keyword.get(opts, :name) 
         group = Keyword.get(opts, :group)
-                |> Validate.int()
+                |> Validate.int!()
 
         ext = 
             if name do
@@ -229,7 +230,7 @@ defmodule MaxGallery.Context do
       - `{:error, "invalid key"}`: If the key is not authorized to delete the file.
       - `{:error, reason}`: If any operation (get, delete, etc.) fails.
     """
-    @spec cypher_delete(id :: binary(), key :: String.t()) :: {:ok, querry()} | {:error, String.t()}
+    @spec cypher_delete(id :: binary(), key :: String.t()) :: response()
     def cypher_delete(id, key) do
         with {:ok, querry} <- CypherApi.get(id),
              true <- Phantom.valid?(querry, key),
@@ -268,7 +269,7 @@ defmodule MaxGallery.Context do
       - `{:ok, map}`: A map containing the decrypted fields of the requested item.
       - `{:error, reason}`: If any decryption or retrieval fails.
     """
-    @spec decrypt_one(id :: binary(), key :: String.t(), opts :: Keyword.t()) :: {:ok, querry()} | {:error, String.t()}
+    @spec decrypt_one(id :: binary(), key :: String.t(), opts :: Keyword.t()) :: response()
     def decrypt_one(id, key, opts \\ []) do
         lazy? = Keyword.get(opts, :lazy)
         group? = Keyword.get(opts, :group)
@@ -379,7 +380,7 @@ defmodule MaxGallery.Context do
       - `{:ok, updated}`: On success, returns the updated file struct.
       - `{:error, "invalid key"}`: If the provided encryption key is not valid for this file.
     """
-    @spec cypher_update(id :: binary(), map(), key :: String.t()) :: {:ok, querry()} | {:error, String.t()}
+    @spec cypher_update(id :: binary(), map(), key :: String.t()) :: response()
     def cypher_update(id, %{name: new_name, blob: new_blob}, key) do
         ext = Path.extname(new_name)
         new_name = Path.basename(new_name, ext)
@@ -447,10 +448,10 @@ defmodule MaxGallery.Context do
       - `{:ok, id}`: The binary ID of the newly inserted group on success.
       - `nil`: If the key validation fails (`Phantom.insert_line?/1` returns `false`).
     """
-    @spec group_insert(group_name :: String.t(), key :: String.t(), opts :: Keyword.t()) :: {:ok, querry()} | {:error, String.t()}
+    @spec group_insert(group_name :: String.t(), key :: String.t(), opts :: Keyword.t()) :: response()
     def group_insert(group_name, key, opts \\ []) do
         group = Keyword.get(opts, :group)
-                |> Validate.int()
+                |> Validate.int!()
 
         if Phantom.insert_line?(key) do
             {:ok, {name_iv, name}} = Encrypter.encrypt(group_name, key)
@@ -487,7 +488,7 @@ defmodule MaxGallery.Context do
       - `{:ok, updated}`: On successful update.
       - `{:error, "invalid key"}`: If the encryption key is invalid for the group.
     """
-    @spec group_update(id :: binary(), map(), key :: String.t()) :: {:ok, querry()} | {:error, String.t()}
+    @spec group_update(id :: binary(), map(), key :: String.t()) :: response()
     def group_update(id, %{name: new_name}, key) do 
         {:ok, querry} = GroupApi.get(id)
         {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
@@ -537,7 +538,7 @@ defmodule MaxGallery.Context do
     Requires a valid encryption key that matches the group's encryption scheme.
     The operation is irreversible and will permanently remove all nested content.
     """
-    @spec group_delete(id :: binary(), key :: String.t()) :: {:ok, querry()} | {:error, String.t()}
+    @spec group_delete(id :: binary(), key :: String.t()) :: response()
     def group_delete(id, key) do
         with {:ok, querry} <- GroupApi.get(id),
              true <- Phantom.valid?(querry, key),
@@ -633,7 +634,7 @@ defmodule MaxGallery.Context do
     - Preserves no direct references to the original's encrypted data
     - Requires valid encryption key for both read and write operations
     """
-    @spec cypher_duplicate(id :: binary(), params :: map(), key :: String.t()) :: {:ok, querry()} | {:error, String.t()}
+    @spec cypher_duplicate(id :: binary(), params :: map(), key :: String.t()) :: response()
     def cypher_duplicate(id, params, key) do
         {:ok, querry} = CypherApi.get(id)
 
@@ -707,7 +708,7 @@ defmodule MaxGallery.Context do
       - `{:ok, new_id}`: ID of the new group root
       - `{:error, "invalid key"}`: If key validation fails
     """
-    @spec group_duplicate(id :: binary(), params :: map(), key :: String.t()) :: {:ok, querry()} | {:error, String.t()}
+    @spec group_duplicate(id :: binary(), params :: map(), key :: String.t()) :: response()
     def group_duplicate(id, params, key) do
         {:ok, querry} = GroupApi.get(id)
 
@@ -1024,15 +1025,8 @@ defmodule MaxGallery.Context do
     end
 
 
-    @spec user_insert(name :: String.t(), email :: String.t(), password :: String.t()) :: {:ok, querry()} | {:error, String.t()}
+    @spec user_insert(name :: String.t(), email :: String.t(), password :: String.t()) :: response()
     def user_insert(name, email, password) do
-        femail = String.trim(email)
-                 |> String.downcase()
-
-        fname = String.trim(name)
-               |> String.capitalize()
-
-
         case UserApi.get_email(email) do
             {:ok, _querry} -> {:error, "email alredy been taken"}
 
@@ -1041,8 +1035,8 @@ defmodule MaxGallery.Context do
                 passhash = salt <> Encrypter.hash(password)
 
                 {:ok, querry} = UserApi.insert(%{
-                    name: fname,
-                    email: femail,
+                    name: name,
+                    email: email,
                     passhash: passhash
                 })
 
@@ -1050,24 +1044,22 @@ defmodule MaxGallery.Context do
         end
     end
 
+    @spec user_validate(email :: String.t(), password :: String.t()) :: {:ok, non_neg_integer()} | {:error, String.t()}
     def user_validate(email, password) do
-        femail = String.trim(email)
-                 |> String.downcase()
-
-
-        case UserApi.get_email(femail) do
-            {:error, _reason} -> false
-
+        case UserApi.get_email(email) do
             {:ok, querry} ->
                 <<_salt::binary-size(16), passhash::binary>> = querry.passhash
 
 
                 if Encrypter.hash(password) == passhash do
-                    true
+                    {:ok, querry.id}
                 else
-                    false
+                    {:error, "invalid email/passwd"}
                 end
+
+
+            error -> error
         end
     end
-    
+
 end
