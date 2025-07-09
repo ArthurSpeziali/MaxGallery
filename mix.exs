@@ -61,7 +61,10 @@ defmodule MaxGallery.MixProject do
 
       # {:ecto_sqlite3, "~> 0.19.0"},
       # {:mongodb_ecto, "~> 2.1"},
-      {:mix_test_watch, "~> 1.2", only: [:test], runtime: false}
+      {:mix_test_watch, "~> 1.2", only: [:test], runtime: false},
+      {:mail, "~> 0.5.1"},
+      {:dotenv, "~> 3.1"},
+      {:httpoison, "~> 2.2"}
     ]
   end
 

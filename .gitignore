@@ -1,5 +1,7 @@
 docker-compose.yml
 
+.env
+
 /db/
 
 /text.txt

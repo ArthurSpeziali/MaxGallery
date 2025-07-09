@@ -11,6 +11,7 @@ defmodule MaxGallery.Context do
     alias MaxGallery.Utils
     alias MaxGallery.Cache
     alias MaxGallery.Variables
+    alias MaxGallery.Validate
     @type querry :: [%Cypher{} | %Group{} | map()] 
     
 
@@ -73,12 +74,7 @@ defmodule MaxGallery.Context do
     def cypher_insert(path, key, opts \\ []) do
         name = Keyword.get(opts, :name) 
         group = Keyword.get(opts, :group)
-                |> case do
-                    str when is_binary(str) -> 
-                        String.to_integer(str)
-
-                    int -> int
-                end
+                |> Validate.int()
 
         ext = 
             if name do
@@ -454,12 +450,7 @@ defmodule MaxGallery.Context do
     @spec group_insert(group_name :: String.t(), key :: String.t(), opts :: Keyword.t()) :: {:ok, querry()} | {:error, String.t()}
     def group_insert(group_name, key, opts \\ []) do
         group = Keyword.get(opts, :group)
-                |> case do
-                    str when is_binary(str) -> 
-                        String.to_integer(str)
-
-                    int -> int
-                end
+                |> Validate.int()
 
         if Phantom.insert_line?(key) do
             {:ok, {name_iv, name}} = Encrypter.encrypt(group_name, key)

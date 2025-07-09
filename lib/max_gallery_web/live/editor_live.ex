@@ -4,7 +4,7 @@ defmodule MaxGalleryWeb.EditorLive do
     alias MaxGallery.Server.LiveServer
     alias MaxGallery.Context
     alias MaxGallery.Extension
-
+    alias MaxGallery.Validate
 
 
     def mount(%{"id" => id}, _session, socket) do
@@ -64,12 +64,7 @@ defmodule MaxGalleryWeb.EditorLive do
 
     def handle_event("confirm_edit", %{"new_content" => content, "new_name" => name}, socket) do
         id = socket.assigns[:id]
-             |> case do
-                 str when is_binary(str) ->
-                     String.to_integer(str)
-
-                 int -> int
-             end
+             |> Validate.int()
 
         key = LiveServer.get(:auth_key)
         page_id = socket.assigns[:page_id]

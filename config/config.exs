@@ -29,7 +29,17 @@ config :max_gallery, MaxGalleryWeb.Endpoint,
 #
 # For production it's recommended to configure a different adapter
 # at the `config/runtime.exs`.
-config :max_gallery, MaxGallery.Mailer, adapter: Swoosh.Adapters.Local
+# config :max_gallery, MaxGallery.Mailer, 
+#   adapter: Swoosh.Adapters.SMTP,
+#   relay: "smtp.gmail.com",
+#   username: System.get_env("GMAIL_USERNAME"),
+#   password: System.get_env("GMAIL_PASSWORD"),
+#   port: 587,
+#   ssl: false,
+#   tls: :always,
+#   auth: :always
+
+
 
 # Configure esbuild (the version is required)
 config :esbuild,
