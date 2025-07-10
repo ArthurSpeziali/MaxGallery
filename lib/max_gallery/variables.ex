@@ -4,6 +4,7 @@ defmodule MaxGallery.Variables do
     @file_size 2 * 10 ** 9 ## 2GB
     @email_subject "Max Gallery"
     @email_user "os.maxgallery@gmail.com"
+    @file_limit 64
 
 
 
@@ -12,4 +13,5 @@ defmodule MaxGallery.Variables do
     def file_size, do: @file_size
     def email_user, do: @email_user
     def email_subject, do: @email_subject
+    def file_limit, do: @file_limit
 end

@@ -2,7 +2,6 @@ defmodule MaxGalleryWeb.Live.LoginLive do
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Validate
     alias MaxGallery.Context
-    alias MaxGallery.Server.LiveServer
 
 
     def mount(%{"action" => action}, _session, socket) do
@@ -67,8 +66,7 @@ defmodule MaxGalleryWeb.Live.LoginLive do
                     
 
                     case Context.user_validate(femail, fpassword) do
-                        {:ok, id} ->
-                            LiveServer.put(%{auth_user: id})
+                        {:ok, _id} ->
                             :ok
 
 

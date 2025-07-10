@@ -2,19 +2,18 @@ defmodule MaxGalleryWeb.Live.DataLive do
     ## Module for the site's main page.
     use MaxGalleryWeb, :live_view
     alias MaxGallery.Context
-    alias MaxGallery.Server.LiveServer
     alias MaxGallery.Extension
     alias MaxGallery.Utils
     alias MaxGallery.Variables
 
 
     def mount(params, %{"auth_key" => key}, socket) do
-        LiveServer.put(%{auth_key: key})
-        group_id = Map.get(params, "id")
+        group_id = Map.get(params, "page_id")
 
         {:ok, lazy_datas} = Context.decrypt_all(key, lazy: true, group: group_id)
 
         socket = assign(socket, [
+            key: key,
             datas: lazy_datas,
             lock_datas: lazy_datas,
             page_id: group_id,
@@ -55,7 +54,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
     end
 
     def handle_event("confirm_delete", %{"id" => id}, socket) do
-        key = LiveServer.get(:auth_key)
+        key = socket.assigns[:key]
         page_id = socket.assigns[:page_id]
         Context.cypher_delete(id, key)
 
@@ -66,19 +65,17 @@ defmodule MaxGalleryWeb.Live.DataLive do
 
     def handle_event("editor", %{"id" => id}, socket) do
         page_id = socket.assigns[:page_id]
-        LiveServer.put(%{page_id: page_id})
 
         {:noreply,
-            push_navigate(socket, to: "/user/editor?id=#{id}")
+            push_navigate(socket, to: "/user/editor/#{page_id}?id=#{id}")
         }
     end
 
     def handle_event("show", %{"id" => id}, socket) do
         page_id = socket.assigns[:page_id]
-        LiveServer.put(%{page_id: page_id})
 
         {:noreply,
-            push_navigate(socket, to: "/user/show?id=#{id}")
+            push_navigate(socket, to: "/user/show/#{page_id}?id=#{id}")
         }
     end
 
@@ -100,7 +97,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
     end
 
     def handle_event("confirm_rename", %{"id" => id, "new_name" => name}, socket) do
-        key = LiveServer.get(:auth_key)
+        key = socket.assigns[:key]
         page_id = socket.assigns[:page_id]
         Context.group_update(id, %{name: name}, key)
 
@@ -119,7 +116,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
     end
 
     def handle_event("confirm_remove", %{"id" => id}, socket) do
-        key = LiveServer.get(:auth_key)
+        key = socket.assigns[:key]
         page_id = socket.assigns[:page_id]
         Context.group_delete(id, key)
 
@@ -162,7 +159,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
     end
 
     def handle_event("confirm_folder", %{"new_name" => name}, socket) do
-        key = LiveServer.get(:auth_key)
+        key = socket.assigns[:key]
         page_id = socket.assigns[:page_id]
         Context.group_insert(name, key, group: page_id)
 
@@ -180,13 +177,9 @@ defmodule MaxGalleryWeb.Live.DataLive do
     def handle_event("move", %{"id" => id}, socket) do
         page_id = socket.assigns[:page_id]
         type = socket.assigns[:type]
-        LiveServer.put(%{object_info: %{
-            id: id,
-            type: type
-        }})
 
         {:noreply,
-            push_navigate(socket, to: "/user/move/#{page_id}?action=move")
+            push_navigate(socket, to: "/user/move/#{page_id}?action=move&id=#{id}&type=#{type}")
         }
     end
 
@@ -194,18 +187,13 @@ defmodule MaxGalleryWeb.Live.DataLive do
         page_id = socket.assigns[:page_id]
         type = socket.assigns[:type]
 
-        LiveServer.put(%{object_info: %{
-            id: id,
-            type: type
-        }})
-
         {:noreply,
-            push_navigate(socket, to: "/user/move/#{page_id}?action=copy")
+            push_navigate(socket, to: "/user/move/#{page_id}?action=copy&id=#{id}&type=#{type}")
         }
     end
 
     def handle_event("info", %{"id" => id}, socket) do
-        key = LiveServer.get(:auth_key)
+        key = socket.assigns[:key]
         type = socket.assigns[:type]
 
         group? = 
@@ -263,7 +251,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
     end
 
     def handle_event("confirm_createfile", %{"name" => name}, socket) do
-        key = LiveServer.get(:auth_key)
+        key = socket.assigns[:key]
         group = socket.assigns[:page_id]
 
         path = Variables.tmp_dir <> "cache/sys_#{Enum.random(1..999//1)}"

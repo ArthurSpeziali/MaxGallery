@@ -47,6 +47,7 @@ defmodule MaxGalleryWeb.Router do
         live "/move", MoveLive
         live "/config", ConfigLive
 
+        live "/editor/:page_id", EditorLive
         live "/data/:id", DataLive
         live "/import/:id", ImportLive
         live "/move/:id", MoveLive

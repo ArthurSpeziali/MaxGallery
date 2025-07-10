@@ -1,15 +1,13 @@
 defmodule MaxGalleryWeb.ShowLive do
     ## Module for site's contents show page.
     use MaxGalleryWeb, :live_view
-    alias MaxGallery.Server.LiveServer
     alias MaxGallery.Context
     alias MaxGallery.Extension
     alias MaxGallery.Phantom
 
 
-    def mount(%{"id" => id}, _session, socket) do
-        key = LiveServer.get(:auth_key)
-        page_id = LiveServer.get(:page_id)
+    def mount(%{"id" => id} = params, %{"auth_key" => key}, socket) do
+        page_id = Map.get(params, "page_id")
 
         {:ok, raw_querry} = Context.decrypt_one(id, key, lazy: true) 
         lazy = 
@@ -31,9 +29,7 @@ defmodule MaxGalleryWeb.ShowLive do
         {:ok, socket, layout: false}
     end
     def mount(_params, _session, socket) do
-        page_id = socket.assigns[:page_id]
-
-        {:ok, push_navigate(socket, to: "/user/data/#{page_id}")}
+        {:ok, push_navigate(socket, to: "/user/data")}
     end
 
 

@@ -1,27 +1,21 @@
 defmodule MaxGalleryWeb.Live.ConfigLive do
     ## Module for the site's settings page.
     use MaxGalleryWeb, :live_view
-    alias MaxGallery.Server.LiveServer
     alias MaxGallery.Phantom
     alias MaxGallery.Context
 
 
-    def mount(_params, _session, socket) do
-        key = LiveServer.get(:auth_key)
-
+    def mount(_params, %{"auth_key" => _key}, socket) do
         socket = assign(socket, 
             changekey_iframe: nil,
             dropdata_iframe: nil,
             loading: nil
         )
 
-        if key do
-            {:ok, socket, layout: false}
-        else
-            {:ok, 
-                push_navigate(socket, to: "/user")
-            }
-        end
+        {:ok, socket, layout: false}
+    end
+    def mount(_params, _session, socket) do
+        push_navigate(socket, to: "/user")
     end
 
 

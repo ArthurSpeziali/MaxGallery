@@ -1,20 +1,19 @@
 defmodule MaxGalleryWeb.Live.ImportLive do
     ## Module for site's import files page.
     use MaxGalleryWeb, :live_view
-    alias MaxGallery.Server.LiveServer
     alias MaxGallery.Context
     alias MaxGallery.Utils
     alias MaxGallery.Variables
 
 
-    def mount(params, _session, socket) do
-        group_id = Map.get(params, "id")
+    def mount(params, %{"auth_key" => key}, socket) do
+        group_id = Map.get(params, "page_id")
 
         zip? = Map.get(params, "zip")
         limit = if zip? do
             1
         else
-            64
+            Variables.file_limit
         end
         accepts = if zip? do
             ~w(.zip)
@@ -30,12 +29,16 @@ defmodule MaxGalleryWeb.Live.ImportLive do
             max_entries: limit,
             max_file_size: Variables.file_size
         ) |> assign(
+            key: key,
             loading: false,
             zip: zip?,
             page_id: group_id
         )
 
         {:ok, socket, layout: false}
+    end
+    def mount(_params, _session, socket) do
+        push_navigate(socket, to: "/user/data")
     end
 
 
@@ -63,7 +66,7 @@ defmodule MaxGalleryWeb.Live.ImportLive do
     end
 
     def handle_event("upload", _params, socket) do
-        key = LiveServer.get(:auth_key)
+        key = socket.assigns[:key]
         group_id = socket.assigns[:page_id]
         zip? = socket.assigns[:zip]
 
