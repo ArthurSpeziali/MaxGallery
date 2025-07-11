@@ -2,14 +2,13 @@ import Config
 
 config :max_gallery, MaxGallery.Repo,
   database: "datas_dev",
-  username: "admin",       
-  password: "admin",       
+  username: "admin",
+  password: "admin",
   hostname: "localhost",
   port: 5432,
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
-
 
 # Configure your database
 # For development, we disable any cache and enable

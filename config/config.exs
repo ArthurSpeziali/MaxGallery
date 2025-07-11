@@ -39,8 +39,6 @@ config :max_gallery, MaxGalleryWeb.Endpoint,
 #   tls: :always,
 #   auth: :always
 
-
-
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.17.11",

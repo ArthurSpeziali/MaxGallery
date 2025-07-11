@@ -1,29 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
-    <body>
-        <div class="flex justify-center items-center h-[70vh]">
-            <div class="bg-white p-8 rounded-xl shadow-lg m-auto w-[40%]">
-                <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">
-                    Forgot my Password.
-                </h1>
+  <body>
+    <div class="flex justify-center items-center h-[70vh]">
+      <div class="bg-white p-8 rounded-xl shadow-lg m-auto w-[40%]">
+        <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">
+          Forgot my Password.
+        </h1>
 
-                <.form for={%{}} method="POST" action="/request/email-forget">
-                    <label class="block mb-4">
-                        <span class="text-gray-700">Seu e-mail</span>
-                        <input
-                            name="email"
-                            type="email"
-                            placeholder="john@smith.com"
-                            class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-md border-1 focus:border-blue-600"
-                            required
-                        />
-                    </label>
+        <.form for={%{}} method="POST" action="/request/email-forget">
+          <label class="block mb-4">
+            <span class="text-gray-700">Seu e-mail</span>
+            <input
+              name="email"
+              type="email"
+              placeholder="john@smith.com"
+              class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-md border-1 focus:border-blue-600"
+              required
+            />
+          </label>
 
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition-colors">
-                        Send me the recuperation link.
-                    </button>
-                </.form>
-            </div>
-        </div>
-    </body>
+          <button
+            type="submit"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+          >
+            Send me the recuperation link.
+          </button>
+        </.form>
+      </div>
+    </div>
+  </body>
 </html>

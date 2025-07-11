@@ -4,7 +4,7 @@ defmodule MaxGallery.Repo.Migrations.CreateCyphers do
     def change() do
         create table("cyphers") do
             add :group_id, references("groups", on_delete: :delete_all)
-            add :user_id, references("users", on_delete: :delete_all)
+            add :user_id, references("users", type: :uuid, on_delete: :delete_all)
             add :name, :binary, null: false
             add :name_iv, :binary, null: false
             add :blob_iv, :binary, null: false

@@ -1,43 +1,41 @@
 defmodule MaxGalleryWeb.ShowLive do
-    ## Module for site's contents show page.
-    use MaxGalleryWeb, :live_view
-    alias MaxGallery.Context
-    alias MaxGallery.Extension
-    alias MaxGallery.Phantom
+  ## Module for site's contents show page.
+  use MaxGalleryWeb, :live_view
+  alias MaxGallery.Context
+  alias MaxGallery.Extension
+  alias MaxGallery.Phantom
 
+  def mount(%{"id" => id} = params, %{"auth_key" => key}, socket) do
+    page_id = Map.get(params, "page_id")
 
-    def mount(%{"id" => id} = params, %{"auth_key" => key}, socket) do
-        page_id = Map.get(params, "page_id")
+    {:ok, raw_querry} = Context.decrypt_one(id, key, lazy: true)
 
-        {:ok, raw_querry} = Context.decrypt_one(id, key, lazy: true) 
-        lazy = 
-            if Extension.get_ext(raw_querry.ext) != "text" do
-                true
-            else
-                nil
-            end
+    lazy =
+      if Extension.get_ext(raw_querry.ext) != "text" do
+        true
+      else
+        nil
+      end
 
+    {:ok, querry} = Context.decrypt_one(id, key, lazy: lazy)
 
-        {:ok, querry} = Context.decrypt_one(id, key, lazy: lazy)
-        
-        socket = assign(socket, [
-            data: Map.update!(querry, :name, fn item -> Phantom.validate_bin(item) end),
-            page_id: page_id,
-            id: id
-        ])
+    socket =
+      assign(socket,
+        data: Map.update!(querry, :name, fn item -> Phantom.validate_bin(item) end),
+        page_id: page_id,
+        id: id
+      )
 
-        {:ok, socket, layout: false}
-    end
-    def mount(_params, _session, socket) do
-        {:ok, push_navigate(socket, to: "/user/data")}
-    end
+    {:ok, socket, layout: false}
+  end
 
+  def mount(_params, _session, socket) do
+    {:ok, push_navigate(socket, to: "/user/data")}
+  end
 
-    def handle_event("cancel", _params, socket) do
-        page_id = socket.assigns[:page_id]
-        
-        {:noreply,
-            push_navigate(socket, to: "/user/data/#{page_id}")
-        }
-    end
+  def handle_event("cancel", _params, socket) do
+    page_id = socket.assigns[:page_id]
+
+    {:noreply, push_navigate(socket, to: "/user/data/#{page_id}")}
+  end
 end

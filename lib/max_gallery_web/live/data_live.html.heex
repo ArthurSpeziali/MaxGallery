@@ -1,244 +1,355 @@
 <!DOCTYPE html>
 <html lang="en">
-    <body>
-        <div class="flex w-full h-auto md:gap-12 gap-3 justify-between px-2 py-1">
-            <button phx-click="back" class="flex justify-center items-center border border-gray-300 rounded-xl w-14">
-                <img src="/images/back.png" class="w-auto h-8"/>
+  <body>
+    <div class="flex w-full h-auto md:gap-12 gap-3 justify-between px-2 py-1">
+      <button
+        phx-click="back"
+        class="flex justify-center items-center border border-gray-300 rounded-xl w-14"
+      >
+        <img src="/images/back.png" class="w-auto h-8" />
+      </button>
+
+      <form class="flex md:w-[90%] w-[70%] py-1" phx-change="search">
+        <input
+          name="search"
+          class="w-full rounded-xl shadow-lg border border-gray-600 text-center h-10"
+          placeholder="File.txt"
+        />
+      </form>
+
+      <div class="flex py-1 md:px-4 px-2 gap-2">
+        <div class="flex">
+          <button phx-click="import_folder">
+            <img src="/images/import_folder.png" class="w-auto h-10" />
+          </button>
+
+          <button phx-click="ask_folder">
+            <img src="/images/create_folder.png" class="w-auto h-10" />
+          </button>
+        </div>
+
+        <div class="flex">
+          <button phx-click="ask_file">
+            <img src="/images/create_file.png" class="w-auto h-10" />
+          </button>
+
+          <button phx-click="import_file">
+            <img src="/images/import_file.png" class="w-auto h-10" />
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-3 grid-cols-1 gap-4 px-4 py-2 border rounded shadow m-2">
+      <%= if @datas == [] do %>
+        <strong class="text-xl">No content yet.</strong>
+      <% end %>
+
+      <%= for item <- @datas do %>
+        <%= if Map.get(item, :ext) do %>
+          <div class="border rounded-xl shadow-md px-4 py-1 bg-white grid grid-rows-[auto_1fr_auto] h-40">
+            <button
+              phx-click="more_menu"
+              phx-value-id={item.id}
+              phx-value-type="data"
+              class="flex justify-end font-bold text-orange-600"
+            >
+              ...
             </button>
 
-            <form class="flex md:w-[90%] w-[70%] py-1" phx-change="search">
-                <input name="search" class="w-full rounded-xl shadow-lg border border-gray-600 text-center h-10" placeholder="File.txt"/>
+            <span class="overflow-hidden break-all self-center text-center font-semibold mb-2">
+              {item.name <> item.ext}
+            </span>
+
+            <div class="flex justify-between">
+              <div class="flex justify-center gap-2 mt-3">
+                <button
+                  phx-click="show"
+                  phx-value-id={item.id}
+                  class="text-blue-600 hover:underline"
+                >
+                  Show
+                </button>
+                <button
+                  phx-click="editor"
+                  phx-value-id={item.id}
+                  class="text-yellow-600 hover:underline"
+                >
+                  Edit
+                </button>
+                <button
+                  phx-click="ask_delete"
+                  phx-value-id={item.id}
+                  phx-value-name={item.name}
+                  class="text-red-600 hover:underline"
+                >
+                  Delete
+                </button>
+              </div>
+
+              <img
+                src={"/images/#{MaxGallery.Extension.get_ext(item.ext)}.png"}
+                class="w-auto h-6 mt-2"
+              />
+            </div>
+          </div>
+        <% else %>
+          <div class="border rounded-xl shadow-md p-4 bg-white grid grid-rows-[1fr_auto] h-40">
+            <button
+              phx-click="more_menu"
+              phx-value-id={item.id}
+              phx-value-type="group"
+              class="flex justify-end font-bold text-orange-600"
+            >
+              ...
+            </button>
+
+            <span class="overflow-hidden break-all self-center text-center font-semibold mb-2">
+              {item.name}
+            </span>
+
+            <div class="flex justify-between">
+              <div class="flex justify-between gap-2 mt-2">
+                <button
+                  phx-click="open"
+                  phx-value-id={item.id}
+                  class="text-green-600 hover:underline"
+                >
+                  Open
+                </button>
+                <button
+                  phx-click="ask_rename"
+                  phx-value-id={item.id}
+                  phx-value-name={item.name}
+                  class="text-orange-600 hover:underline"
+                >
+                  Rename
+                </button>
+                <button
+                  phx-click="ask_remove"
+                  phx-value-id={item.id}
+                  phx-value-name={item.name}
+                  class="text-red-800 hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
+
+              <img src="/images/group.png" class="w-auto h-7 mt-2" />
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+
+    <%= if @delete_iframe do %>
+      <div class="fixed inset-0  bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded shadow-lg">
+          <p>Are you sure you want to delete:</p>
+          <strong class="block text-center">"{@name_data}" ?</strong>
+
+          <div class="flex justify-end mt-[3.5rem] gap-3">
+            <button
+              phx-click="redirect"
+              class="bg-orange-600 text-white px-2 py-1 w-[3rem] rounded"
+            >
+              No
+            </button>
+            <button
+              phx-click="confirm_delete"
+              phx-value-id={@delete_iframe}
+              class="bg-transparent border border-orange-600 w-[3rem] text-orange-600 rounded px-2 py-1"
+            >
+              Yes
+            </button>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <%= if @rename_iframe do %>
+      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded shadow-lg">
+          <div class="flex justify-between items-center mb-8">
+            <p>Enter new group name:</p>
+            <button phx-click="cancel">
+              <img src="/images/close.png" class="w-auto h-8" />
+            </button>
+          </div>
+
+          <%= if @rename_iframe == :create do %>
+            <form phx-submit="confirm_folder" class="flex gap-2">
+              <input name="new_name" class="p-2 rounded border border-gray-600" />
+              <button
+                type="submit"
+                class="rounded-lg shadow-md bg-orange-600 text-white py-2 px-4"
+              >
+                Send
+              </button>
             </form>
-
-            <div class="flex py-1 md:px-4 px-2 gap-2">
-                <div class="flex">
-                    <button phx-click="import_folder">
-                        <img src="/images/import_folder.png" class="w-auto h-10"/>
-                    </button>
-
-                    <button phx-click="ask_folder">
-                        <img src="/images/create_folder.png" class="w-auto h-10"/>
-                    </button>
-                </div>
-
-
-                <div class="flex">
-                    <button phx-click="ask_file">
-                        <img src="/images/create_file.png" class="w-auto h-10"/>
-                    </button>
-
-                    <button phx-click="import_file">
-                        <img src="/images/import_file.png" class="w-auto h-10"/>
-                    </button>
-                </div>
-            </div>
+          <% else %>
+            <form phx-submit="confirm_rename" phx-value-id={@rename_iframe} class="flex gap-2">
+              <input
+                name="new_name"
+                class="p-2 rounded border border-gray-600"
+                placeholder={@name_group}
+              />
+              <button
+                type="submit"
+                class="rounded-lg shadow-md bg-orange-600 text-white py-2 px-4"
+              >
+                Send
+              </button>
+            </form>
+          <% end %>
         </div>
+      </div>
+    <% end %>
 
-        <div class="grid md:grid-cols-3 grid-cols-1 gap-4 px-4 py-2 border rounded shadow m-2">
-            <%= if @datas == [] do %>
-                <strong class="text-xl">No content yet.</strong>
+    <%= if @remove_iframe do %>
+      <div class="fixed inset-0  bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded shadow-lg">
+          <p>Are you sure you want to remove:</p>
+          <strong class="block text-center">"{@name_group}" ?</strong>
+
+          <div class="flex justify-end mt-[3.5rem] gap-3">
+            <button
+              phx-click="redirect"
+              class="bg-orange-600 text-white px-2 py-1 w-[3rem] rounded"
+            >
+              No
+            </button>
+            <button
+              phx-click="confirm_remove"
+              phx-value-id={@remove_iframe}
+              class="bg-transparent border border-orange-600 w-[3rem] text-orange-600 rounded px-2 py-1"
+            >
+              Yes
+            </button>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <%= if @more_iframe do %>
+      <div class="fixed inset-0  bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-2 rounded-lg shadow-lg">
+          <div class="flex justify-end mb-8 px-2 py-1">
+            <button phx-click="cancel">
+              <img src="/images/close.png" class="w-auto h-10" />
+            </button>
+          </div>
+
+          <div class="grid grid-rows-3 gap-4 p-6">
+            <a
+              href={"/user/download?id=#{@more_iframe}&type=#{@type}"}
+              target="_blank"
+              class="border rounded-lg font-bold text-blue-600 py-1 px-4 md:text-lg text-xl shadow-md"
+            >
+              Download
+            </a>
+            <button
+              phx-click="move"
+              phx-value-id={@more_iframe}
+              class="border rounded-lg font-bold text-red-600 py-1 px-4 md:text-lg text-xl shadow-md"
+            >
+              Move
+            </button>
+
+            <button
+              phx-click="copy"
+              phx-value-id={@more_iframe}
+              class="border rounded-lg font-bold text-yellow-600 py-1 px-4 md:text-lg text-xl shadow-md"
+            >
+              Copy
+            </button>
+
+            <button
+              phx-click="info"
+              phx-value-id={@more_iframe}
+              class="border rounded-lg font-bold text-gray-600 py-1 px-4 md:text-lg text-xl shadow-md"
+            >
+              Info
+            </button>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <%= if @info_iframe do %>
+      <div class="fixed inset-0  bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-2 rounded-lg shadow-lg w-[75%] md:w-auto">
+          <div class="flex justify-end mb-4 px-2 py-1">
+            <button phx-click="cancel">
+              <img src="/images/close.png" class="w-auto h-10" />
+            </button>
+          </div>
+
+          <div class="px-6 py-8">
+            <strong class="text-blue-900">Name: </strong>
+            <% name = MaxGallery.Phantom.validate_bin(@object.name) %>
+
+            <%= if Map.get(@object, :ext) do %>
+              <span class="break-words whitespace-normal">"{name <> @object.ext}"</span> <br />
+            <% else %>
+              <span class="break-words whitespace-normal">"{name}"</span> <br />
             <% end %>
 
-            <%= for item <- @datas do %>
+            <strong class="text-blue-900">Id: </strong>
+            <span class="break-words whitespace-normal">{@object.id}</span>
+            <br />
 
-                <%= if Map.get(item, :ext) do %>
-                    <div class="border rounded-xl shadow-md px-4 py-1 bg-white grid grid-rows-[auto_1fr_auto] h-40">
-                        <button phx-click="more_menu" phx-value-id={item.id} phx-value-type="data" class="flex justify-end font-bold text-orange-600">
-                            ...
-                        </button>
+            <strong class="text-blue-900">Group: </strong>
+            <span class="break-words whitespace-normal">
+              "{MaxGallery.Phantom.validate_bin(@group_name)}"
+            </span>
+            <br />
 
-                        <span class="overflow-hidden break-all self-center text-center font-semibold mb-2">
-                            <%= item.name <> item.ext %>
-                        </span>
+            <br />
 
-                        <div class="flex justify-between">
-                            <div class="flex justify-center gap-2 mt-3">
-                                <button phx-click="show" phx-value-id={item.id} class="text-blue-600 hover:underline">Show</button>
-                                <button phx-click="editor" phx-value-id={item.id} class="text-yellow-600 hover:underline">Edit</button>
-                                <button phx-click="ask_delete" phx-value-id={item.id} phx-value-name={item.name} class="text-red-600 hover:underline">Delete</button>
-                            </div>
-
-                            <img src={"/images/#{MaxGallery.Extension.get_ext(item.ext)}.png"} class="w-auto h-6 mt-2">
-                        </div>
-                    </div>
-
-                <% else %>
-                    <div class="border rounded-xl shadow-md p-4 bg-white grid grid-rows-[1fr_auto] h-40">
-                        <button phx-click="more_menu" phx-value-id={item.id} phx-value-type="group" class="flex justify-end font-bold text-orange-600">
-                            ...
-                        </button>
-
-                        <span class="overflow-hidden break-all self-center text-center font-semibold mb-2">
-                            <%= item.name %>
-                        </span>
-
-                        <div class="flex justify-between">
-                            <div class="flex justify-between gap-2 mt-2">
-                                <button phx-click="open" phx-value-id={item.id} class="text-green-600 hover:underline">Open</button>
-                                <button phx-click="ask_rename" phx-value-id={item.id} phx-value-name={item.name} class="text-orange-600 hover:underline">Rename</button>
-                                <button phx-click="ask_remove" phx-value-id={item.id} phx-value-name={item.name} class="text-red-800 hover:underline">Remove</button>
-                            </div>
-
-                            <img src="/images/group.png" class="w-auto h-7 mt-2"/>
-                        </div>
-
-                    </div>
-                <% end %>
-
+            <strong class="text-blue-900">Type: </strong>
+            <%= if Map.get(@object, :ext) do %>
+              <span>File</span> <br />
+            <% else %>
+              <span>Folder</span> <br />
             <% end %>
+
+            <strong class="text-blue-900">Size: </strong>
+            <span>{@size}</span>
+            <br />
+
+            <br />
+
+            <strong class="text-blue-900">Created at: </strong>
+            <span>{@timestamps.inserted_at}</span>
+            <br />
+
+            <strong class="text-blue-900">Updated at: </strong>
+            <span>{@timestamps.updated_at}</span>
+            <br />
+          </div>
         </div>
+      </div>
+    <% end %>
 
+    <%= if @create_iframe do %>
+      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded shadow-lg">
+          <div class="flex justify-between items-center mb-8">
+            <p>Enter the file name:</p>
+            <button phx-click="cancel">
+              <img src="/images/close.png" class="w-auto h-8" />
+            </button>
+          </div>
 
-
-        <%= if @delete_iframe do %>
-            <div class="fixed inset-0  bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div class="bg-white p-6 rounded shadow-lg">
-                    <p>Are you sure you want to delete: </p>
-                    <strong class="block text-center">"{@name_data}" ?</strong>
-
-                    <div class="flex justify-end mt-[3.5rem] gap-3">
-                        <button phx-click="redirect" class="bg-orange-600 text-white px-2 py-1 w-[3rem] rounded">No</button>
-                        <button phx-click="confirm_delete" phx-value-id={@delete_iframe} class="bg-transparent border border-orange-600 w-[3rem] text-orange-600 rounded px-2 py-1">Yes</button>
-                    </div>
-                </div>
-            </div>
-        <% end %>
-
-
-        <%= if @rename_iframe do %>
-            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div class="bg-white p-6 rounded shadow-lg">
-                    <div class="flex justify-between items-center mb-8">
-                        <p>Enter new group name: </p>
-                        <button phx-click="cancel">
-                            <img src="/images/close.png" class="w-auto h-8" />
-                        </button>
-                    </div>
-
-                    <%=if @rename_iframe == :create do %>
-                        <form phx-submit="confirm_folder" class="flex gap-2">
-                            <input name="new_name" class="p-2 rounded border border-gray-600"/>
-                            <button type="submit" class="rounded-lg shadow-md bg-orange-600 text-white py-2 px-4">Send</button>
-                        </form>
-                    <% else %>
-                        <form phx-submit="confirm_rename" phx-value-id={@rename_iframe} class="flex gap-2">
-                            <input name="new_name" class="p-2 rounded border border-gray-600" placeholder={@name_group} />
-                            <button type="submit" class="rounded-lg shadow-md bg-orange-600 text-white py-2 px-4">Send</button>
-                        </form>
-                    <% end %>
-
-                </div>
-            </div>
-        <% end %>
-
-        <%= if @remove_iframe do %>
-            <div class="fixed inset-0  bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div class="bg-white p-6 rounded shadow-lg">
-                    <p>Are you sure you want to remove: </p>
-                    <strong class="block text-center">"{@name_group}" ?</strong>
-
-                    <div class="flex justify-end mt-[3.5rem] gap-3">
-                        <button phx-click="redirect" class="bg-orange-600 text-white px-2 py-1 w-[3rem] rounded">No</button>
-                        <button phx-click="confirm_remove" phx-value-id={@remove_iframe} class="bg-transparent border border-orange-600 w-[3rem] text-orange-600 rounded px-2 py-1">Yes</button>
-                    </div>
-                </div>
-            </div>
-        <% end %>
-
-        <%= if @more_iframe do %>
-            <div class="fixed inset-0  bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div class="bg-white p-2 rounded-lg shadow-lg">
-                    <div class="flex justify-end mb-8 px-2 py-1">
-                        <button phx-click="cancel">
-                            <img src="/images/close.png" class="w-auto h-10">
-                        </button>
-                    </div>
-
-                    <div class="grid grid-rows-3 gap-4 p-6">
-                        <a href={"/user/download?id=#{@more_iframe}&type=#{@type}"} target="_blank" class="border rounded-lg font-bold text-blue-600 py-1 px-4 md:text-lg text-xl shadow-md">
-                            Download
-                        </a>
-                        <button phx-click="move" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-red-600 py-1 px-4 md:text-lg text-xl shadow-md">
-                            Move
-                        </button>
-
-                        <button phx-click="copy" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-yellow-600 py-1 px-4 md:text-lg text-xl shadow-md">
-                            Copy
-                        </button>
-
-                        <button phx-click="info" phx-value-id={@more_iframe} class="border rounded-lg font-bold text-gray-600 py-1 px-4 md:text-lg text-xl shadow-md">
-                            Info
-                        </button>
-                    </div>
-                </div>
-            </div>
-        <% end %>
-
-        <%= if @info_iframe do %>
-            <div class="fixed inset-0  bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div class="bg-white p-2 rounded-lg shadow-lg w-[75%] md:w-auto">
-                    <div class="flex justify-end mb-4 px-2 py-1">
-                        <button phx-click="cancel">
-                            <img src="/images/close.png" class="w-auto h-10">
-                        </button>
-                    </div>
-
-                    <div class="px-6 py-8">
-                        <strong class="text-blue-900">Name: </strong>
-                        <% name = MaxGallery.Phantom.validate_bin(@object.name) %>
-
-                        <%= if Map.get(@object, :ext) do %>
-                            <span class="break-words whitespace-normal">"{name <> @object.ext}"</span><br>
-                        <% else %>
-                            <span class="break-words whitespace-normal">"{name}"</span><br>
-                        <% end %>
-
-                        <strong class="text-blue-900">Id: </strong>
-                        <span class="break-words whitespace-normal">{@object.id}</span><br>
-
-                        <strong class="text-blue-900">Group: </strong>
-                        <span class="break-words whitespace-normal">"{MaxGallery.Phantom.validate_bin(@group_name)}"</span><br>
-
-                        <br>
-
-                        <strong class="text-blue-900">Type: </strong>
-                        <%= if Map.get(@object, :ext) do %>
-                            <span>File</span><br>
-                        <% else %>
-                            <span>Folder</span><br>
-                        <% end %>
-
-                        <strong class="text-blue-900">Size: </strong>
-                        <span>{@size}</span><br>
-
-                        <br>
-
-                        <strong class="text-blue-900">Created at: </strong> 
-                        <span>{@timestamps.inserted_at}</span><br>
-
-                        <strong class="text-blue-900">Updated at: </strong> 
-                        <span>{@timestamps.updated_at}</span><br>
-                    </div>
-                </div>
-            </div>
-        <% end %>
-
-        <%= if @create_iframe do %>
-            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div class="bg-white p-6 rounded shadow-lg">
-                    <div class="flex justify-between items-center mb-8">
-                        <p>Enter the file name: </p>
-                        <button phx-click="cancel">
-                            <img src="/images/close.png" class="w-auto h-8" />
-                        </button>
-                    </div>
-
-                    <form phx-submit="confirm_createfile" class="flex gap-2">
-                        <input name="name" class="p-2 rounded border border-gray-600"/>
-                        <button type="submit" class="rounded-lg shadow-md bg-orange-600 text-white py-2 px-4">Send</button>
-                    </form>
-                </div>
-            </div>
-        <% end %>
-    </body>
+          <form phx-submit="confirm_createfile" class="flex gap-2">
+            <input name="name" class="p-2 rounded border border-gray-600" />
+            <button type="submit" class="rounded-lg shadow-md bg-orange-600 text-white py-2 px-4">
+              Send
+            </button>
+          </form>
+        </div>
+      </div>
+    <% end %>
+  </body>
 </html>

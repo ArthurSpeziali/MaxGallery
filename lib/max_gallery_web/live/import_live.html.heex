@@ -1,31 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
-    <body>
-        <form phx-submit="upload" phx-change="validate">
+  <body>
+    <form phx-submit="upload" phx-change="validate">
+      <div class="flex flex-col justify-center items-center mt-[8rem]">
+        <%= if @zip do %>
+          <h2 class="font-bold text-red-800 text-xl mb-2">
+            Please, submit a ".zip" file. Then, we unzip it, and we insert it in database.
+          </h2>
+        <% end %>
 
-            <div class="flex flex-col justify-center items-center mt-[8rem]">
-                <%= if @zip do %>
-                    <h2 class="font-bold text-red-800 text-xl mb-2">Please, submit a ".zip" file. Then, we unzip it, and we insert it in database.</h2>
-                <% end %>
+        <.live_file_input
+          upload={@uploads.file_import}
+          class="md:w-[45%] w-[90%] border py-2 px-4 rounded bg-white text-lg inline-block text-center font-semibold shadow-xl"
+        />
 
-                <.live_file_input upload={@uploads.file_import} class="md:w-[45%] w-[90%] border py-2 px-4 rounded bg-white text-lg inline-block text-center font-semibold shadow-xl"/>
+        <div class="md:w-[45%] w-[90%] text-center break-words">
+          {MaxGalleryWeb.Live.ImportLive.name_files(@uploads, @zip)}
+        </div>
 
-                <div class="md:w-[45%] w-[90%] text-center break-words">
-                    <%= MaxGalleryWeb.Live.ImportLive.name_files(@uploads, @zip) %>
-                </div>
+        <div class="flex gap-8">
+          <button
+            type="button"
+            phx-click="cancel"
+            class="text-orange-600 bg-transparent border-orange-600 rounded-lg border mt-6 py-2 px-4 shadow-xl text-[1.3rem]"
+          >
+            Cancel
+          </button>
 
-                <div class="flex gap-8">
-                    <button type="button" phx-click="cancel" class="text-orange-600 bg-transparent border-orange-600 rounded-lg border mt-6 py-2 px-4 shadow-xl text-[1.3rem]">Cancel</button>
+          <button
+            phx-click="loading"
+            type="submit"
+            class="text-white bg-orange-600 rounded-lg border mt-6 py-2 px-4 shadow-xl text-[1.3rem]"
+          >
+            Send
+          </button>
+        </div>
 
-                    <button phx-click="loading" type="submit" class="text-white bg-orange-600 rounded-lg border mt-6 py-2 px-4 shadow-xl text-[1.3rem]">Send</button>
-                </div>
-
-
-                <%= if @loading do %>
-                    <img src="/images/loading.gif" alt="Loading" class="mt-12 w-auto h-14"/>
-                <% end %>
-            </div>
-
-        </form>
-    </body>
+        <%= if @loading do %>
+          <img src="/images/loading.gif" alt="Loading" class="mt-12 w-auto h-14" />
+        <% end %>
+      </div>
+    </form>
+  </body>
 </html>

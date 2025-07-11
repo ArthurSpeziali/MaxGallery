@@ -18,7 +18,7 @@ defmodule MaxGallery.Application do
       # {MaxGallery.Worker, arg},
       # Start to serve requests, typically the last entry
       MaxGalleryWeb.Endpoint,
-        
+
       ## Custom GenServers here
       MaxGallery.Server.LiveServer,
       MaxGallery.Server.GarbageServer

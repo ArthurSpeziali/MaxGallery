@@ -1,105 +1,104 @@
 defmodule MaxGalleryWeb.Live.ImportLive do
-    ## Module for site's import files page.
-    use MaxGalleryWeb, :live_view
-    alias MaxGallery.Context
-    alias MaxGallery.Utils
-    alias MaxGallery.Variables
+  ## Module for site's import files page.
+  use MaxGalleryWeb, :live_view
+  alias MaxGallery.Context
+  alias MaxGallery.Utils
+  alias MaxGallery.Variables
 
+  def mount(params, %{"auth_key" => key}, socket) do
+    group_id = Map.get(params, "page_id")
 
-    def mount(params, %{"auth_key" => key}, socket) do
-        group_id = Map.get(params, "page_id")
+    zip? = Map.get(params, "zip")
 
-        zip? = Map.get(params, "zip")
-        limit = if zip? do
-            1
+    limit =
+      if zip? do
+        1
+      else
+        Variables.file_limit()
+      end
+
+    accepts =
+      if zip? do
+        ~w(.zip)
+      else
+        :any
+      end
+
+    socket =
+      allow_upload(
+        socket,
+        :file_import,
+        accept: accepts,
+        max_entries: limit,
+        max_file_size: Variables.file_size()
+      )
+      |> assign(
+        key: key,
+        loading: false,
+        zip: zip?,
+        page_id: group_id
+      )
+
+    {:ok, socket, layout: false}
+  end
+
+  def mount(_params, _session, socket) do
+    push_navigate(socket, to: "/user/data")
+  end
+
+  ## Function for display file's name in the web.
+  def name_files(uploads, zip?) do
+    entries = uploads.file_import.entries
+
+    case {entries, zip?} do
+      {[], nil} ->
+        "No files select."
+
+      {[], _zip} ->
+        "No files \".zip\" select."
+
+      _entry ->
+        Enum.map(entries, fn item ->
+          "\"#{item.client_name}\""
+        end)
+        |> Enum.join(", ")
+    end
+  end
+
+  def handle_event("validate", _params, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("upload", _params, socket) do
+    key = socket.assigns[:key]
+    group_id = socket.assigns[:page_id]
+    zip? = socket.assigns[:zip]
+
+    consume_uploaded_entries(socket, :file_import, fn %{path: path}, %{client_name: name} ->
+      if zip? do
+        if Utils.zip_valid?(path) do
+          Context.unzip_content(path, key, group: group_id)
         else
-            Variables.file_limit
+          File.rm!(path)
         end
-        accepts = if zip? do
-            ~w(.zip)
-        else
-            :any
-        end
+      else
+        Context.cypher_insert(path, key, name: name, group: group_id)
+      end
 
+      {:ok, nil}
+    end)
 
-        socket = allow_upload(
-            socket,
-            :file_import,
-            accept: accepts,
-            max_entries: limit,
-            max_file_size: Variables.file_size
-        ) |> assign(
-            key: key,
-            loading: false,
-            zip: zip?,
-            page_id: group_id
-        )
+    {:noreply, push_navigate(socket, to: "/user/data/#{group_id}")}
+  end
 
-        {:ok, socket, layout: false}
-    end
-    def mount(_params, _session, socket) do
-        push_navigate(socket, to: "/user/data")
-    end
+  def handle_event("cancel", _params, socket) do
+    page_id = socket.assigns[:page_id]
 
+    socket = assign(socket, loading: false)
+    {:noreply, push_navigate(socket, to: "/user/data/#{page_id}")}
+  end
 
-    ## Function for display file's name in the web.
-    def name_files(uploads, zip?) do
-        entries = uploads.file_import.entries
-
-        case {entries, zip?} do
-            {[], nil} -> 
-                "No files select."
-
-            {[], _zip} ->
-                "No files \".zip\" select."
-
-            _entry -> 
-                Enum.map(entries, fn item -> 
-                    "\"#{item.client_name}\""
-                end) |> Enum.join(", ")
-        end
-    end
-
-
-    def handle_event("validate", _params, socket) do
-        {:noreply, socket}
-    end
-
-    def handle_event("upload", _params, socket) do
-        key = socket.assigns[:key]
-        group_id = socket.assigns[:page_id]
-        zip? = socket.assigns[:zip]
-
-        consume_uploaded_entries(socket, :file_import, 
-            fn %{path: path}, %{client_name: name} -> 
-                if zip? do
-                    if Utils.zip_valid?(path) do
-                        Context.unzip_content(path, key, group: group_id)
-                    else
-                        File.rm!(path)
-                    end
-                else
-                    Context.cypher_insert(path, key, name: name, group: group_id)
-                end
-
-                {:ok, nil}
-            end)
-
-        {:noreply, 
-            push_navigate(socket, to: "/user/data/#{group_id}")
-        }
-    end
-
-    def handle_event("cancel", _params, socket) do
-        page_id = socket.assigns[:page_id]
-
-        socket = assign(socket, loading: false)
-        {:noreply,
-            push_navigate(socket, to: "/user/data/#{page_id}")
-        }
-    end
-
-    def handle_event("loading", _params, socket) do
-        {:noreply, assign(socket, loading: true)}
-    end
+  def handle_event("loading", _params, socket) do
+    {:noreply, assign(socket, loading: true)}
+  end
 end

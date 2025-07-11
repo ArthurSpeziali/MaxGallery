@@ -27,7 +27,7 @@ config :swoosh,
 
 config :max_gallery, MaxGallery.Mail.Mailer,
   adapter: Swoosh.Adapters.Gmail,
-  user: MaxGallery.Variables.email_user
+  user: MaxGallery.Variables.email_user()
 
 if config_env() == :prod do
   database_url =

@@ -1,44 +1,41 @@
 <!DOCTYPE html>
 <html lang="en" class="[scrollbar-gutter:stable] dark">
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="csrf-token" content={get_csrf_token()} />
-        <.live_title default="Max Gallery">
-            {assigns[:page_title]}
-        </.live_title>
-        <link rel="icon" href="/images/padlock.png" type="image/png" />
-        <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
-        <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
-        </script>
-    </head>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <.live_title default="Max Gallery">
+      {assigns[:page_title]}
+    </.live_title>
+    <link rel="icon" href="/images/padlock.png" type="image/png" />
+    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
+    </script>
+  </head>
 
+  <%= unless Map.get(@conn.assigns, :hide_header) do %>
+    <header class="bg-gray-800 text-white p-1 flex items-center justify-between">
+      <a href="/user/data">
+        <img src="/images/logo.png" alt="Logo" class="w-auto h-14 px-2" />
+      </a>
 
-    <%= unless Map.get(@conn.assigns, :hide_header) do %>
-        <header class="bg-gray-800 text-white p-1 flex items-center justify-between">
-            <a href="/user/data">
-                <img src="/images/logo.png" alt="Logo" class="w-auto h-14 px-2">
-            </a>
+      <div class="flex items-center">
+        <a href="/user/config">
+          <button>
+            <img src="/images/config.png" alt="Config" class="w-auto h-10" />
+          </button>
+        </a>
 
+        <a href="/user/logout">
+          <button>
+            <img src="/images/logout.png" alt="Logout" class="w-auto h-12 px-4" />
+          </button>
+        </a>
+      </div>
+    </header>
+  <% end %>
 
-            <div class="flex items-center">
-                <a href="/user/config">
-                    <button>
-                        <img src="/images/config.png" alt="Config" class="w-auto h-10">
-                    </button>
-                </a>
-
-                <a href="/user/logout">
-                    <button>
-                        <img src="/images/logout.png" alt="Logout" class="w-auto h-12 px-4">
-                    </button>
-                </a>
-            </div>
-        </header>
-    <% end %>
-
-
-    <body class="bg-white">
-        {@inner_content}
-    </body>
+  <body class="bg-white">
+    {@inner_content}
+  </body>
 </html>

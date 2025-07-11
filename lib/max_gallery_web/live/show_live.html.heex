@@ -1,72 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
-    <body>
-        <%= case MaxGallery.Extension.get_ext(@data.ext) do%>
-            <% "text" -> %>
-                <div class="py-4 px-6 mx-auto mt-4 mb-8 md:max-w-[75%] max-w-[90%] border rounded-lg shadow-2xl">
-                    <div class="flex justify-between">
-                        <h1 class="text-2xl font-bold">{@data.name <> @data.ext}</h1>
+  <body>
+    <%= case MaxGallery.Extension.get_ext(@data.ext) do %>
+      <% "text" -> %>
+        <div class="py-4 px-6 mx-auto mt-4 mb-8 md:max-w-[75%] max-w-[90%] border rounded-lg shadow-2xl">
+          <div class="flex justify-between">
+            <h1 class="text-2xl font-bold">{@data.name <> @data.ext}</h1>
 
-                        <button phx-click="cancel">
-                            <img src="/images/close.png" alt="Close" class="w-auto h-8">
-                        </button>
-                    </div>
+            <button phx-click="cancel">
+              <img src="/images/close.png" alt="Close" class="w-auto h-8" />
+            </button>
+          </div>
 
-                    <div class="mx-auto border rounded-lg shadow-lg mt-8 md:px-8 px-4 py-4">
-                        <pre class="font-sans whitespace-pre-wrap break-words">{@data.path |> File.read!()}</pre>
-                    </div>
-                </div>
+          <div class="mx-auto border rounded-lg shadow-lg mt-8 md:px-8 px-4 py-4">
+            <pre class="font-sans whitespace-pre-wrap break-words">{@data.path |> File.read!()}</pre>
+          </div>
+        </div>
+      <% "image" -> %>
+        <div>
+          <div class="flex justify-between items-center px-6 py-2 max-w-[90%] mx-auto mt-4 border shadow-md rounded">
+            <strong class="text-[1.5rem]">{@data.name <> @data.ext}</strong>
+            <button phx-click="cancel">
+              <img src="/images/close.png" alt="Close" class="w-auto h-12" />
+            </button>
+          </div>
 
+          <div class="flex justify-center inline-block mx-auto p-4 max-w-[90%] mt-2 border rounded-lg shadow-xl">
+            <img src={"/content/imgs/#{@id}"} class="max-w-full h-auto" />
+          </div>
+        </div>
+      <% "video" -> %>
+        <div>
+          <div class="flex justify-between items-center px-6 py-2 max-w-[90%] mx-auto mt-4 border shadow-md rounded">
+            <strong class="text-[1.5rem]">{@data.name <> @data.ext}</strong>
+            <button phx-click="cancel">
+              <img src="/images/close.png" alt="Close" class="w-auto h-12" />
+            </button>
+          </div>
 
-            <% "image" -> %>
-                <div>
-                    <div class="flex justify-between items-center px-6 py-2 max-w-[90%] mx-auto mt-4 border shadow-md rounded">
-                        <strong class="text-[1.5rem]">{@data.name <> @data.ext}</strong>
-                        <button phx-click="cancel">
-                            <img src="/images/close.png" alt="Close" class="w-auto h-12">
-                        </button>
-                    </div>
+          <div class="flex justify-center inline-block mx-auto p-4 max-w-[90%] mt-2 mb-4 border rounded-lg shadow-xl">
+            <video controls class="w-auto h-[40rem]">
+              <source
+                src={"/content/vids/#{@id}"}
+                type={@data.ext |> MaxGallery.Extension.get_mime()}
+              />
+            </video>
+          </div>
+        </div>
+      <% "audio" -> %>
+        <div>
+          <div class="flex justify-between items-center px-6 py-2 max-w-[90%] mx-auto mt-4 border shadow-md rounded">
+            <strong class="text-[1.5rem]">{@data.name <> @data.ext}</strong>
+            <button phx-click="cancel">
+              <img src="/images/close.png" alt="Close" class="w-auto h-12" />
+            </button>
+          </div>
 
-                    <div class="flex justify-center inline-block mx-auto p-4 max-w-[90%] mt-2 border rounded-lg shadow-xl">
-                        <img src={"/content/imgs/#{@id}"} class="max-w-full h-auto"/>
-                    </div>
-                </div>
-
-
-            <% "video" -> %>
-                <div>
-                    <div class="flex justify-between items-center px-6 py-2 max-w-[90%] mx-auto mt-4 border shadow-md rounded">
-                        <strong class="text-[1.5rem]">{@data.name <> @data.ext}</strong>
-                        <button phx-click="cancel">
-                            <img src="/images/close.png" alt="Close" class="w-auto h-12">
-                        </button>
-                    </div>
-
-                    <div class="flex justify-center inline-block mx-auto p-4 max-w-[90%] mt-2 mb-4 border rounded-lg shadow-xl">
-                        <video controls class="w-auto h-[40rem]">
-                            <source src={"/content/vids/#{@id}"} type={@data.ext |> MaxGallery.Extension.get_mime()}/>
-                        </video>
-                    </div>
-                </div>
-
-
-            <% "audio" -> %>
-                <div>
-                    <div class="flex justify-between items-center px-6 py-2 max-w-[90%] mx-auto mt-4 border shadow-md rounded">
-                        <strong class="text-[1.5rem]">{@data.name <> @data.ext}</strong>
-                        <button phx-click="cancel">
-                            <img src="/images/close.png" alt="Close" class="w-auto h-12">
-                        </button>
-                    </div>
-
-                    <div class="flex justify-center mx-auto mt-[8rem] max-w-[90%] rounded-lg border shadow-xl py-4">
-                        <audio controls class="w-[95%]">
-                            <source src={"/content/auds/#{@id}"} type="audio/mp3" />
-                        </audio>
-                    </div>
-
-                </div>
-
-            <% end %>
-    </body>
+          <div class="flex justify-center mx-auto mt-[8rem] max-w-[90%] rounded-lg border shadow-xl py-4">
+            <audio controls class="w-[95%]">
+              <source src={"/content/auds/#{@id}"} type="audio/mp3" />
+            </audio>
+          </div>
+        </div>
+    <% end %>
+  </body>
 </html>

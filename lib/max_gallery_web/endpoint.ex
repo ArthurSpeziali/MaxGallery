@@ -1,5 +1,6 @@
 defmodule MaxGalleryWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :max_gallery
+  Dotenv.load!()
 
   # The session will be stored in the cookie and signed,
   # this means its contents can be read but not tampered with.
@@ -7,7 +8,7 @@ defmodule MaxGalleryWeb.Endpoint do
   @session_options [
     store: :cookie,
     key: "_max_gallery_key",
-    signing_salt: "bD5Qwlv0",
+    signing_salt: System.get_env("SIGNING_SALT"),
     same_site: "Lax"
   ]
 
