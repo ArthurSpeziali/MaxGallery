@@ -18,10 +18,13 @@
               name="name"
               type="text"
               placeholder="John Smith"
-              class="rounded-lg border border-gray-300 border-1 focus:border-blue-600 px-4 py-2"
+              class="rounded-lg border border-gray-300 border-1 focus:border-blue-600 px-4 py-2 w-[85%]"
               required
             />
-          </div>
+            <p class="text-sm text-red-600">
+              {@error_list |> Keyword.get(:err_name)}
+            </p>
+            </div>
         <% end %>
 
         <div class="mb-8 mt-4">
@@ -30,7 +33,7 @@
             name="email"
             type="email"
             placeholder="john@smith.com"
-            class="rounded-lg border border-gray-300 border-1 focus:border-blue-600 px-4 py-2"
+            class="rounded-lg border border-gray-300 border-1 focus:border-blue-600 px-4 py-2 w-[85%]"
             required
           />
           <p class="text-sm text-red-600">
@@ -43,7 +46,7 @@
             name="passwd"
             type="password"
             placeholder="John_Smith123"
-            class="rounded-lg border border-gray-300 border-1 focus:border-blue-600 px-4 py-2"
+            class="rounded-lg border border-gray-300 border-1 focus:border-blue-600 px-4 py-2 w-[85%]"
             required
           />
 

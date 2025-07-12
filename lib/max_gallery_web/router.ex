@@ -18,9 +18,8 @@ defmodule MaxGalleryWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :landing
-
-    get "/forget", PageController, :forget
-    get "/check", PageController, :check
+    get "/email-verify", PageController, :email_verify
+    post "/email-verify", PageController, :email_verify_process
   end
 
   scope "/", MaxGalleryWeb.Live do
@@ -66,7 +65,7 @@ defmodule MaxGalleryWeb.Router do
 
     post "/auth", RequestController, :auth
     get "/auth-user", RequestController, :auth_user
-    # post "/email-forget", RequestController, :email_forget
+    get "/email-check", RequestController, :email_check
   end
 
   scope "/", MaxGalleryWeb do

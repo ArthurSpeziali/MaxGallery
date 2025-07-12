@@ -1,7 +1,28 @@
 defmodule MaxGallery.Request do
-  @spec url_fetch(atom()) :: term()
+  alias MaxGallery.Server.LiveServer
+
+  @spec url_fetch(atom()) :: String.t()
   def url_fetch(:acess_token) do
     "https://oauth2.googleapis.com/token"
+  end
+
+  def consume_access_token() do
+    LiveServer.get(:access_token)
+    |> case do
+      {expires, token} ->
+        NaiveDateTime.after?(
+          NaiveDateTime.utc_now(),
+          expires
+        )
+        |> if do
+          access_token()
+        else
+          {:ok, token}
+        end
+
+      nil ->
+        access_token()
+    end
   end
 
   @spec access_token() :: {:ok, String.t()} | {:error, String.t()}
@@ -23,9 +44,20 @@ defmodule MaxGallery.Request do
 
     case res.status_code do
       200 ->
-        {:ok,
-         Jason.decode!(res.body)
-         |> Map.fetch!("access_token")}
+        token =
+          Jason.decode!(res.body)
+          |> Map.fetch!("access_token")
+
+        expires =
+          NaiveDateTime.add(
+            NaiveDateTime.utc_now(),
+            3000,
+            :second
+          )
+
+        LiveServer.put(:access_token, {expires, token})
+
+        {:ok, token}
 
       code when code in [400, 401] ->
         {:error, "invalid params"}

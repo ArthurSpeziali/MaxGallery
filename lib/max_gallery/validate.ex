@@ -1,4 +1,5 @@
 defmodule MaxGallery.Validate do
+  alias MaxGallery.Context
   @type response :: :ok | {:error, String.t()}
 
   @spec int!(str :: binary()) :: integer()
@@ -22,7 +23,7 @@ defmodule MaxGallery.Validate do
       !String.printable?(str) ->
         {:error, "Your String is not valid!"}
 
-      String.length(str) > 32 ->
+      String.length(str) > 128 ->
         {:error, "Your E-mail is too long (more than 128)."}
 
       !EmailChecker.valid?(str) ->
@@ -47,6 +48,32 @@ defmodule MaxGallery.Validate do
 
       true ->
         :ok
+    end
+  end
+
+  @spec name(str :: binary()) :: response()
+  def name(str) do
+    cond do
+      !String.printable?(str) ->
+        {:error, "Your String is not valid!"}
+
+      String.length(str) > 32 ->
+        {:error, "Your Name is too long! (more than 32)."}
+
+      true ->
+        :ok
+    end
+  end
+
+  ## Check if the email alredy been taken
+  @spec email?(str :: binary()) :: boolean()
+  def email?(str) do
+    case Context.user_get(nil, email: str) do
+      {:ok, _querry} ->
+        false
+
+      {:error, "not found"} ->
+        true
     end
   end
 end

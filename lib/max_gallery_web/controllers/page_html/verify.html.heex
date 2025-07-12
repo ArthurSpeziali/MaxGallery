@@ -11,15 +11,17 @@
         <.form
           for={%{}}
           method="post"
-          action="/request/email-verif"
+          action="/email-verify"
           class="flex flex-col h-full w-full items-center justify-end mb-12"
         >
+        
+          <p class="text-sm text-gray-400"> Email sended to: {@email} </p>
           <input
             type="text"
             inputmode="numeric"
             maxlength="6"
             minlength="6"
-            name="code"
+            name="place_code"
             placeholder="123 456"
             class="px-6 py-2 w-[50%] border border-gray-600 border-1 focus:border-blue-600 rounded-lg text-center mb-1"
             required
@@ -28,6 +30,7 @@
           <button type="submit" class="px-6 py-2 w-[50%] text-white bg-blue-600 rounded-lg">
             Confirm
           </button>
+          <p class="text-sm text-red-600 text-center">{@err_code}</p>
         </.form>
       </div>
     </div>

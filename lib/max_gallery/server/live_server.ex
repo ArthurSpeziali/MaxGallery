@@ -38,8 +38,8 @@ defmodule MaxGallery.Server.LiveServer do
     GenServer.call(@mod, {:get, key})
   end
 
-  def put(map) do
-    GenServer.cast(@mod, {:put, map})
+  def put(key, value) do
+    GenServer.cast(@mod, {:put, %{key => value}})
   end
 
   def del(key) do

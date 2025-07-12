@@ -3,7 +3,7 @@ defmodule MaxGallery.Mail.Email do
   alias MaxGallery.Mail.Mailer
 
   def send(%Swoosh.Email{} = template) do
-    res = Request.access_token()
+    res = Request.consume_access_token()
 
     case res do
       {:ok, token} ->

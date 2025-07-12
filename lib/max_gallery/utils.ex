@@ -739,4 +739,17 @@ defmodule MaxGallery.Utils do
         false
     end
   end
+
+  @spec gen_code(digits :: pos_integer()) :: String.t()
+  def gen_code(digits) when digits > 0 do
+    final =
+      String.duplicate("9", digits)
+      |> String.to_integer()
+
+    Enum.random(1..final//1)
+    |> Integer.to_string()
+    ## Trailing -> Zero at the end
+    ## Leading -> Zero at the begging
+    |> String.pad_trailing(digits, "0")
+  end
 end

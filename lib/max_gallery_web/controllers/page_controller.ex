@@ -1,11 +1,12 @@
 defmodule MaxGalleryWeb.PageController do
   use MaxGalleryWeb, :controller
-  alias MaxGallery.Server.LiveServer
   alias MaxGallery.Variables
+  alias MaxGallery.Context
+  alias MaxGallery.Mail.Template
+  alias MaxGallery.Mail.Email
 
   ## Remove assings, cookies, files, etc...
   def logout(conn, _params) do
-    LiveServer.clr()
     File.rm_rf!(Variables.tmp_dir())
 
     configure_session(conn, drop: true)
@@ -13,7 +14,17 @@ defmodule MaxGalleryWeb.PageController do
   end
 
   def home(conn, _params) do
-    render(conn, :home, layout: false)
+    id =
+      fetch_cookies(conn, signed: "auth_user")
+      |> Map.fetch!(:cookies)
+      |> Map.get("auth_user")
+
+    if id do
+      put_session(conn, "user_auth", id)
+      |> render(:home, layout: false)
+    else
+      redirect(conn, to: "/login?action=login")
+    end
   end
 
   def not_found(conn, _params) do
@@ -25,11 +36,45 @@ defmodule MaxGalleryWeb.PageController do
     render(conn, :landing, layout: false, hide_header: true)
   end
 
-  def forget(conn, _params) do
-    render(conn, :forget, layout: false, hide_header: true)
+  def email_verify(conn, _params) do
+    user = get_session(conn, :user_validation)
+
+    if user do
+      Template.email_verify(user.email, user.code)
+      |> Email.send()
+
+      render(conn, :verify, layout: false, hide_header: true, email: user.email, err_code: nil)
+    else
+      redirect(conn, to: "/")
+    end
   end
 
-  def check(conn, _params) do
-    render(conn, :check, layout: false, hide_header: true)
+  def email_verify_process(conn, %{"place_code" => place_code}) do
+    user = get_session(conn, :user_validation)
+
+    if user do
+      if user.code == place_code do
+        user = %{user | verify?: true}
+
+        {:ok, id} =
+          Context.user_insert(
+            user.name,
+            user.email,
+            user.password
+          )
+
+        put_session(conn, :user_validation, user)
+        put_resp_cookie(conn, "auth_user", id, sign: true, max_age: Variables.cookie_time())
+        |> redirect(to: "/user")
+      else
+        render(conn, :verify, layout: false, hide_header: true, email: user.email, err_code: "Invalid code. Try again.")
+      end
+    else
+      redirect(conn, to: "/")
+    end
+  end
+
+  def email_verify_process(conn, _params) do
+    redirect(conn, to: "/")
   end
 end
