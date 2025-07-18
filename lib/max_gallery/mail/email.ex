@@ -7,8 +7,7 @@ defmodule MaxGallery.Mail.Email do
 
     case res do
       {:ok, token} ->
-        {:ok, sended} = Mailer.deliver(template, access_token: token)
-        {:ok, sended.id}
+        spawn_link(Mailer, :deliver, [template, [access_token: token]])
 
       {:error, reason} ->
         {:error, reason}

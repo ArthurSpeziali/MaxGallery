@@ -38,7 +38,7 @@ badd +9 priv/repo/migrations/2025060319005_create_users.exs
 badd +76 lib/max_gallery/validate.ex
 badd +9 lib/max_gallery/request.ex
 badd +38 lib/max_gallery_web/controllers/request_controller.ex
-badd +5 lib/max_gallery_web/controllers/page_html/home.html.heex
+badd +1 lib/max_gallery_web/controllers/page_html/home.html.heex
 badd +23 lib/max_gallery/application.ex
 badd +1 lib/max_gallery/server/live_server.ex
 badd +16 lib/max_gallery/variables.ex
@@ -62,11 +62,11 @@ badd +33 /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery/core/api/user_api.
 badd +75 test/max_gallery/context_test.exs
 badd +1 lib/max_gallery/core/api/chunk_api.ex
 badd +2 lib/max_gallery/user_validation.ex
-badd +0 /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/controllers/page_html/verify.html.heex
+badd +1 /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/controllers/page_html/verify.html.heex
 badd +5 lib/max_gallery/mail/template.ex
 badd +11 priv/static/emails/email_verify.txt
 badd +26 /mnt/Arquivos/ElixirWorks/MaxGallery/priv/static/emails/email_verify.html
-badd +1 lib/max_gallery/mail/email.ex
+badd +10 lib/max_gallery/mail/email.ex
 argglobal
 %argdel
 $argadd lib/max_gallery_web/live/config_live.ex
@@ -84,7 +84,6 @@ $argadd lib/max_gallery_web/live/show_live.html.heex
 $argadd lib/max_gallery/context.ex
 $argadd lib/max_gallery/utils.ex
 $argadd lib/max_gallery/cache.ex
-tabnew +setlocal\ bufhidden=wipe
 tabnew +setlocal\ bufhidden=wipe
 tabnew +setlocal\ bufhidden=wipe
 tabnew +setlocal\ bufhidden=wipe
@@ -121,7 +120,7 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 22 - ((21 * winheight(0) + 21) / 43)
+let s:l = 22 - ((15 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -135,6 +134,7 @@ if bufexists(fnamemodify("lib/max_gallery_web/controllers/page_html/home.html.he
 if &buftype ==# 'terminal'
   silent file lib/max_gallery_web/controllers/page_html/home.html.heex
 endif
+balt lib/max_gallery_web/live/config_live.ex
 setlocal fdm=manual
 setlocal fde=0
 setlocal fmr={{{,}}}
@@ -145,7 +145,7 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 11 - ((10 * winheight(0) + 21) / 43)
+let s:l = 11 - ((5 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -153,18 +153,6 @@ keepjumps 11
 normal! 0
 tabnext
 edit lib/max_gallery/request.ex
-let s:save_splitbelow = &splitbelow
-let s:save_splitright = &splitright
-set splitbelow splitright
-let &splitbelow = s:save_splitbelow
-let &splitright = s:save_splitright
-wincmd t
-let s:save_winminheight = &winminheight
-let s:save_winminwidth = &winminwidth
-set winminheight=0
-set winheight=1
-set winminwidth=0
-set winwidth=1
 argglobal
 if bufexists(fnamemodify("lib/max_gallery/request.ex", ":p")) | buffer lib/max_gallery/request.ex | else | edit lib/max_gallery/request.ex | endif
 if &buftype ==# 'terminal'
@@ -180,36 +168,12 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 20 - ((19 * winheight(0) + 21) / 43)
+let s:l = 59 - ((23 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 20
-normal! 016|
-tabnext
-edit lib/max_gallery/mail/email.ex
-argglobal
-if bufexists(fnamemodify("lib/max_gallery/mail/email.ex", ":p")) | buffer lib/max_gallery/mail/email.ex | else | edit lib/max_gallery/mail/email.ex | endif
-if &buftype ==# 'terminal'
-  silent file lib/max_gallery/mail/email.ex
-endif
-balt lib/max_gallery/request.ex
-setlocal fdm=manual
-setlocal fde=0
-setlocal fmr={{{,}}}
-setlocal fdi=#
-setlocal fdl=0
-setlocal fml=1
-setlocal fdn=20
-setlocal fen
-silent! normal! zE
-let &fdl = &fdl
-let s:l = 6 - ((5 * winheight(0) + 21) / 43)
-if s:l < 1 | let s:l = 1 | endif
-keepjumps exe s:l
-normal! zt
-keepjumps 6
-normal! 035|
+keepjumps 59
+normal! 0
 tabnext
 edit lib/max_gallery/server/live_server.ex
 argglobal
@@ -227,7 +191,7 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 42 - ((32 * winheight(0) + 21) / 43)
+let s:l = 42 - ((22 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -250,11 +214,11 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 67 - ((29 * winheight(0) + 21) / 43)
+let s:l = 42 - ((8 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 67
+keepjumps 42
 normal! 09|
 tabnext
 edit /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/controllers/page_html/verify.html.heex
@@ -273,7 +237,7 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 1 - ((0 * winheight(0) + 21) / 43)
+let s:l = 1 - ((0 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -297,7 +261,7 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 19 - ((10 * winheight(0) + 21) / 43)
+let s:l = 19 - ((8 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -320,7 +284,7 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 753 - ((42 * winheight(0) + 21) / 43)
+let s:l = 753 - ((30 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -343,7 +307,7 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 12 - ((11 * winheight(0) + 21) / 43)
+let s:l = 12 - ((8 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -371,7 +335,7 @@ silent! normal! zE
 let &fdl = &fdl
 7
 normal! zo
-let s:l = 8 - ((3 * winheight(0) + 21) / 43)
+let s:l = 8 - ((2 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -394,7 +358,7 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 20 - ((0 * winheight(0) + 21) / 43)
+let s:l = 20 - ((0 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -417,7 +381,7 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 45 - ((35 * winheight(0) + 21) / 43)
+let s:l = 45 - ((25 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -440,7 +404,7 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 1057 - ((8 * winheight(0) + 21) / 43)
+let s:l = 1057 - ((6 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -463,7 +427,7 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 14 - ((13 * winheight(0) + 21) / 43)
+let s:l = 14 - ((9 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -487,7 +451,7 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 7 - ((6 * winheight(0) + 21) / 43)
+let s:l = 7 - ((5 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -510,7 +474,7 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 38 - ((37 * winheight(0) + 21) / 43)
+let s:l = 38 - ((26 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -533,7 +497,7 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 38 - ((20 * winheight(0) + 21) / 43)
+let s:l = 38 - ((14 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -557,13 +521,13 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 14 - ((13 * winheight(0) + 21) / 43)
+let s:l = 14 - ((9 * winheight(0) + 15) / 31)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
 keepjumps 14
 normal! 0
-tabnext 3
+tabnext 1
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
   silent exe 'bwipe ' . s:wipebuf
 endif
