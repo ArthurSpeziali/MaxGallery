@@ -40,6 +40,9 @@ defmodule MaxGallery.Validate do
       !String.printable?(str) ->
         {:error, "Your String is not valid!"}
 
+      String.length(str) < 6 ->
+        {:error, "Your Password must contain in the minimum 6 characters."}
+
       String.length(str) > 32 ->
         {:error, "Your Password is too long! (more than 32)."}
 
@@ -56,6 +59,9 @@ defmodule MaxGallery.Validate do
     cond do
       !String.printable?(str) ->
         {:error, "Your String is not valid!"}
+
+      String.length(str) < 3 ->
+        {:error, "Your Password must contain in the minimum 3 characters."}
 
       String.length(str) > 32 ->
         {:error, "Your Name is too long! (more than 32)."}

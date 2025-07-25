@@ -1054,7 +1054,8 @@ defmodule MaxGallery.Context do
     end
   end
 
-  @spec user_insert(name :: String.t(), email :: String.t(), password :: String.t()) :: {:error, String.t()} | {:ok, pos_integer()}
+  @spec user_insert(name :: String.t(), email :: String.t(), password :: String.t()) ::
+          {:error, String.t()} | {:ok, pos_integer()}
   def user_insert(name, email, password) do
     case UserApi.get_email(email) do
       {:ok, _querry} ->
@@ -1111,6 +1112,19 @@ defmodule MaxGallery.Context do
       UserApi.get_email(email)
     else
       UserApi.get(id)
+    end
+  end
+
+  def user_update(email, %{password: password}) do
+    case UserApi.get_email(email) do
+      {:ok, %{id: id}} ->
+        salt = Encrypter.random()
+        passhash = salt <> Encrypter.hash(password)
+
+        UserApi.update(id, %{passhash: passhash})
+
+      error ->
+        error
     end
   end
 end

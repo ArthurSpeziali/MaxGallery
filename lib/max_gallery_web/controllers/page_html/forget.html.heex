@@ -7,9 +7,9 @@
           Forgot my Password.
         </h1>
 
-        <.form for={%{}} method="POST" action="/request/email-forget">
+        <.form for={%{}} method="post" action="/request/email-forget">
           <label class="block mb-4">
-            <span class="text-gray-700">Seu e-mail</span>
+            <span class="text-gray-700">Your e-mail</span>
             <input
               name="email"
               type="email"
@@ -25,6 +25,10 @@
           >
             Send me the recuperation link.
           </button>
+
+          <p class="text-sm text-green-600 mt-2 text-center">
+            {@err}
+          </p>
         </.form>
       </div>
     </div>

@@ -5,7 +5,7 @@
       {@action |> String.capitalize()} Page.
     </div>
 
-    <div class="flex border border-2 rounded-xl shadow-2xl md:h-[50vh] h-[60vh] md:w-[35%] w-[90%] mt-2 mx-auto">
+    <div class="flex border border-2 rounded-xl shadow-2xl md:h-[50%] h-[60%] md:w-[35%] w-[90%] mt-2 mx-auto">
       <form
         phx-submit="confirm_form"
         phx-value-action={@action}
@@ -24,7 +24,7 @@
             <p class="text-sm text-red-600">
               {@error_list |> Keyword.get(:err_name)}
             </p>
-            </div>
+          </div>
         <% end %>
 
         <div class="mb-8 mt-4">

@@ -15,9 +15,9 @@ else
 endif
 badd +9 lib/max_gallery_web/live/config_live.ex
 badd +1 lib/max_gallery_web/live/config_live.html.heex
-badd +5 lib/max_gallery_web/live/data_live.ex
+badd +14 lib/max_gallery_web/live/data_live.ex
 badd +1 lib/max_gallery_web/live/data_live.html.heex
-badd +61 lib/max_gallery_web/live/editor_live.ex
+badd +7 lib/max_gallery_web/live/editor_live.ex
 badd +2 lib/max_gallery_web/live/editor_live.html.heex
 badd +41 lib/max_gallery_web/live/import_live.ex
 badd +14 lib/max_gallery_web/live/import_live.html.heex
@@ -25,20 +25,20 @@ badd +63 lib/max_gallery_web/live/move_live.ex
 badd +1 lib/max_gallery_web/live/move_live.html.heex
 badd +32 lib/max_gallery_web/live/show_live.ex
 badd +1 lib/max_gallery_web/live/show_live.html.heex
-badd +1113 lib/max_gallery/context.ex
+badd +1119 lib/max_gallery/context.ex
 badd +752 lib/max_gallery/utils.ex
 badd +1 lib/max_gallery/cache.ex
-badd +132 lib/max_gallery_web/live/login_live.ex
+badd +8 lib/max_gallery_web/live/login_live.ex
 badd +1 lib/max_gallery_web/router.ex
-badd +48 lib/max_gallery_web/controllers/page_controller.ex
+badd +88 lib/max_gallery_web/controllers/page_controller.ex
 badd +38 lib/max_gallery_web/controllers/page_html/landing.html.heex
-badd +61 /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/live/login_live.html.heex
+badd +45 /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/live/login_live.html.heex
 badd +1 priv/repo/migrations/20250628001000_create_chunks.exs
 badd +9 priv/repo/migrations/2025060319005_create_users.exs
-badd +76 lib/max_gallery/validate.ex
-badd +9 lib/max_gallery/request.ex
-badd +38 lib/max_gallery_web/controllers/request_controller.ex
-badd +1 lib/max_gallery_web/controllers/page_html/home.html.heex
+badd +40 lib/max_gallery/validate.ex
+badd +4 lib/max_gallery/request.ex
+badd +63 lib/max_gallery_web/controllers/request_controller.ex
+badd +28 lib/max_gallery_web/controllers/page_html/home.html.heex
 badd +23 lib/max_gallery/application.ex
 badd +1 lib/max_gallery/server/live_server.ex
 badd +16 lib/max_gallery/variables.ex
@@ -50,23 +50,29 @@ badd +13 ~/.config/nvim/keys/mappings.vim
 badd +12 lib/max_gallery_web/endpoint.ex
 badd +4 .env
 badd +71 config/config.exs
-badd +23 config/dev.exs
-badd +6 lib/max_gallery/core/users.ex
+badd +4 config/dev.exs
+badd +1 lib/max_gallery/core/users.ex
 badd +19 ~/.config/nvim/init.vim
 badd +16 priv/repo/migrations/20250626214506_create_groups.exs
 badd +7 priv/repo/migrations/20250626219007_create_cyphers.exs
 badd +7 lib/max_gallery/core/cypher.ex
 badd +12 lib/max_gallery/core/group.ex
 badd +7 lib/max_gallery/core/chunk.ex
-badd +33 /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery/core/api/user_api.ex
+badd +1 /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery/core/api/user_api.ex
 badd +75 test/max_gallery/context_test.exs
 badd +1 lib/max_gallery/core/api/chunk_api.ex
 badd +2 lib/max_gallery/user_validation.ex
-badd +1 /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/controllers/page_html/verify.html.heex
-badd +5 lib/max_gallery/mail/template.ex
+badd +17 /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/controllers/page_html/verify.html.heex
+badd +51 lib/max_gallery/mail/template.ex
 badd +11 priv/static/emails/email_verify.txt
-badd +26 /mnt/Arquivos/ElixirWorks/MaxGallery/priv/static/emails/email_verify.html
+badd +29 /mnt/Arquivos/ElixirWorks/MaxGallery/priv/static/emails/email_verify.html
 badd +10 lib/max_gallery/mail/email.ex
+badd +34 lib/max_gallery_web/controllers/page_html/forget.html.heex
+badd +52 priv/static/emails/reset_passwd.html
+badd +10 priv/static/emails/reset_passwd.txt
+badd +72 config/runtime.exs
+badd +30 lib/max_gallery_web/controllers/page_html/reset.html.heex
+badd +196 lib/max_gallery_web/components/core_components.ex
 argglobal
 %argdel
 $argadd lib/max_gallery_web/live/config_live.ex
@@ -84,14 +90,6 @@ $argadd lib/max_gallery_web/live/show_live.html.heex
 $argadd lib/max_gallery/context.ex
 $argadd lib/max_gallery/utils.ex
 $argadd lib/max_gallery/cache.ex
-tabnew +setlocal\ bufhidden=wipe
-tabnew +setlocal\ bufhidden=wipe
-tabnew +setlocal\ bufhidden=wipe
-tabnew +setlocal\ bufhidden=wipe
-tabnew +setlocal\ bufhidden=wipe
-tabnew +setlocal\ bufhidden=wipe
-tabnew +setlocal\ bufhidden=wipe
-tabnew +setlocal\ bufhidden=wipe
 tabnew +setlocal\ bufhidden=wipe
 tabnew +setlocal\ bufhidden=wipe
 tabnew +setlocal\ bufhidden=wipe
@@ -120,21 +118,21 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 22 - ((15 * winheight(0) + 15) / 31)
+let s:l = 25 - ((8 * winheight(0) + 19) / 39)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 22
-normal! 05|
+keepjumps 25
+normal! 08|
 tabnext
-edit lib/max_gallery_web/controllers/page_html/home.html.heex
+edit lib/max_gallery_web/controllers/request_controller.ex
 argglobal
 1argu
-if bufexists(fnamemodify("lib/max_gallery_web/controllers/page_html/home.html.heex", ":p")) | buffer lib/max_gallery_web/controllers/page_html/home.html.heex | else | edit lib/max_gallery_web/controllers/page_html/home.html.heex | endif
+if bufexists(fnamemodify("lib/max_gallery_web/controllers/request_controller.ex", ":p")) | buffer lib/max_gallery_web/controllers/request_controller.ex | else | edit lib/max_gallery_web/controllers/request_controller.ex | endif
 if &buftype ==# 'terminal'
-  silent file lib/max_gallery_web/controllers/page_html/home.html.heex
+  silent file lib/max_gallery_web/controllers/request_controller.ex
 endif
-balt lib/max_gallery_web/live/config_live.ex
+balt lib/max_gallery/validate.ex
 setlocal fdm=manual
 setlocal fde=0
 setlocal fmr={{{,}}}
@@ -145,58 +143,12 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 11 - ((5 * winheight(0) + 15) / 31)
+let s:l = 6 - ((5 * winheight(0) + 19) / 39)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 11
+keepjumps 6
 normal! 0
-tabnext
-edit lib/max_gallery/request.ex
-argglobal
-if bufexists(fnamemodify("lib/max_gallery/request.ex", ":p")) | buffer lib/max_gallery/request.ex | else | edit lib/max_gallery/request.ex | endif
-if &buftype ==# 'terminal'
-  silent file lib/max_gallery/request.ex
-endif
-setlocal fdm=manual
-setlocal fde=0
-setlocal fmr={{{,}}}
-setlocal fdi=#
-setlocal fdl=0
-setlocal fml=1
-setlocal fdn=20
-setlocal fen
-silent! normal! zE
-let &fdl = &fdl
-let s:l = 59 - ((23 * winheight(0) + 15) / 31)
-if s:l < 1 | let s:l = 1 | endif
-keepjumps exe s:l
-normal! zt
-keepjumps 59
-normal! 0
-tabnext
-edit lib/max_gallery/server/live_server.ex
-argglobal
-if bufexists(fnamemodify("lib/max_gallery/server/live_server.ex", ":p")) | buffer lib/max_gallery/server/live_server.ex | else | edit lib/max_gallery/server/live_server.ex | endif
-if &buftype ==# 'terminal'
-  silent file lib/max_gallery/server/live_server.ex
-endif
-setlocal fdm=manual
-setlocal fde=0
-setlocal fmr={{{,}}}
-setlocal fdi=#
-setlocal fdl=0
-setlocal fml=1
-setlocal fdn=20
-setlocal fen
-silent! normal! zE
-let &fdl = &fdl
-let s:l = 42 - ((22 * winheight(0) + 15) / 31)
-if s:l < 1 | let s:l = 1 | endif
-keepjumps exe s:l
-normal! zt
-keepjumps 42
-normal! 040|
 tabnext
 edit lib/max_gallery_web/controllers/page_controller.ex
 argglobal
@@ -214,43 +166,38 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 42 - ((8 * winheight(0) + 15) / 31)
-if s:l < 1 | let s:l = 1 | endif
-keepjumps exe s:l
-normal! zt
-keepjumps 42
-normal! 09|
-tabnext
-edit /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/controllers/page_html/verify.html.heex
-argglobal
-if bufexists(fnamemodify("/mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/controllers/page_html/verify.html.heex", ":p")) | buffer /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/controllers/page_html/verify.html.heex | else | edit /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/controllers/page_html/verify.html.heex | endif
-if &buftype ==# 'terminal'
-  silent file /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/controllers/page_html/verify.html.heex
-endif
-setlocal fdm=manual
-setlocal fde=0
-setlocal fmr={{{,}}}
-setlocal fdi=#
-setlocal fdl=0
-setlocal fml=1
-setlocal fdn=20
-setlocal fen
-silent! normal! zE
-let &fdl = &fdl
-let s:l = 1 - ((0 * winheight(0) + 15) / 31)
+let s:l = 1 - ((0 * winheight(0) + 19) / 39)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
 keepjumps 1
-normal! 015|
+normal! 041|
 tabnext
-edit lib/max_gallery_web/controllers/request_controller.ex
+edit config/runtime.exs
+let s:save_splitbelow = &splitbelow
+let s:save_splitright = &splitright
+set splitbelow splitright
+wincmd _ | wincmd |
+split
+1wincmd k
+wincmd w
+let &splitbelow = s:save_splitbelow
+let &splitright = s:save_splitright
+wincmd t
+let s:save_winminheight = &winminheight
+let s:save_winminwidth = &winminwidth
+set winminheight=0
+set winheight=1
+set winminwidth=0
+set winwidth=1
+exe '1resize ' . ((&lines * 19 + 21) / 42)
+exe '2resize ' . ((&lines * 19 + 21) / 42)
 argglobal
-if bufexists(fnamemodify("lib/max_gallery_web/controllers/request_controller.ex", ":p")) | buffer lib/max_gallery_web/controllers/request_controller.ex | else | edit lib/max_gallery_web/controllers/request_controller.ex | endif
+if bufexists(fnamemodify("config/runtime.exs", ":p")) | buffer config/runtime.exs | else | edit config/runtime.exs | endif
 if &buftype ==# 'terminal'
-  silent file lib/max_gallery_web/controllers/request_controller.ex
+  silent file config/runtime.exs
 endif
-balt lib/max_gallery/validate.ex
+balt lib/max_gallery_web/controllers/request_controller.ex
 setlocal fdm=manual
 setlocal fde=0
 setlocal fmr={{{,}}}
@@ -261,19 +208,19 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 19 - ((8 * winheight(0) + 15) / 31)
+let s:l = 34 - ((2 * winheight(0) + 9) / 19)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 19
-normal! 035|
-tabnext
-edit lib/max_gallery/utils.ex
+keepjumps 34
+normal! 0
+wincmd w
 argglobal
-if bufexists(fnamemodify("lib/max_gallery/utils.ex", ":p")) | buffer lib/max_gallery/utils.ex | else | edit lib/max_gallery/utils.ex | endif
+if bufexists(fnamemodify("config/config.exs", ":p")) | buffer config/config.exs | else | edit config/config.exs | endif
 if &buftype ==# 'terminal'
-  silent file lib/max_gallery/utils.ex
+  silent file config/config.exs
 endif
+balt config/dev.exs
 setlocal fdm=manual
 setlocal fde=0
 setlocal fmr={{{,}}}
@@ -284,63 +231,15 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 753 - ((30 * winheight(0) + 15) / 31)
+let s:l = 16 - ((15 * winheight(0) + 9) / 19)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 753
-normal! 039|
-tabnext
-edit lib/max_gallery/variables.ex
-argglobal
-if bufexists(fnamemodify("lib/max_gallery/variables.ex", ":p")) | buffer lib/max_gallery/variables.ex | else | edit lib/max_gallery/variables.ex | endif
-if &buftype ==# 'terminal'
-  silent file lib/max_gallery/variables.ex
-endif
-setlocal fdm=manual
-setlocal fde=0
-setlocal fmr={{{,}}}
-setlocal fdi=#
-setlocal fdl=0
-setlocal fml=1
-setlocal fdn=20
-setlocal fen
-silent! normal! zE
-let &fdl = &fdl
-let s:l = 12 - ((8 * winheight(0) + 15) / 31)
-if s:l < 1 | let s:l = 1 | endif
-keepjumps exe s:l
-normal! zt
-keepjumps 12
-normal! 016|
-tabnext
-edit lib/max_gallery_web/live/login_live.ex
-argglobal
-if bufexists(fnamemodify("lib/max_gallery_web/live/login_live.ex", ":p")) | buffer lib/max_gallery_web/live/login_live.ex | else | edit lib/max_gallery_web/live/login_live.ex | endif
-if &buftype ==# 'terminal'
-  silent file lib/max_gallery_web/live/login_live.ex
-endif
-balt lib/max_gallery_web/live/config_live.ex
-setlocal fdm=manual
-setlocal fde=0
-setlocal fmr={{{,}}}
-setlocal fdi=#
-setlocal fdl=0
-setlocal fml=1
-setlocal fdn=20
-setlocal fen
-silent! normal! zE
-7,36fold
-38,85fold
-let &fdl = &fdl
-7
-normal! zo
-let s:l = 8 - ((2 * winheight(0) + 15) / 31)
-if s:l < 1 | let s:l = 1 | endif
-keepjumps exe s:l
-normal! zt
-keepjumps 8
-normal! 036|
+keepjumps 16
+normal! 024|
+wincmd w
+exe '1resize ' . ((&lines * 19 + 21) / 42)
+exe '2resize ' . ((&lines * 19 + 21) / 42)
 tabnext
 edit lib/max_gallery/validate.ex
 argglobal
@@ -358,18 +257,36 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 20 - ((0 * winheight(0) + 15) / 31)
+let s:l = 64 - ((30 * winheight(0) + 19) / 39)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 20
-normal! 030|
+keepjumps 64
+normal! 061|
 tabnext
-edit /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/live/login_live.html.heex
+edit lib/max_gallery/mail/template.ex
+let s:save_splitbelow = &splitbelow
+let s:save_splitright = &splitright
+set splitbelow splitright
+wincmd _ | wincmd |
+split
+1wincmd k
+wincmd w
+let &splitbelow = s:save_splitbelow
+let &splitright = s:save_splitright
+wincmd t
+let s:save_winminheight = &winminheight
+let s:save_winminwidth = &winminwidth
+set winminheight=0
+set winheight=1
+set winminwidth=0
+set winwidth=1
+exe '1resize ' . ((&lines * 19 + 21) / 42)
+exe '2resize ' . ((&lines * 19 + 21) / 42)
 argglobal
-if bufexists(fnamemodify("/mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/live/login_live.html.heex", ":p")) | buffer /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/live/login_live.html.heex | else | edit /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/live/login_live.html.heex | endif
+if bufexists(fnamemodify("lib/max_gallery/mail/template.ex", ":p")) | buffer lib/max_gallery/mail/template.ex | else | edit lib/max_gallery/mail/template.ex | endif
 if &buftype ==# 'terminal'
-  silent file /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery_web/live/login_live.html.heex
+  silent file lib/max_gallery/mail/template.ex
 endif
 setlocal fdm=manual
 setlocal fde=0
@@ -381,12 +298,107 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 45 - ((25 * winheight(0) + 15) / 31)
+let s:l = 51 - ((16 * winheight(0) + 9) / 19)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 45
+keepjumps 51
+normal! 040|
+wincmd w
+argglobal
+if bufexists(fnamemodify("lib/max_gallery/mail/email.ex", ":p")) | buffer lib/max_gallery/mail/email.ex | else | edit lib/max_gallery/mail/email.ex | endif
+if &buftype ==# 'terminal'
+  silent file lib/max_gallery/mail/email.ex
+endif
+balt lib/max_gallery/mail/template.ex
+setlocal fdm=manual
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+silent! normal! zE
+let &fdl = &fdl
+let s:l = 6 - ((5 * winheight(0) + 9) / 19)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 6
+normal! 0
+wincmd w
+exe '1resize ' . ((&lines * 19 + 21) / 42)
+exe '2resize ' . ((&lines * 19 + 21) / 42)
+tabnext
+edit lib/max_gallery/utils.ex
+argglobal
+if bufexists(fnamemodify("lib/max_gallery/utils.ex", ":p")) | buffer lib/max_gallery/utils.ex | else | edit lib/max_gallery/utils.ex | endif
+if &buftype ==# 'terminal'
+  silent file lib/max_gallery/utils.ex
+endif
+setlocal fdm=manual
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+silent! normal! zE
+let &fdl = &fdl
+let s:l = 755 - ((38 * winheight(0) + 19) / 39)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 755
+normal! $
+tabnext
+edit lib/max_gallery/variables.ex
+argglobal
+if bufexists(fnamemodify("lib/max_gallery/variables.ex", ":p")) | buffer lib/max_gallery/variables.ex | else | edit lib/max_gallery/variables.ex | endif
+if &buftype ==# 'terminal'
+  silent file lib/max_gallery/variables.ex
+endif
+setlocal fdm=manual
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+silent! normal! zE
+let &fdl = &fdl
+let s:l = 12 - ((10 * winheight(0) + 19) / 39)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 12
 normal! 016|
+tabnext
+edit lib/max_gallery/validate.ex
+argglobal
+if bufexists(fnamemodify("lib/max_gallery/validate.ex", ":p")) | buffer lib/max_gallery/validate.ex | else | edit lib/max_gallery/validate.ex | endif
+if &buftype ==# 'terminal'
+  silent file lib/max_gallery/validate.ex
+endif
+setlocal fdm=manual
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+silent! normal! zE
+let &fdl = &fdl
+let s:l = 20 - ((0 * winheight(0) + 19) / 39)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 20
+normal! 030|
 tabnext
 edit lib/max_gallery/context.ex
 argglobal
@@ -404,129 +416,12 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 1057 - ((6 * winheight(0) + 15) / 31)
+let s:l = 1126 - ((36 * winheight(0) + 19) / 39)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 1057
-normal! 0119|
-tabnext
-edit lib/max_gallery_web/live/data_live.ex
-argglobal
-if bufexists(fnamemodify("lib/max_gallery_web/live/data_live.ex", ":p")) | buffer lib/max_gallery_web/live/data_live.ex | else | edit lib/max_gallery_web/live/data_live.ex | endif
-if &buftype ==# 'terminal'
-  silent file lib/max_gallery_web/live/data_live.ex
-endif
-setlocal fdm=manual
-setlocal fde=0
-setlocal fmr={{{,}}}
-setlocal fdi=#
-setlocal fdl=0
-setlocal fml=1
-setlocal fdn=20
-setlocal fen
-silent! normal! zE
-let &fdl = &fdl
-let s:l = 14 - ((9 * winheight(0) + 15) / 31)
-if s:l < 1 | let s:l = 1 | endif
-keepjumps exe s:l
-normal! zt
-keepjumps 14
-normal! 0
-tabnext
-edit lib/max_gallery_web/live/editor_live.ex
-argglobal
-if bufexists(fnamemodify("lib/max_gallery_web/live/editor_live.ex", ":p")) | buffer lib/max_gallery_web/live/editor_live.ex | else | edit lib/max_gallery_web/live/editor_live.ex | endif
-if &buftype ==# 'terminal'
-  silent file lib/max_gallery_web/live/editor_live.ex
-endif
-balt lib/max_gallery_web/live/show_live.ex
-setlocal fdm=manual
-setlocal fde=0
-setlocal fmr={{{,}}}
-setlocal fdi=#
-setlocal fdl=0
-setlocal fml=1
-setlocal fdn=20
-setlocal fen
-silent! normal! zE
-let &fdl = &fdl
-let s:l = 7 - ((5 * winheight(0) + 15) / 31)
-if s:l < 1 | let s:l = 1 | endif
-keepjumps exe s:l
-normal! zt
-keepjumps 7
-normal! 0
-tabnext
-edit lib/max_gallery_web/controllers/page_html/landing.html.heex
-argglobal
-if bufexists(fnamemodify("lib/max_gallery_web/controllers/page_html/landing.html.heex", ":p")) | buffer lib/max_gallery_web/controllers/page_html/landing.html.heex | else | edit lib/max_gallery_web/controllers/page_html/landing.html.heex | endif
-if &buftype ==# 'terminal'
-  silent file lib/max_gallery_web/controllers/page_html/landing.html.heex
-endif
-setlocal fdm=manual
-setlocal fde=0
-setlocal fmr={{{,}}}
-setlocal fdi=#
-setlocal fdl=0
-setlocal fml=1
-setlocal fdn=20
-setlocal fen
-silent! normal! zE
-let &fdl = &fdl
-let s:l = 38 - ((26 * winheight(0) + 15) / 31)
-if s:l < 1 | let s:l = 1 | endif
-keepjumps exe s:l
-normal! zt
-keepjumps 38
-normal! 039|
-tabnext
-edit lib/max_gallery_web/controllers/page_html/landing.html.heex
-argglobal
-if bufexists(fnamemodify("lib/max_gallery_web/controllers/page_html/landing.html.heex", ":p")) | buffer lib/max_gallery_web/controllers/page_html/landing.html.heex | else | edit lib/max_gallery_web/controllers/page_html/landing.html.heex | endif
-if &buftype ==# 'terminal'
-  silent file lib/max_gallery_web/controllers/page_html/landing.html.heex
-endif
-setlocal fdm=manual
-setlocal fde=0
-setlocal fmr={{{,}}}
-setlocal fdi=#
-setlocal fdl=0
-setlocal fml=1
-setlocal fdn=20
-setlocal fen
-silent! normal! zE
-let &fdl = &fdl
-let s:l = 38 - ((14 * winheight(0) + 15) / 31)
-if s:l < 1 | let s:l = 1 | endif
-keepjumps exe s:l
-normal! zt
-keepjumps 38
-normal! 038|
-tabnext
-edit /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery/core/api/user_api.ex
-argglobal
-if bufexists(fnamemodify("/mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery/core/api/user_api.ex", ":p")) | buffer /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery/core/api/user_api.ex | else | edit /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery/core/api/user_api.ex | endif
-if &buftype ==# 'terminal'
-  silent file /mnt/Arquivos/ElixirWorks/MaxGallery/lib/max_gallery/core/api/user_api.ex
-endif
-balt lib/max_gallery/core/api/chunk_api.ex
-setlocal fdm=manual
-setlocal fde=0
-setlocal fmr={{{,}}}
-setlocal fdi=#
-setlocal fdl=0
-setlocal fml=1
-setlocal fdn=20
-setlocal fen
-silent! normal! zE
-let &fdl = &fdl
-let s:l = 14 - ((9 * winheight(0) + 15) / 31)
-if s:l < 1 | let s:l = 1 | endif
-keepjumps exe s:l
-normal! zt
-keepjumps 14
-normal! 0
+keepjumps 1126
+normal! 013|
 tabnext 1
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
   silent exe 'bwipe ' . s:wipebuf
@@ -540,7 +435,6 @@ if filereadable(s:sx)
 endif
 let &g:so = s:so_save | let &g:siso = s:siso_save
 set hlsearch
-nohlsearch
 let g:this_session = v:this_session
 let g:this_obsession = v:this_session
 doautoall SessionLoadPost

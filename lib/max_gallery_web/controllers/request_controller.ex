@@ -3,6 +3,8 @@ defmodule MaxGalleryWeb.RequestController do
   alias MaxGalleryWeb.Endpoint
   alias MaxGallery.Variables
   alias MaxGallery.Utils
+  alias MaxGallery.Mail.Template
+  alias MaxGallery.Mail.Email
 
   def auth(conn, %{"key" => key}) do
     put_session(conn, :auth_key, key)
@@ -47,5 +49,19 @@ defmodule MaxGalleryWeb.RequestController do
 
   def email_check(conn, _params) do
     redirect(conn, to: "/")
+  end
+
+  def email_forget(conn, %{"email" => email}) do
+    host =
+      Application.get_env(:max_gallery, MaxGalleryWeb.Endpoint)[:url]
+      |> Keyword.get(:host)
+
+    token = Phoenix.Token.encrypt(Endpoint, "user_email", email)
+    link = host <> "/reset-passwd?token=#{token}"
+
+    Template.reset_passwd(email, link)
+    |> Email.send()
+
+    redirect(conn, to: "/forget?send=true")
   end
 end

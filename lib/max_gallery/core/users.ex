@@ -16,7 +16,6 @@ defmodule MaxGallery.Core.User do
     Ecto.Changeset.cast(model, params, [:name, :passhash, :email])
   end
 
-  ## Return all `Cypher` fields.
   def fields() do
     %__MODULE__{}
     |> Map.drop([

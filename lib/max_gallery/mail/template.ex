@@ -44,4 +44,13 @@ defmodule MaxGallery.Mail.Template do
       read_html("email_verify", code: code)
     )
   end
+
+  def reset_passwd(dest, link) do
+    custom(
+      dest,
+      "Reset your Max Gallery password",
+      read_txt("email_verify", user_name: dest, reset_url: link),
+      read_html("email_verify", user_name: dest, reset_url: link)
+    )
+  end
 end
