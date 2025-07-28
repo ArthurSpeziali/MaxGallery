@@ -1,6 +1,7 @@
 defmodule MaxGalleryWeb.PageController do
   use MaxGalleryWeb, :controller
   alias MaxGallery.Variables
+  alias MaxGalleryWeb.Endpoint
   alias MaxGallery.Context
   alias MaxGallery.Validate
   alias MaxGallery.Mail.Template
@@ -99,7 +100,7 @@ defmodule MaxGalleryWeb.PageController do
   def reset(conn, %{"token" => token}) do
     case Phoenix.Token.decrypt(Endpoint, "user_email", token) do
       {:ok, email} ->
-        render(conn, :reset, layout: false, hide_header: true, email: email)
+        render(conn, :reset, layout: false, hide_header: true, email: email, err: nil)
 
       _error ->
         redirect(conn, to: "/")
@@ -117,8 +118,10 @@ defmodule MaxGalleryWeb.PageController do
       {:error, reason} ->
         render(conn, :reset, layout: false, hide_header: true, email: email, err: reason)
 
-      _passwd ->
+      :ok ->
         Context.user_update(email, %{password: password})
+        |> IO.inspect()
+
         redirect(conn, to: "/login?action=login")
     end
   end

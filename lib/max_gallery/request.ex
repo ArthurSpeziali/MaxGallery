@@ -59,8 +59,11 @@ defmodule MaxGallery.Request do
 
         {:ok, token}
 
-      code when code in [400, 401] ->
+      401 ->
         {:error, "invalid params"}
+
+      400 ->
+        {:error, "expired token"}
 
       _ ->
         {:error, "unknow error"}

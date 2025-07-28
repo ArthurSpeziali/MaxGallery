@@ -57,7 +57,9 @@ defmodule MaxGalleryWeb.RequestController do
       |> Keyword.get(:host)
 
     token = Phoenix.Token.encrypt(Endpoint, "user_email", email)
-    link = host <> "/reset-passwd?token=#{token}"
+
+    link =
+      "https://" <> host <> "/reset-passwd?token=#{token}"
 
     Template.reset_passwd(email, link)
     |> Email.send()
