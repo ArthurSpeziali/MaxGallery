@@ -11,6 +11,7 @@ defmodule MaxGallery.Repo.Migrations.CreateCyphers do
             add :ext, :string, size: 32, default: ".txt"
             add :msg, :binary, null: false
             add :msg_iv, :binary, null: false
+            add :length, :integer, default: 0
 
             timestamps()
         end

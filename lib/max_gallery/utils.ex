@@ -152,7 +152,7 @@ defmodule MaxGallery.Utils do
         |> Enum.sum()
       end
     else
-      {:ok, length} = Cache.get_length(id)
+      {:ok, length} = CypherApi.get_length(id)
       length
     end
   end

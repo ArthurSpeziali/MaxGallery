@@ -11,6 +11,7 @@ defmodule MaxGallery.Core.Cypher do
     field :ext, :string, default: ".txt"
     field :msg, :string
     field :msg_iv, :string
+    field :length, :integer, default: 0
 
     belongs_to :user, User
     belongs_to :group, Group

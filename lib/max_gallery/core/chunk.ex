@@ -5,7 +5,6 @@ defmodule MaxGallery.Core.Chunk do
   schema "chunks" do
     field :blob, :binary
     field :index, :integer
-    field :length, :integer, default: 0
 
     belongs_to :cypher, Cypher
     timestamps()

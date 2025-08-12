@@ -1,7 +1,19 @@
 defmodule MaxGallery.Core.Cypher.Api do
-  import Ecto.Query, only: [from: 2, first: 1]
+  import Ecto.Query
   alias MaxGallery.Core.Cypher
   alias MaxGallery.Repo
+
+  def get_length(id) do
+    from(Cypher)
+    |> where(id: ^id)
+    |> select([c], c.length)
+
+    |> Repo.one()
+    |> case do
+      nil -> {:error, "not found"}
+      querry -> {:ok, querry}
+    end
+  end
 
   ## Get all datas who are children. It's not recursive.
   def all_group(group_id) do

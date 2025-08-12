@@ -109,6 +109,7 @@ defmodule MaxGallery.Context do
              ext: ext,
              msg: msg,
              msg_iv: msg_iv,
+             length: byte_size(blob),
              group_id: group
            }),
          blob_chunk <- Utils.binary_chunk(blob, Variables.chunk_size()),

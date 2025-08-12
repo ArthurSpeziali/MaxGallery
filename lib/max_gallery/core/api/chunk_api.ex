@@ -3,13 +3,6 @@ defmodule MaxGallery.Core.Chunk.Api do
   alias MaxGallery.Repo
   import Ecto.Query
 
-  def first_length(id) do
-    from(Chunk)
-    |> where(cypher_id: ^id)
-    |> first()
-    |> select([c], c.length)
-  end
-
   def from_all_cypher(id) do
     from(Chunk)
     |> where(cypher_id: ^id)
