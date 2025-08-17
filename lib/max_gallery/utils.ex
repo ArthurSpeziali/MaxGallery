@@ -88,7 +88,7 @@ defmodule MaxGallery.Utils do
   - Returns empty list if the group contains no items
   - Does not recursively fetch items from nested subgroups
   """
-  @spec get_group(id :: binary(), opts :: Keyword.t()) :: {:ok, Context.querry()}
+  @spec get_group(id :: binary(), opts :: Keyword.t()) :: {:ok, MaxGallery.Context.querry()}
   def get_group(id, opts \\ []) do
     only = Keyword.get(opts, :only)
 
@@ -229,7 +229,7 @@ defmodule MaxGallery.Utils do
   - Maintains original hierarchy and relationships
   - Performance scales with group size and depth when not lazy
   """
-  @spec get_tree(id :: binary(), Keyword.t()) :: Context.querry()
+  @spec get_tree(id :: binary(), Keyword.t()) :: MaxGallery.Context.querry()
   def get_tree(id, key, opts \\ []) do
     lazy? = Keyword.get(opts, :lazy)
     {:ok, contents} = get_group(id)
@@ -522,7 +522,7 @@ defmodule MaxGallery.Utils do
   - Useful for implementing search functionality
   - More efficient than loading all records then filtering
   """
-  @spec get_like(querry :: Context.querry(), like :: String.t()) :: String.t()
+  @spec get_like(querry :: String.t(), like :: String.t()) :: String.t()
   def get_like(querry, like) do
     Enum.filter(querry, fn item ->
       String.downcase(
@@ -751,5 +751,26 @@ defmodule MaxGallery.Utils do
     ## Trailing -> Zero at the end
     ## Leading -> Zero at the begging
     |> String.pad_trailing(digits, "0")
+  end
+
+  @spec enc_time() :: String.t()
+  def enc_time() do 
+    now = DateTime.utc_now()
+          |> DateTime.to_unix()
+          |> to_string()
+
+    {:ok, {iv, enc}} = Encrypter.encrypt(now, System.get_env("ENCRIPT_KEY"))
+    Base.encode64(iv <> enc)
+  end
+
+  @spec dec_time(base :: String.t()) :: DateTime.t()
+  def dec_time(base) do
+    ivenc = Base.decode64!(base)
+
+    <<iv::binary-size(16), enc::binary>> = ivenc
+    {:ok, time} = Encrypter.decrypt({iv, enc}, System.get_env("ENCRIPT_KEY"))
+
+    String.to_integer(time)
+    |> DateTime.from_unix!()
   end
 end
