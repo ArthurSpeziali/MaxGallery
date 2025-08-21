@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <body>
-    <div class="flex w-full h-auto md:gap-12 gap-3 justify-between px-2 py-1">
+    <div class="flex w-full h-auto md:gap-12 gap-1 justify-between px-2 py-1">
       <button
         phx-click="back"
         class="flex justify-center items-center border border-gray-300 rounded-xl w-14"
@@ -9,7 +9,7 @@
         <img src="/images/back.png" class="w-auto h-8" />
       </button>
 
-      <form class="flex md:w-[90%] w-[70%] py-1" phx-change="search">
+      <form class="flex md:w-[90%] w-[50%] py-1" phx-change="search">
         <input
           name="search"
           class="w-full rounded-xl shadow-lg border border-gray-600 text-center h-10"
@@ -17,7 +17,7 @@
         />
       </form>
 
-      <div class="flex py-1 md:px-4 px-2 gap-2">
+      <div class="flex py-1 md:px-4 px-1 gap-2">
         <div class="flex">
           <button phx-click="import_folder">
             <img src="/images/import_folder.png" class="w-auto h-10" />

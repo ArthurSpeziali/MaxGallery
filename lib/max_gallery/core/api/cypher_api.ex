@@ -7,7 +7,6 @@ defmodule MaxGallery.Core.Cypher.Api do
     from(Cypher)
     |> where(id: ^id)
     |> select([c], c.length)
-
     |> Repo.one()
     |> case do
       nil -> {:error, "not found"}

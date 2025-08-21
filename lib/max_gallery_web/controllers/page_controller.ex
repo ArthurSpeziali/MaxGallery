@@ -16,10 +16,9 @@ defmodule MaxGalleryWeb.PageController do
   end
 
   def home(conn, _params) do
-    id =
-      fetch_cookies(conn, signed: "auth_user")
-      |> Map.fetch!(:cookies)
-      |> Map.get("auth_user")
+    # Corrigido: forma correta de ler cookie assinado
+    conn = fetch_cookies(conn, signed: ["auth_user"])
+    id = conn.cookies["auth_user"]
 
     if id do
       put_session(conn, "user_auth", id)
@@ -35,7 +34,7 @@ defmodule MaxGalleryWeb.PageController do
   end
 
   def landing(conn, _params) do
-    render(conn, :landing, layout: false, hide_header: true)
+    render(conn, :landing, layout: false, hide_header: nil)
   end
 
   def verify(conn, _params) do

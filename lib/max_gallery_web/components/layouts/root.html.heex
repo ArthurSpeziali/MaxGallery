@@ -13,26 +13,38 @@
     </script>
   </head>
 
-  <%= unless Map.get(@conn.assigns, :hide_header) do %>
-    <header class="bg-gray-800 text-white p-1 flex items-center justify-between">
-      <a href="/user/data">
-        <img src="/images/logo.png" alt="Logo" class="w-auto h-14 px-2" />
-      </a>
+  <%= case Map.get(@conn.assigns, :hide_header, false)  do %>
+    <% true -> %>
+      <header class="bg-gray-800 text-white p-1 flex items-center justify-between">
+        <a href="/">
+          <img src="/images/logo.png" alt="Logo" class="w-auto h-14 px-2" />
+        </a>
+      </header>
 
-      <div class="flex items-center">
-        <a href="/user/config">
-          <button>
-            <img src="/images/config.png" alt="Config" class="w-auto h-10" />
-          </button>
+
+    <% false -> %>
+      <header class="bg-gray-800 text-white p-1 flex items-center justify-between">
+        <a href="/user/data">
+          <img src="/images/logo.png" alt="Logo" class="w-auto h-14 px-2" />
         </a>
 
-        <a href="/user/logout">
-          <button>
-            <img src="/images/logout.png" alt="Logout" class="w-auto h-12 px-4" />
-          </button>
-        </a>
-      </div>
-    </header>
+        <div class="flex items-center">
+          <a href="/user/config">
+            <button>
+              <img src="/images/config.png" alt="Config" class="w-auto h-10" />
+            </button>
+          </a>
+
+          <a href="/user/logout">
+            <button>
+              <img src="/images/logout.png" alt="Logout" class="w-auto h-12 px-4" />
+            </button>
+          </a>
+        </div>
+      </header>
+
+    <% _ -> %>
+      <% nil %>
   <% end %>
 
   <body class="bg-white">

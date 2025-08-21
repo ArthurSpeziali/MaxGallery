@@ -2,9 +2,9 @@
 <html lang="en">
   <body>
     <div class="flex justify-center items-center h-[70vh]">
-      <div class="flex flex-col items-center h-[60%] w-[60%] rounded-lg shadow-xl m-auto border p-8">
+      <div class="flex flex-col items-center md:h-[60%] md:w-[60%]  rounded-lg shadow-xl m-auto border p-8">
         <h1 class="text-2xl font-bold">Check your E-mail Box and Spam section</h1>
-        <p class="text-lg text-gray-600">
+        <p class="text-lg text-gray-600 mb-8">
           Confirm the code sended in your e-mail, and insert here.
         </p>
 
@@ -14,8 +14,7 @@
           action="/email-verify"
           class="flex flex-col h-full w-full items-center justify-end mb-12"
         >
-        
-          <p class="text-sm text-gray-400"> Email sended to: {@email} </p>
+          <p class="text-sm text-gray-400">Email sended to: {@email}</p>
           <input
             type="text"
             inputmode="numeric"

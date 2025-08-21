@@ -522,7 +522,7 @@ defmodule MaxGallery.Utils do
   - Useful for implementing search functionality
   - More efficient than loading all records then filtering
   """
-  @spec get_like(querry :: String.t(), like :: String.t()) :: String.t()
+  @spec get_like(querry :: list(), like :: String.t()) :: String.t()
   def get_like(querry, like) do
     Enum.filter(querry, fn item ->
       String.downcase(
@@ -754,10 +754,11 @@ defmodule MaxGallery.Utils do
   end
 
   @spec enc_time() :: String.t()
-  def enc_time() do 
-    now = DateTime.utc_now()
-          |> DateTime.to_unix()
-          |> to_string()
+  def enc_time() do
+    now =
+      DateTime.utc_now()
+      |> DateTime.to_unix()
+      |> to_string()
 
     {:ok, {iv, enc}} = Encrypter.encrypt(now, System.get_env("ENCRIPT_KEY"))
     Base.encode64(iv <> enc)
