@@ -82,4 +82,5 @@ defmodule MaxGallery.Validate do
         true
     end
   end
+
 end

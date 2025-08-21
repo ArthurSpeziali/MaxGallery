@@ -753,25 +753,34 @@ defmodule MaxGallery.Utils do
     |> String.pad_trailing(digits, "0")
   end
 
-  @spec enc_time() :: String.t()
-  def enc_time() do
+  @spec enc_timestamp(email :: String.t()) :: String.t()
+  def enc_timestamp(email) do
     now =
       DateTime.utc_now()
       |> DateTime.to_unix()
       |> to_string()
 
-    {:ok, {iv, enc}} = Encrypter.encrypt(now, System.get_env("ENCRIPT_KEY"))
+    token = "#{now}::#{email}"
+
+    {:ok, {iv, enc}} = Encrypter.encrypt(token, System.get_env("ENCRIPT_KEY"))
     Base.encode64(iv <> enc)
   end
 
-  @spec dec_time(base :: String.t()) :: DateTime.t()
-  def dec_time(base) do
+  @spec dec_timestamp(base :: String.t()) :: {DateTime.t(), String.t()}
+  def dec_timestamp(base) do
     ivenc = Base.decode64!(base)
 
     <<iv::binary-size(16), enc::binary>> = ivenc
-    {:ok, time} = Encrypter.decrypt({iv, enc}, System.get_env("ENCRIPT_KEY"))
+    {:ok, token} = Encrypter.decrypt({iv, enc}, System.get_env("ENCRIPT_KEY"))
 
-    String.to_integer(time)
-    |> DateTime.from_unix!()
+    <<time::binary-size(10), "::", email::binary>> = token
+
+
+    {
+      String.to_integer(time)
+      |> DateTime.from_unix!(),
+
+      email
+    }
   end
 end
