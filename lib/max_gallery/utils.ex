@@ -5,6 +5,7 @@ defmodule MaxGallery.Utils do
   alias MaxGallery.Phantom
   alias MaxGallery.Cache
   alias MaxGallery.Variables
+  alias MaxGallery.Validate
   @type tree :: [map()]
   @zip_path Variables.tmp_dir() <> "zips"
 
@@ -522,7 +523,7 @@ defmodule MaxGallery.Utils do
   - Useful for implementing search functionality
   - More efficient than loading all records then filtering
   """
-  @spec get_like(querry :: list(), like :: String.t()) :: String.t()
+  @spec get_like(querry :: MaxGallery.Context.querry(), like :: String.t()) :: MaxGallery.Context.querry()
   def get_like(querry, like) do
     Enum.filter(querry, fn item ->
       String.downcase(
@@ -753,34 +754,52 @@ defmodule MaxGallery.Utils do
     |> String.pad_trailing(digits, "0")
   end
 
-  @spec enc_timestamp(email :: String.t()) :: String.t()
-  def enc_timestamp(email) do
+  @spec enc_timestamp(string :: String.t()) :: String.t()
+  def enc_timestamp(string) do
     now =
       DateTime.utc_now()
       |> DateTime.to_unix()
       |> to_string()
 
-    token = "#{now}::#{email}"
+    token = "#{now}::#{string}"
 
     {:ok, {iv, enc}} = Encrypter.encrypt(token, System.get_env("ENCRIPT_KEY"))
-    Base.encode64(iv <> enc)
+    Base.url_encode64(iv <> enc)
   end
 
   @spec dec_timestamp(base :: String.t()) :: {DateTime.t(), String.t()}
   def dec_timestamp(base) do
-    ivenc = Base.decode64!(base)
+    ivenc = Base.url_decode64(base)
 
-    <<iv::binary-size(16), enc::binary>> = ivenc
-    {:ok, token} = Encrypter.decrypt({iv, enc}, System.get_env("ENCRIPT_KEY"))
+    if ivenc != :error  do
+      {:ok, ivenc} = ivenc
+      if byte_size(ivenc) > 16 do
+        <<iv::binary-size(16), enc::binary>> = ivenc
+        {:ok, token} = Encrypter.decrypt({iv, enc}, System.get_env("ENCRIPT_KEY"))
 
-    <<time::binary-size(10), "::", email::binary>> = token
+        if byte_size(token) > 12 && String.contains?(token, "::") do
+          <<unix_time::binary-size(10), "::", string::binary>> = token
+
+          unix_time = Validate.int(unix_time)
+          if unix_time do
+            case DateTime.from_unix(unix_time) do
+              {:ok, datetime} -> {datetime, string}
 
 
-    {
-      String.to_integer(time)
-      |> DateTime.from_unix!(),
+              {:error, _reason} -> {:error, "invalid datetime"}
+            end
+          else
+            {:error, "invalid unix time"}
+          end
+        else
+          {:error, "invalid token"}
+        end
+      else
+        {:error, "invalid binary"}
+      end
+    else
+      {:error, "invalid base64"}
+    end
 
-      email
-    }
   end
 end

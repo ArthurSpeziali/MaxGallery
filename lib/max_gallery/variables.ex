@@ -10,6 +10,7 @@ defmodule MaxGallery.Variables do
   ## 90 Days! (In seconds)
   @cookie_time 90 * 24 * 60 * 60
   @code_digits 6
+  @reset_time 3 * 60 # In minutes (3 Hours)
 
   def chunk_size, do: @chunk_size
   def tmp_dir, do: @tmp_dir
@@ -19,4 +20,5 @@ defmodule MaxGallery.Variables do
   def file_limit, do: @file_limit
   def cookie_time, do: @cookie_time
   def code_digits, do: @code_digits
+  def reset_time, do: @reset_time
 end

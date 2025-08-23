@@ -1,9 +1,9 @@
 defmodule MaxGalleryWeb.PageController do
   use MaxGalleryWeb, :controller
   alias MaxGallery.Variables
-  alias MaxGalleryWeb.Endpoint
   alias MaxGallery.Context
   alias MaxGallery.Validate
+  alias MaxGallery.Utils
   alias MaxGallery.Mail.Template
   alias MaxGallery.Mail.Email
 
@@ -81,7 +81,7 @@ defmodule MaxGalleryWeb.PageController do
     end
   end
 
-  def email_verify_process(conn, _params) do
+  def verify_process(conn, _params) do
     redirect(conn, to: "/")
   end
 
@@ -97,12 +97,21 @@ defmodule MaxGalleryWeb.PageController do
   end
 
   def reset(conn, %{"token" => token}) do
-    case Phoenix.Token.decrypt(Endpoint, "user_email", token) do
-      {:ok, email} ->
-        render(conn, :reset, layout: false, hide_header: true, email: email, err: nil)
-
-      _error ->
+    case Utils.dec_timestamp(token) do
+      {:error, _reason} ->
         redirect(conn, to: "/")
+
+      {timestamp, email} ->
+        expired? = DateTime.after?(
+          DateTime.utc_now(),
+          DateTime.add(timestamp, Variables.reset_time(), :minute)
+        )
+
+      if expired? do
+        redirect(conn, to: "/")
+      else
+        render(conn, :reset, layout: false, hide_header: true, email: email, err: nil)
+      end
     end
   end
 
@@ -119,7 +128,6 @@ defmodule MaxGalleryWeb.PageController do
 
       :ok ->
         Context.user_update(email, %{password: password})
-        |> IO.inspect()
 
         redirect(conn, to: "/login?action=login")
     end

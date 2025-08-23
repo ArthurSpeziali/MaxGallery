@@ -11,6 +11,15 @@ defmodule MaxGallery.Validate do
     end
   end
 
+  @spec int(str :: binary()) :: integer() | nil
+  def int(str) do
+    case Integer.parse(str) do
+      {int, ""} -> int
+      _ -> nil
+    end
+  end
+
+
   @spec input!(str :: binary()) :: binary()
   def input!(str) do
     String.downcase(str)

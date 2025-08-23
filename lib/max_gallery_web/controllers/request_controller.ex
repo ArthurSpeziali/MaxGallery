@@ -56,7 +56,7 @@ defmodule MaxGalleryWeb.RequestController do
       Application.get_env(:max_gallery, MaxGalleryWeb.Endpoint)[:url]
       |> Keyword.get(:host)
 
-    token = Phoenix.Token.encrypt(Endpoint, "user_email", email)
+    token = Utils.enc_timestamp(email)
 
     link =
       "https://" <> host <> "/reset-passwd?token=#{token}"
