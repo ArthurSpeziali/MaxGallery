@@ -1,5 +1,6 @@
 defmodule MaxGallery.Server.LiveServer do
   use GenServer
+  alias MaxGallery.Variables
   @mod __MODULE__
 
   def start_link(_opts \\ nil) do
@@ -7,6 +8,8 @@ defmodule MaxGallery.Server.LiveServer do
   end
 
   def init(state) do
+    :timer.send_interval(Variables.delete_reqs(), :req_times)
+
     {:ok, state}
   end
 
@@ -22,6 +25,13 @@ defmodule MaxGallery.Server.LiveServer do
     {:noreply, Map.merge(state, map)}
   end
 
+  def handle_cast({:add, key, map}, state) do
+    sub_map =
+      (state[key] || %{}) |> Map.merge(map)
+
+    {:noreply, Map.put(state, key, sub_map)}
+  end
+
   def handle_cast({:del, key}, state) do
     {:noreply, Map.delete(state, key)}
   end
@@ -32,6 +42,10 @@ defmodule MaxGallery.Server.LiveServer do
 
   def all() do
     GenServer.call(@mod, :all)
+  end
+
+  def add(key, map) do
+    GenServer.cast(@mod, {:add, key, map})
   end
 
   def get(key) do
@@ -48,5 +62,9 @@ defmodule MaxGallery.Server.LiveServer do
 
   def clr() do
     GenServer.cast(@mod, :clr)
+  end
+
+  def handle_info(:req_times) do
+    {:noreply, Map.put(all(), :timestamp_requests, %{})}
   end
 end

@@ -5,6 +5,7 @@ defmodule MaxGalleryWeb.RequestController do
   alias MaxGallery.Utils
   alias MaxGallery.Mail.Template
   alias MaxGallery.Mail.Email
+  alias MaxGallery.Server.LiveServer
 
   def auth(conn, %{"key" => key}) do
     put_session(conn, :auth_key, key)
@@ -52,24 +53,25 @@ defmodule MaxGalleryWeb.RequestController do
   end
 
   def email_forget(conn, %{"email" => email}) do
-    user_request = conn.assigns[:timestamp_request]
+    user_request = LiveServer.get(:timestamp_requests)[email]
 
     if user_request do
-      now = DateTime.utc_now()
-
-      valid? =
-        DateTime.after?(
-          DateTime.add(user_request.timestamp, Variables.email_resend(), :second),
-          now
+      remain =
+        DateTime.diff(
+          DateTime.utc_now(),
+          user_request,
+          :second
         )
 
-      if valid? do
+      if remain >= Variables.email_resend() do
+        IO.puts(:VALIDO)
         email_forget_process(conn, email)
       else
-        remain = DateTime.diff(now, user_request.timestamp, :second)
-        redirect(conn, to: "/forget?remain=#{remain}")
+        IO.puts(:NNNN)
+        redirect(conn, to: "/forget?remain=#{Variables.email_resend() - remain}")
       end
     else
+      IO.puts(:INE)
       email_forget_process(conn, email)
     end
   end
@@ -91,7 +93,9 @@ defmodule MaxGalleryWeb.RequestController do
     Template.reset_passwd(email, link)
     |> Email.send()
 
-    conn = assign(conn, :timestamp_request, %{timestamp: DateTime.utc_now(), email: email})
+    LiveServer.add(:timestamp_requests, %{email => DateTime.utc_now()})
+    IO.puts(:ADDEI)
+
     redirect(conn, to: "/forget?send=true")
   end
 end

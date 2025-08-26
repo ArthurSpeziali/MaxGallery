@@ -26,9 +26,36 @@
             Send me the recuperation link.
           </button>
 
-          <p class="text-sm text-green-600 mt-2 text-center">
-            {@err}
-          </p>
+          <%= cond do %>
+            <% @send -> %>
+              <p class="text-sm text-green-600 mt-2 text-center">
+                {@txt}
+              </p>
+            <% @txt -> %>
+              <p class="text-sm text-yellow-600 mt-2 text-center">
+                You can resend the email in (seconds):
+              </p>
+              <p class="text-sm text-yellow-800 text-center" id="counter">
+                {@txt}
+              </p>
+
+              <script>
+                const counter = document.getElementById("counter");
+                let time = parseInt(counter.textContent); 
+
+                const interval = setInterval(() => {
+                  time--;
+                  counter.textContent = time; 
+
+                  if (time <= 0) {
+                    clearInterval(interval);
+                    counter.textContent = "Now, you can resend the email.";
+                  }
+                }, 1000);
+              </script>
+            <% true -> %>
+              {nil}
+          <% end %>
         </.form>
       </div>
     </div>

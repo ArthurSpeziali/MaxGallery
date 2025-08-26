@@ -14,6 +14,8 @@ defmodule MaxGallery.Variables do
   @reset_time 3 * 60
   # In seconds (2 minutes)
   @email_resend 2 * 60
+  # 12 hours (in miliseconds)
+  @delete_reqs 12 * 60 * 60 * 1000
 
   def chunk_size, do: @chunk_size
   def tmp_dir, do: @tmp_dir
@@ -25,4 +27,5 @@ defmodule MaxGallery.Variables do
   def code_digits, do: @code_digits
   def reset_time, do: @reset_time
   def email_resend, do: @email_resend
+  def delete_reqs, do: @delete_reqs
 end

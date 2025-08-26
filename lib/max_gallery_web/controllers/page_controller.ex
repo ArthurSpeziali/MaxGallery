@@ -86,14 +86,19 @@ defmodule MaxGalleryWeb.PageController do
   end
 
   def forget(conn, params) do
-    err =
-      if params["send"] == "true" do
-        "Your e-mail has just been sent."
-      else
-        nil
+    {txt, send?} =
+      cond do
+        params["send"] ->
+          {"Your e-mail has just been sent.", true}
+
+        params["remain"] ->
+          {params["remain"], false}
+
+        true ->
+          {nil, false}
       end
 
-    render(conn, :forget, layout: false, hide_header: true, err: err)
+    render(conn, :forget, layout: false, hide_header: true, txt: txt, send: send?)
   end
 
   def reset(conn, %{"token" => token}) do

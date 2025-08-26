@@ -768,7 +768,7 @@ defmodule MaxGallery.Utils do
     Base.url_encode64(iv <> enc)
   end
 
-  @spec dec_timestamp(base :: String.t()) :: {DateTime.t(), String.t()}
+  @spec dec_timestamp(base :: String.t()) :: {DateTime.t(), String.t()} | {:error, String.t()}
   def dec_timestamp(base) do
     ivenc = Base.url_decode64(base)
 
