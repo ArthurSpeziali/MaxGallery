@@ -523,7 +523,8 @@ defmodule MaxGallery.Utils do
   - Useful for implementing search functionality
   - More efficient than loading all records then filtering
   """
-  @spec get_like(querry :: MaxGallery.Context.querry(), like :: String.t()) :: MaxGallery.Context.querry()
+  @spec get_like(querry :: MaxGallery.Context.querry(), like :: String.t()) ::
+          MaxGallery.Context.querry()
   def get_like(querry, like) do
     Enum.filter(querry, fn item ->
       String.downcase(
@@ -771,8 +772,9 @@ defmodule MaxGallery.Utils do
   def dec_timestamp(base) do
     ivenc = Base.url_decode64(base)
 
-    if ivenc != :error  do
+    if ivenc != :error do
       {:ok, ivenc} = ivenc
+
       if byte_size(ivenc) > 16 do
         <<iv::binary-size(16), enc::binary>> = ivenc
         {:ok, token} = Encrypter.decrypt({iv, enc}, System.get_env("ENCRIPT_KEY"))
@@ -781,11 +783,10 @@ defmodule MaxGallery.Utils do
           <<unix_time::binary-size(10), "::", string::binary>> = token
 
           unix_time = Validate.int(unix_time)
+
           if unix_time do
             case DateTime.from_unix(unix_time) do
               {:ok, datetime} -> {datetime, string}
-
-
               {:error, _reason} -> {:error, "invalid datetime"}
             end
           else
@@ -800,6 +801,5 @@ defmodule MaxGallery.Utils do
     else
       {:error, "invalid base64"}
     end
-
   end
 end

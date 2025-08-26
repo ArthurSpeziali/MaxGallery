@@ -102,16 +102,17 @@ defmodule MaxGalleryWeb.PageController do
         redirect(conn, to: "/")
 
       {timestamp, email} ->
-        expired? = DateTime.after?(
-          DateTime.utc_now(),
-          DateTime.add(timestamp, Variables.reset_time(), :minute)
-        )
+        expired? =
+          DateTime.after?(
+            DateTime.utc_now(),
+            DateTime.add(timestamp, Variables.reset_time(), :minute)
+          )
 
-      if expired? do
-        redirect(conn, to: "/")
-      else
-        render(conn, :reset, layout: false, hide_header: true, email: email, err: nil)
-      end
+        if expired? do
+          redirect(conn, to: "/")
+        else
+          render(conn, :reset, layout: false, hide_header: true, email: email, err: nil)
+        end
     end
   end
 

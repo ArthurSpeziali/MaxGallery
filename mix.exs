@@ -62,7 +62,8 @@ defmodule MaxGallery.MixProject do
       {:mail, "~> 0.5.1"},
       {:dotenv, "~> 3.1"},
       {:httpoison, "~> 2.2"},
-      {:email_checker, "~> 0.2.4"}
+      {:email_checker, "~> 0.2.4"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
 

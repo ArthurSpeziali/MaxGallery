@@ -35,6 +35,8 @@ defmodule MaxGallery.Server.GarbageServer do
 
   def handle_info(:check_zips, _state) do
     now = NaiveDateTime.utc_now()
+
+    File.mkdir_p(@path.zips)
     files = File.ls!(@path.zips)
 
     for name <- files do

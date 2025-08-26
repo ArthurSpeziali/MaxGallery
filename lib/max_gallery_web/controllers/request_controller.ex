@@ -52,6 +52,33 @@ defmodule MaxGalleryWeb.RequestController do
   end
 
   def email_forget(conn, %{"email" => email}) do
+    user_request = conn.assigns[:timestamp_request]
+
+    if user_request do
+      now = DateTime.utc_now()
+
+      valid? =
+        DateTime.after?(
+          DateTime.add(user_request.timestamp, Variables.email_resend(), :second),
+          now
+        )
+
+      if valid? do
+        email_forget_process(conn, email)
+      else
+        remain = DateTime.diff(now, user_request.timestamp, :second)
+        redirect(conn, to: "/forget?remain=#{remain}")
+      end
+    else
+      email_forget_process(conn, email)
+    end
+  end
+
+  def email_forget(conn, _params) do
+    redirect(conn, to: "/")
+  end
+
+  def email_forget_process(conn, email) do
     host =
       Application.get_env(:max_gallery, MaxGalleryWeb.Endpoint)[:url]
       |> Keyword.get(:host)
@@ -64,6 +91,7 @@ defmodule MaxGalleryWeb.RequestController do
     Template.reset_passwd(email, link)
     |> Email.send()
 
+    conn = assign(conn, :timestamp_request, %{timestamp: DateTime.utc_now(), email: email})
     redirect(conn, to: "/forget?send=true")
   end
 end

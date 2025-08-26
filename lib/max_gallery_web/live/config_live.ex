@@ -16,7 +16,7 @@ defmodule MaxGalleryWeb.Live.ConfigLive do
   end
 
   def mount(_params, _session, socket) do
-    push_navigate(socket, to: "/user")
+    {:ok, push_navigate(socket, to: "/user")}
   end
 
   def handle_event("redirect", _params, socket) do

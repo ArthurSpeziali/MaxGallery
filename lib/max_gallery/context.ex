@@ -1,17 +1,17 @@
 defmodule MaxGallery.Context do
+  alias MaxGallery.Cache
+  alias MaxGallery.Core.Cypher
   alias MaxGallery.Core.Cypher.Api, as: CypherApi
+  alias MaxGallery.Core.Group
   alias MaxGallery.Core.Group.Api, as: GroupApi
   alias MaxGallery.Core.User.Api, as: UserApi
-  alias MaxGallery.Core.Cypher
-  alias MaxGallery.Core.Group
   # alias MaxGallery.Core.User
-  alias MaxGallery.Repo
   alias MaxGallery.Encrypter
   alias MaxGallery.Phantom
+  alias MaxGallery.Repo
   alias MaxGallery.Utils
-  alias MaxGallery.Cache
-  alias MaxGallery.Variables
   alias MaxGallery.Validate
+  alias MaxGallery.Variables
   @type querry :: [%Cypher{} | %Group{} | map()]
   @type response :: {:ok, querry()} | {:error, String.t()}
 
@@ -149,7 +149,7 @@ defmodule MaxGallery.Context do
           group: item.group_id
         }
       else
-        {path, _created} = Cache.consume_cache(item.id, item.blob_iv)
+        {path, _created} = Cache.consume_cache(item.id, item.blob_iv, key)
 
         %{
           id: item.id,
@@ -314,7 +314,14 @@ defmodule MaxGallery.Context do
            }}
       end
     else
-      if !group? do
+      if group? do
+        {:ok,
+         %{
+           id: id,
+           name: name,
+           group: querry.group_id
+         }}
+      else
         if lazy? do
           {:ok,
            %{
@@ -324,7 +331,7 @@ defmodule MaxGallery.Context do
              group: querry.group_id
            }}
         else
-          {path, _created} = Cache.consume_cache(querry.id, querry.blob_iv)
+          {path, _created} = Cache.consume_cache(querry.id, querry.blob_iv, key)
 
           {:ok,
            %{
@@ -335,13 +342,6 @@ defmodule MaxGallery.Context do
              group: querry.group_id
            }}
         end
-      else
-        {:ok,
-         %{
-           id: id,
-           name: name,
-           group: querry.group_id
-         }}
       end
     end
   end
@@ -393,7 +393,7 @@ defmodule MaxGallery.Context do
       params = %{name_iv: name_iv, name: name, blob_iv: blob_iv, ext: ext}
 
       Cache.update_chunks(id, blob)
-      Cache.write_chunk(id, blob_iv)
+      Cache.write_chunk(id, blob_iv, key)
       CypherApi.update(id, params)
     else
       {:error, "invalid key"}
@@ -930,7 +930,8 @@ defmodule MaxGallery.Context do
   @spec update_all(key :: String.t(), new_key :: String.t()) ::
           {:ok, non_neg_integer()} | {:error, String.t()}
   def update_all(key, new_key) do
-    ## This function is poor, if the user cancel the operation in the process, the entire database will be corrupted. Should i refactor that?
+    ## This function is poor, if the user cancel the operation in the process, the entire database will be corrupted.
+    ## Should i refactor that?
     if Phantom.insert_line?(key) do
       Repo.transaction(fn ->
         try do

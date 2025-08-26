@@ -21,8 +21,8 @@ defmodule MaxGallery.Cache do
     insert_chunk(tail, params, index + 1)
   end
 
-  @spec write_chunk(id :: pos_integer(), blob_iv :: binary()) :: Path.t()
-  def write_chunk(id, blob_iv) do
+  @spec write_chunk(id :: pos_integer(), blob_iv :: binary(), key :: String.t()) :: Path.t()
+  def write_chunk(id, blob_iv, key) do
     file_path = @tmp_path <> "#{Mix.env()}_#{id}"
     File.mkdir_p!(@tmp_path)
 
@@ -31,7 +31,7 @@ defmodule MaxGallery.Cache do
     {:ok, blob} =
       Encrypter.decrypt(
         {blob_iv, enc_blob},
-        "key"
+        key
       )
 
     File.write!(
@@ -67,14 +67,15 @@ defmodule MaxGallery.Cache do
     inspect(Mix.env()) <> "_" <> path <> "_encode"
   end
 
-  @spec consume_cache(id :: pos_integer(), blob_iv :: binary()) :: {:ok, boolean()}
-  def consume_cache(id, blob_iv) do
+  @spec consume_cache(id :: pos_integer(), blob_iv :: binary(), key :: String.t()) ::
+          {Path.t(), boolean()}
+  def consume_cache(id, blob_iv, key) do
     path = @tmp_path <> "#{Mix.env()}_#{id}"
 
-    if File.exists?(path) do
+    if File.exists?(path) && Phantom.insert_line?(key) do
       {path, false}
     else
-      write_chunk(id, blob_iv)
+      write_chunk(id, blob_iv, key)
       {path, true}
     end
   end

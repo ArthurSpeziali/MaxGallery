@@ -19,7 +19,6 @@ defmodule MaxGallery.Validate do
     end
   end
 
-
   @spec input!(str :: binary()) :: binary()
   def input!(str) do
     String.downcase(str)
@@ -91,5 +90,4 @@ defmodule MaxGallery.Validate do
         true
     end
   end
-
 end
