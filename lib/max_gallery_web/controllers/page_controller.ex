@@ -9,10 +9,18 @@ defmodule MaxGalleryWeb.PageController do
 
   ## Remove assings, cookies, files, etc...
   def logout(conn, _params) do
-    File.rm_rf!(Variables.tmp_dir())
+    File.rm_rf(Variables.tmp_dir())
 
     configure_session(conn, drop: true)
     |> redirect(to: "/user")
+  end
+
+  def logout_user(conn, _params) do
+    File.rm_rf(Variables.tmp_dir())
+
+    configure_session(conn, drop: true)
+    |> delete_resp_cookie("auth_user")
+    |> redirect(to: "/")
   end
 
   def home(conn, _params) do
@@ -92,7 +100,10 @@ defmodule MaxGalleryWeb.PageController do
           {"Your e-mail has just been sent.", true}
 
         params["remain"] ->
-          {params["remain"], false}
+          {params["remain"], :wait}
+
+        params["invalid"] ->
+          {"This e-mail does not exists in our database.", false}
 
         true ->
           {nil, false}

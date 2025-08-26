@@ -31,7 +31,7 @@
               <p class="text-sm text-green-600 mt-2 text-center">
                 {@txt}
               </p>
-            <% @txt -> %>
+            <% @send == :wait -> %>
               <p class="text-sm text-yellow-600 mt-2 text-center">
                 You can resend the email in (seconds):
               </p>
@@ -53,6 +53,10 @@
                   }
                 }, 1000);
               </script>
+            <% @txt -> %>
+              <p class="text-md text-red-800 text-center" id="counter">
+                {@txt}
+              </p>
             <% true -> %>
               {nil}
           <% end %>

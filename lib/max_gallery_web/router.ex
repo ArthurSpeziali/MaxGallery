@@ -36,6 +36,7 @@ defmodule MaxGalleryWeb.Router do
 
     get "/", PageController, :home
     get "/logout", PageController, :logout
+    get "/logout-user", PageController, :logout_user
     get "/download", RenderController, :download
   end
 

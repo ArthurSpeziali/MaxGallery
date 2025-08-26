@@ -4,13 +4,56 @@
     <div class="flex rounded-lg shadow-lg border-2 border-gray-300 m-6 py-4">
       <div name="database" class="flex flex-col mb-8 w-full">
         <div class="flex justify-between">
-          <strong class="text-blue-900 text-[1.8rem] ml-4">Database Config.</strong>
+          <strong class="text-blue-900 text-[1.8rem] ml-4">User Config.</strong>
 
           <button phx-click="redirect" class="flex justify-end mr-4">
             <img src="/images/close.png" class="h-12 w-auto" />
           </button>
         </div>
 
+        <div name="logout" class="mt-8 ml-8">
+          <h1 class="text-xl font-bold text-gray-800">Logout</h1>
+          <p class="text-sm text-gray-500 break-words mb-2">
+            Log out of your account by removing the cookies
+          </p>
+
+          <button
+            phx-click="logout"
+            class="text-red-600 bg-transparent border border-red-600 px-2 py-1 rounded-lg text-[1rem] mb-4"
+          >
+            Logout
+          </button>
+        </div>
+
+        <div name="change_passwd" class="mt-8 ml-8">
+          <h1 class="text-xl font-bold text-gray-800">Change Password</h1>
+          <p class="text-sm text-gray-500 break-words mb-2">
+            Change your account password. Your current password will be verified before the action.
+          </p>
+
+          <button
+            phx-click="change_passwd"
+            class="text-red-600 bg-transparent border border-red-600 px-2 py-1 rounded-lg text-[1rem] mb-4"
+          >
+            Change
+          </button>
+        </div>
+
+        <div name="delete_account" class="mt-8 ml-8">
+          <h1 class="text-xl font-bold text-gray-800">Delete Account</h1>
+          <p class="text-sm text-gray-500 break-words mb-2">
+            It completely deletes your account and all associated data. This action is permanent and cannot be reversed. Your current password will be verified before the action.
+          </p>
+
+          <button
+            phx-click="delete_account"
+            class="text-red-600 bg-transparent border border-red-600 px-2 py-1 rounded-lg text-[1rem] mb-4"
+          >
+            Delete
+          </button>
+        </div>
+
+        <strong class="text-blue-900 text-[1.8rem] mt-20 ml-4">Database Config.</strong>
         <div name="change_key" class="mt-10 ml-8">
           <h1 class="text-xl font-bold text-gray-800">Change the Database key</h1>
           <p class="text-sm text-gray-500 break-words mb-2">
@@ -102,12 +145,14 @@
               type="password"
               class="text-center mt-8 w-full rounded-lg border border-gray-600 h-12"
               placeholder="Old key."
+              required
             />
             <input
               name="new_key"
               type="password"
               class="text-center mt-2 w-full rounded-lg border border-gray-600 h-12"
               placeholder="New key."
+              required
             />
 
             <button
@@ -122,6 +167,85 @@
         <%= if @loading do %>
           <img src="/images/loading.gif" class="h-16 mt-6" />
         <% end %>
+      </div>
+    <% end %>
+
+    <%= if @changepasswd_iframe do %>
+      <div class="fixed inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center z-50">
+        <div class="bg-white p-6 rounded shadow-lg w-[90%] md:w-[50%]">
+          <div class="flex justify-between items-center gap-8">
+            <p class="md:text-lg text-[1rem] font-bold text-red-800 break-words">
+              Enter your password to change your account password, then enter the new password.
+            </p>
+
+            <button phx-click="cancel">
+              <img src="/images/close.png" class="h-10 md:w-16 w-28" />
+            </button>
+          </div>
+
+          <form phx-submit="submit_changepasswd" class="flex flex-col items-center">
+            <input
+              name="old_passwd"
+              type="password"
+              class="text-center mt-8 w-full rounded-lg border border-gray-600 h-12"
+              placeholder="Old password."
+              required
+            />
+            <input
+              name="new_passwd"
+              type="password"
+              class="text-center mt-2 w-full rounded-lg border border-gray-600 h-12"
+              placeholder="New password."
+              required
+            />
+
+            <p class="text-md text-red-600 mt-2">
+              {@err}
+            </p>
+            <button
+              type="submit"
+              class="mt-2 rounded-lg bg-blue-600 text-white transition-colors duration-200 h-10 w-[35%]"
+            >
+              Send
+            </button>
+          </form>
+        </div>
+      </div>
+    <% end %>
+
+    <%= if @deleteaccount_iframe do %>
+      <div class="fixed inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center z-50">
+        <div class="bg-white p-6 rounded shadow-lg w-[90%] md:w-[50%]">
+          <div class="flex justify-between items-center gap-8">
+            <p class="md:text-lg text-[1.2rem] font-bold text-red-600 break-words text-center">
+              Are you absolutely sure that you will completely lose your account and your database? If yes, type your password.
+            </p>
+
+            <button phx-click="cancel">
+              <img src="/images/close.png" class="h-10 md:w-16 w-28" />
+            </button>
+          </div>
+
+          <form phx-submit="submit_deleteaccount" class="flex-col flex items-end mt-12 gap-1">
+            <input
+              name="passwd"
+              type="password"
+              class="text-center mt-2 w-full rounded-lg border border-gray-600 h-12"
+              placeholder="Password."
+              required
+            />
+
+            <p class="text-lg text-red-600 mt-2 text-center">
+              {@err}
+            </p>
+            <button
+              type="submit"
+              class="rounded-lg bg-transparent border border-blue-600 text-blue-600 transition-colors duration-200 py-2 px-4 text-xl"
+            >
+              Confirm
+            </button>
+          </form>
+        </div>
       </div>
     <% end %>
   </body>
