@@ -5,7 +5,7 @@ defmodule MaxGalleryWeb.PageController do
   alias MaxGallery.Validate
   alias MaxGallery.Utils
   alias MaxGallery.Mail.Template
-  alias MaxGallery.Mail.Email
+  alias MaxGallery.Mail
 
   ## Remove assings, cookies, files, etc...
   def logout(conn, _params) do
@@ -50,7 +50,7 @@ defmodule MaxGalleryWeb.PageController do
 
     if user do
       Template.email_verify(user.email, user.code)
-      |> Email.send()
+      |> Mail.send()
 
       render(conn, :verify, layout: false, hide_header: true, email: user.email, err_code: nil)
     else

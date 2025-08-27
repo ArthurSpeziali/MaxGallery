@@ -11,6 +11,13 @@ defmodule MaxGalleryWeb.Live.MoveLive do
       ) do
     page_id = Map.get(params, "page_id")
 
+    page_id =
+      if page_id == "main" do
+        nil
+      else
+        page_id
+      end
+
     action =
       if action in ~w(move copy) do
         action
@@ -69,14 +76,17 @@ defmodule MaxGalleryWeb.Live.MoveLive do
 
   def handle_event("back", _params, socket) do
     action = socket.assigns[:action]
+    type = socket.assigns[:type]
+    id = socket.assigns[:id]
 
     back_id =
       socket.assigns[:page_id]
-      |> Utils.get_back()
+      |> Utils.get_back() || "main"
 
     ## This is only time that `Utils.get_back/1` is called. Should i delete this function?
 
-    {:noreply, push_navigate(socket, to: "/user/move/#{back_id}?action=#{action}")}
+    {:noreply,
+     push_navigate(socket, to: "/user/move/#{back_id}?action=#{action}&type=#{type}&id=#{id}")}
   end
 
   def handle_event("select", %{"id" => dest_id}, socket) do

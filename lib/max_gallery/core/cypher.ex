@@ -1,9 +1,9 @@
 defmodule MaxGallery.Core.Cypher do
   use Ecto.Schema
   alias MaxGallery.Core.Group
-  alias MaxGallery.Core.Chunk
   alias MaxGallery.Core.User
 
+  @foreign_key_type :binary_id
   schema "cyphers" do
     field :name, :binary
     field :name_iv, :binary
@@ -15,7 +15,7 @@ defmodule MaxGallery.Core.Cypher do
 
     belongs_to :user, User
     belongs_to :group, Group
-    has_many :chunck, Chunk
+    # Chunks removed - files now stored directly in S3
     timestamps()
   end
 

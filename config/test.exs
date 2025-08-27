@@ -37,3 +37,6 @@ config :phoenix, :plug_init_mode, :runtime
 # Enable helpful, but potentially expensive runtime checks
 config :phoenix_live_view,
   enable_expensive_runtime_checks: true
+
+# Use mock storage for tests to avoid S3 calls
+config :max_gallery, :storage_impl, MaxGallery.Storage.Mock

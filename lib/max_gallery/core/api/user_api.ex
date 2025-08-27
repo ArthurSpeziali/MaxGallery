@@ -3,6 +3,22 @@ defmodule MaxGallery.Core.User.Api do
   alias MaxGallery.Core.User
   alias MaxGallery.Repo
 
+  def exists(id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, _id} ->
+        from(User)
+        |> where(id: ^id)
+        |> Repo.one()
+        |> case do
+          nil -> {:error, "not found"}
+          querry -> {:ok, querry}
+        end
+
+      :error ->
+        {:error, "invalid uuid"}
+    end
+  end
+
   def get_email(email) do
     from(User)
     |> where(email: ^email)

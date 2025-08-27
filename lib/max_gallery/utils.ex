@@ -3,7 +3,7 @@ defmodule MaxGallery.Utils do
   alias MaxGallery.Core.Group.Api, as: GroupApi
   alias MaxGallery.Encrypter
   alias MaxGallery.Phantom
-  alias MaxGallery.Cache
+  alias MaxGallery.Storage
   alias MaxGallery.Variables
   alias MaxGallery.Validate
   @type tree :: [map()]
@@ -674,14 +674,12 @@ defmodule MaxGallery.Utils do
         msg: msg,
         msg_iv: msg_iv,
         ext: ext,
+        length: byte_size(file),
         group_id: group
       })
 
-    binary_chunk(blob, Variables.chunk_size())
-    |> Cache.insert_chunk(%{
-      length: byte_size(file),
-      cypher_id: id
-    })
+    # Store encrypted blob directly in S3 instead of chunks
+    Storage.put(id, blob)
   end
 
   defp recursive_path([head | tail], lock, persists, agent, group, key) do

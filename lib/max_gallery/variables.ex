@@ -16,6 +16,7 @@ defmodule MaxGallery.Variables do
   @email_resend 2 * 60
   # 12 hours (in miliseconds)
   @delete_reqs 12 * 60 * 60 * 1000
+  @gen_clound "encrypted_files"
 
   def chunk_size, do: @chunk_size
   def tmp_dir, do: @tmp_dir
@@ -28,4 +29,6 @@ defmodule MaxGallery.Variables do
   def reset_time, do: @reset_time
   def email_resend, do: @email_resend
   def delete_reqs, do: @delete_reqs
+  def bucket_name, do: System.get_env("BLACKBLAZE_BUCKET_NAME", "maxgallery-files")
+  def gen_clound, do: @gen_clound
 end

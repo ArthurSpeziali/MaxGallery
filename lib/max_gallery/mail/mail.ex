@@ -1,4 +1,4 @@
-defmodule MaxGallery.Mail.Email do
+defmodule MaxGallery.Mail do
   alias MaxGallery.Mail.Mailer
 
   @spec send(template :: struct()) :: pid()

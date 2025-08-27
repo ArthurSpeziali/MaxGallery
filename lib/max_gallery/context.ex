@@ -1,4 +1,5 @@
 defmodule MaxGallery.Context do
+  alias MaxGallery.StorageAdapter, as: Storage
   alias MaxGallery.Cache
   alias MaxGallery.Core.Cypher
   alias MaxGallery.Core.Cypher.Api, as: CypherApi
@@ -68,8 +69,9 @@ defmodule MaxGallery.Context do
 
   Requires a valid encryption key and passes a `Phantom.insert_line?/1` validation check.
   """
-  @spec cypher_insert(path :: Path.t(), key :: String.t(), opts :: Keyword.t()) :: response()
-  def cypher_insert(path, key, opts \\ []) do
+  @spec cypher_insert(path :: Path.t(), user :: binary(), key :: String.t(), opts :: Keyword.t()) ::
+          response()
+  def cypher_insert(path, user, key, opts \\ []) do
     name = Keyword.get(opts, :name)
 
     group =
@@ -101,8 +103,10 @@ defmodule MaxGallery.Context do
     with true <- Phantom.insert_line?(key),
          {:ok, {blob_iv, blob}} <- Encrypter.file(:encrypt, path, key),
          {:ok, {msg_iv, msg}} <- Encrypter.encrypt(Phantom.get_text(), key),
+         {:ok, _querry} <- UserApi.exists(user),
          {:ok, querry} <-
            CypherApi.insert(%{
+             user_id: user,
              name_iv: name_iv,
              name: name,
              blob_iv: blob_iv,
@@ -112,12 +116,7 @@ defmodule MaxGallery.Context do
              length: byte_size(blob),
              group_id: group
            }),
-         blob_chunk <- Utils.binary_chunk(blob, Variables.chunk_size()),
-         :ok <-
-           Cache.insert_chunk(blob_chunk, %{
-             cypher_id: querry.id,
-             length: byte_size(blob)
-           }) do
+         {:ok, _storage_key} <- Storage.put(querry.id, blob) do
       {:ok, querry.id}
     else
       false -> {:error, ""}
@@ -138,8 +137,8 @@ defmodule MaxGallery.Context do
       }
     else
       if memory? do
-        {:ok, enc_blob} = Cache.get_chunks(item.id)
-        {:ok, blob} = {item.blob_iv, enc_blob} |> Encrypter.decrypt(key)
+        # Return blob in memory using new cache system
+        {:ok, blob} = Cache.get_content(item.id, item.blob_iv, key)
 
         %{
           name: name,
@@ -149,13 +148,14 @@ defmodule MaxGallery.Context do
           group: item.group_id
         }
       else
-        {path, _created} = Cache.consume_cache(item.id, item.blob_iv, key)
+        # Return file path using cache system
+        {path, _downloaded} = Cache.consume_cache(item.id, item.blob_iv, key)
 
         %{
-          id: item.id,
           name: name,
           path: path,
           ext: item.ext,
+          id: item.id,
           group: item.group_id
         }
       end
@@ -178,7 +178,7 @@ defmodule MaxGallery.Context do
       - `:lazy` (boolean) — If `true`, returns only basic metadata (e.g. name, ext, id); skips blob download/decryption.
       - `:only` (list) — A list of filters to selectively include only certain types (e.g., `[:files]`, `[:groups]`).
       - `:group` (string) — The group ID (binary ID) from which to retrieve contents. If not provided, retrieves the top-level group.
-      - `:memory` (boolean) — If `false`, put the blob in a file, and return the file path.
+
 
   ## Behavior
 
@@ -190,18 +190,17 @@ defmodule MaxGallery.Context do
 
     - `{:ok, binary}`: A binary-encoded list of decrypted items.
   """
-  @spec decrypt_all(key :: String.t(), opts :: Keyword.t()) :: {:ok, querry()}
-  def decrypt_all(key, opts \\ []) do
+  @spec decrypt_all(user :: binary(), key :: String.t(), opts :: Keyword.t()) :: {:ok, querry()}
+  def decrypt_all(user, key, opts \\ []) do
     lazy? = Keyword.get(opts, :lazy)
     only = Keyword.get(opts, :only)
     group_id = Keyword.get(opts, :group)
-    memory? = Keyword.get(opts, :memory)
 
     {:ok, contents} = Utils.get_group(group_id, only: only)
 
     querry =
       for item <- contents do
-        send_package(item, lazy?, memory?, key)
+        send_package(item, lazy?, true, key)
       end
 
     {:ok, querry}
@@ -233,7 +232,8 @@ defmodule MaxGallery.Context do
   def cypher_delete(id, key) do
     with {:ok, querry} <- CypherApi.get(id),
          true <- Phantom.valid?(querry, key),
-         {:ok, _querry} <- CypherApi.delete(id) do
+         {:ok, _querry} <- CypherApi.delete(id),
+         :ok <- Storage.del(id) do
       {:ok, querry}
     else
       false -> {:error, "invalid key"}
@@ -270,7 +270,6 @@ defmodule MaxGallery.Context do
   def decrypt_one(id, key, opts \\ []) do
     lazy? = Keyword.get(opts, :lazy)
     group? = Keyword.get(opts, :group)
-    memory? = Keyword.get(opts, :memory)
 
     {:ok, querry} =
       if group? do
@@ -281,68 +280,38 @@ defmodule MaxGallery.Context do
 
     {:ok, name} = Encrypter.decrypt({querry.name_iv, querry.name}, key)
 
-    if memory? do
-      case {lazy?, group?} do
-        {true, nil} ->
-          {:ok,
-           %{
-             id: id,
-             name: name,
-             ext: querry.ext,
-             group: querry.group_id
-           }}
+    case {lazy?, group?} do
+      {true, nil} ->
+        # Lazy: apenas metadados
+        {:ok,
+         %{
+           id: id,
+           name: name,
+           ext: querry.ext,
+           group: querry.group_id
+         }}
 
-        {nil, nil} ->
-          {:ok, chunk} = Cache.get_chunks(querry.id)
-          {:ok, blob} = Encrypter.decrypt({querry.blob_iv, chunk}, key)
+      {nil, nil} ->
+        # Full file: download and decrypt using cache system
+        {:ok, blob} = Cache.get_content(querry.id, querry.blob_iv, key)
 
-          {:ok,
-           %{
-             id: id,
-             name: name,
-             blob: blob,
-             ext: querry.ext,
-             group: querry.group_id
-           }}
+        {:ok,
+         %{
+           id: id,
+           name: name,
+           blob: blob,
+           ext: querry.ext,
+           group: querry.group_id
+         }}
 
-        {_boolean, true} ->
-          {:ok,
-           %{
-             id: id,
-             name: name,
-             group: querry.group_id
-           }}
-      end
-    else
-      if group? do
+      {_boolean, true} ->
+        # Grupo: apenas metadados
         {:ok,
          %{
            id: id,
            name: name,
            group: querry.group_id
          }}
-      else
-        if lazy? do
-          {:ok,
-           %{
-             id: id,
-             name: name,
-             ext: querry.ext,
-             group: querry.group_id
-           }}
-        else
-          {path, _created} = Cache.consume_cache(querry.id, querry.blob_iv, key)
-
-          {:ok,
-           %{
-             id: id,
-             name: name,
-             ext: querry.ext,
-             path: path,
-             group: querry.group_id
-           }}
-        end
-      end
     end
   end
 
@@ -392,8 +361,9 @@ defmodule MaxGallery.Context do
     if Phantom.valid?(querry, key) do
       params = %{name_iv: name_iv, name: name, blob_iv: blob_iv, ext: ext}
 
-      Cache.update_chunks(id, blob)
-      Cache.write_chunk(id, blob_iv, key)
+      Storage.put(id, blob)
+      Cache.remove_from_cache(id)
+
       CypherApi.update(id, params)
     else
       {:error, "invalid key"}
@@ -680,16 +650,11 @@ defmodule MaxGallery.Context do
         %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
       )
 
-    {:ok, chunks} = Cache.get_chunks(querry.id)
+    {:ok, enc_blob} = Storage.get(querry.id)
 
     with true <- Phantom.insert_line?(key),
          {:ok, querry} <- CypherApi.insert(duplicate),
-         :ok <-
-           Utils.binary_chunk(chunks, Variables.chunk_size())
-           |> Cache.insert_chunk(%{
-             length: byte_size(chunks),
-             cypher_id: querry.id
-           }) do
+         {:ok, _storage_key} <- Storage.put(querry.id, enc_blob) do
       {:ok, querry.id}
     else
       false -> {:error, "invalid key"}
@@ -848,11 +813,11 @@ defmodule MaxGallery.Context do
               key
             )
 
-          {:ok, chunks} = Cache.get_chunks(querry.id)
+          {:ok, enc_blob} = Storage.get(querry.id)
 
           {:ok, blob} =
             Encrypter.decrypt(
-              {querry.blob_iv, chunks},
+              {querry.blob_iv, enc_blob},
               key
             )
 
@@ -892,7 +857,8 @@ defmodule MaxGallery.Context do
   def delete_all(key) do
     with true <- Phantom.insert_line?(key),
          {count_group, nil} <- GroupApi.delete_all(),
-         {count_data, nil} <- CypherApi.delete_all() do
+         {count_data, nil} <- CypherApi.delete_all(),
+         _ <- Storage.del_all() do
       {:ok, count_group + count_data}
     else
       error -> error
@@ -977,7 +943,7 @@ defmodule MaxGallery.Context do
                 new_key
               )
 
-            {:ok, enc_blob} = Cache.get_chunks(data.id)
+            {:ok, enc_blob} = Storage.get(data.id)
 
             {:ok, old_blob} =
               Encrypter.decrypt(
@@ -997,7 +963,7 @@ defmodule MaxGallery.Context do
                 new_key
               )
 
-            Cache.update_chunks(data.id, blob)
+            Storage.put(data.id, blob)
 
             CypherApi.update(
               data.id,

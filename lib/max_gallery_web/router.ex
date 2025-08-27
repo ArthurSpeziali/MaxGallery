@@ -50,10 +50,11 @@ defmodule MaxGalleryWeb.Router do
     live "/move", MoveLive
     live "/config", ConfigLive
 
+    live "/show/:page_id", ShowLive
     live "/editor/:page_id", EditorLive
-    live "/data/:id", DataLive
-    live "/import/:id", ImportLive
-    live "/move/:id", MoveLive
+    live "/data/:page_id", DataLive
+    live "/import/:page_id", ImportLive
+    live "/move/:page_id", MoveLive
   end
 
   scope "/content", MaxGalleryWeb do

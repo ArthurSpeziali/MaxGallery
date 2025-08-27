@@ -57,15 +57,8 @@
         <div name="change_key" class="mt-10 ml-8">
           <h1 class="text-xl font-bold text-gray-800">Change the Database key</h1>
           <p class="text-sm text-gray-500 break-words mb-2">
-            It changes the database access key, which will be used to encrypt your files. This action is permanent and cannot be reversed. Your key will be verified before the action.
+            The only way to change your database key, is exporting all the files, and deleting them from the database, then, you could insert any other key, and importing the files.
           </p>
-
-          <button
-            phx-click="change_key"
-            class="text-red-600 bg-transparent border border-red-600 px-2 py-1 rounded-lg text-[1rem] mb-4"
-          >
-            Change
-          </button>
         </div>
 
         <div name="drop_data" class="mt-8 ml-8">
@@ -123,50 +116,6 @@
             </button>
           </form>
         </div>
-      </div>
-    <% end %>
-
-    <%= if @changekey_iframe do %>
-      <div class="fixed inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center z-50">
-        <div class="bg-white p-6 rounded shadow-lg w-[90%] md:w-[50%]">
-          <div class="flex justify-between items-center gap-8">
-            <p class="md:text-lg text-[1rem] font-bold text-red-800 break-words">
-              Enter your key, to change your file database key, then enter the new key. (It may take a longer time):
-            </p>
-
-            <button phx-click="cancel">
-              <img src="/images/close.png" class="h-10 md:w-16 w-28" />
-            </button>
-          </div>
-
-          <form phx-submit="submit_changekey" class="flex flex-col items-center">
-            <input
-              name="old_key"
-              type="password"
-              class="text-center mt-8 w-full rounded-lg border border-gray-600 h-12"
-              placeholder="Old key."
-              required
-            />
-            <input
-              name="new_key"
-              type="password"
-              class="text-center mt-2 w-full rounded-lg border border-gray-600 h-12"
-              placeholder="New key."
-              required
-            />
-
-            <button
-              phx-click="loading"
-              class="mt-2 rounded-lg bg-blue-600 text-white transition-colors duration-200 h-10 w-[35%]"
-            >
-              Send
-            </button>
-          </form>
-        </div>
-
-        <%= if @loading do %>
-          <img src="/images/loading.gif" class="h-16 mt-6" />
-        <% end %>
       </div>
     <% end %>
 

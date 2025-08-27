@@ -2,6 +2,7 @@ defmodule MaxGallery.UtilsTest do
   use MaxGallery.DataCase
   alias MaxGallery.Utils
   alias MaxGallery.Context
+  alias MaxGallery.TestHelpers
 
   setup do
     {:ok,
@@ -20,10 +21,7 @@ defmodule MaxGallery.UtilsTest do
   end
 
   defp create_file(msg) do
-    path = "/tmp/max_gallery/tests/test#{Enum.random(0..10_000//1)}"
-    File.mkdir_p("/tmp/max_gallery/tests")
-    File.write(path, msg, [:write])
-    path
+    TestHelpers.create_temp_file(msg)
   end
 
   test "Zip a file", %{msg: msg} do
@@ -42,5 +40,7 @@ defmodule MaxGallery.UtilsTest do
 
     # 56 bytes the Lorem Ipsulum fragment
     assert 56 = Utils.get_size(id)
+    
+    TestHelpers.cleanup_temp_files()
   end
 end

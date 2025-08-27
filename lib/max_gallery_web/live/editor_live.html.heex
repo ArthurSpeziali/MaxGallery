@@ -31,7 +31,7 @@
         <%= if MaxGallery.Extension.get_ext(@data.ext) == "text" do %>
           <p class="font-bold">Content</p>
           <div>
-            <textarea name="new_content" class="w-full h-screen p-2">{@new_content || File.read!(@data.path)}</textarea>
+            <textarea name="new_content" class="w-full h-screen p-2">{@new_content || @data.blob}</textarea>
           </div>
         <% end %>
       </div>

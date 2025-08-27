@@ -1,6 +1,7 @@
 defmodule MaxGallery.Server.GarbageServer do
   use GenServer
   alias MaxGallery.Variables
+  alias MaxGallery.Cache
 
   @mod __MODULE__
   @path %{zips: Variables.tmp_dir() <> "zips/", cache: Variables.tmp_dir() <> "cache/"}
@@ -60,21 +61,8 @@ defmodule MaxGallery.Server.GarbageServer do
   end
 
   def handle_info(:check_cache, _state) do
-    now = NaiveDateTime.utc_now()
-    files = File.ls!(@path.cache)
-
-    for name <- files do
-      time =
-        File.stat!(@path.cache <> name)
-        |> Map.fetch!(:ctime)
-        |> NaiveDateTime.from_erl!()
-
-      diff = NaiveDateTime.diff(now, time, :minute)
-
-      if diff >= @time_delete.cache do
-        File.rm(@path.cache <> name)
-      end
-    end
+    # Use the new cache cleanup function
+    Cache.cleanup_old_files(@time_delete.cache)
 
     count =
       File.ls!(@path.cache)

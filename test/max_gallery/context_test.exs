@@ -2,6 +2,7 @@ defmodule MaxGallery.ContextTest do
   use MaxGallery.DataCase
   alias MaxGallery.Context
   alias MaxGallery.Core.Cypher.Api
+  alias MaxGallery.TestHelpers
 
   setup do
     {:ok,
@@ -10,16 +11,14 @@ defmodule MaxGallery.ContextTest do
   end
 
   defp create_file(msg) do
-    path = "/tmp/max_gallery/tests/test#{Enum.random(0..10_000//1)}"
-    File.mkdir_p("/tmp/max_gallery/tests")
-    File.write(path, msg, [:write])
-    path
+    TestHelpers.create_temp_file(msg)
   end
 
   test "Create a file, put it encrypted in the database, then get it", %{msg: msg} do
     path = create_file(msg)
     assert {:ok, id} = Context.cypher_insert(path, "key")
     assert {:ok, _querry} = Api.get(id)
+    TestHelpers.cleanup_temp_files()
   end
 
   test "Insert 10 cyphers and decrypt them", %{msg: msg} do
@@ -30,9 +29,13 @@ defmodule MaxGallery.ContextTest do
     end
 
     assert {:ok, querry} = Context.decrypt_all("key")
-    assert %{name: name, path: file_path} = List.first(querry)
-    assert ^msg = File.read!(file_path)
-    assert ^name = Path.basename(path)
+    
+    # The new system returns blob directly, not path
+    assert %{name: name, blob: blob} = List.first(querry)
+    assert ^msg = blob
+    assert ^name = Path.basename(path, Path.extname(path))
+    
+    TestHelpers.cleanup_temp_files()
   end
 
   test "Insert an data, then update its content.", %{msg: msg} do
@@ -40,10 +43,12 @@ defmodule MaxGallery.ContextTest do
 
     assert {:ok, id} = Context.cypher_insert(path, "key")
     assert {:ok, data} = Context.decrypt_one(id, "key")
-    assert blob = File.read!(data.path)
+    assert blob = data.blob
 
     assert {:ok, _querry} =
              Context.cypher_update(id, %{name: data.name <> data.ext, blob: blob}, "key")
+             
+    TestHelpers.cleanup_temp_files()
   end
 
   test "Insert 10 groups, then remove them." do
@@ -74,6 +79,8 @@ defmodule MaxGallery.ContextTest do
 
     assert {:ok, _id} = Context.cypher_duplicate(data_id, %{group_id: main_id}, "key")
     assert {:ok, _id} = Context.group_duplicate(group_id, %{group_id: group_id}, "key")
+    
+    TestHelpers.cleanup_temp_files()
   end
 
   test "Insert 5 cyphers and 5 groups, then check your size", %{msg: msg} do
@@ -86,6 +93,8 @@ defmodule MaxGallery.ContextTest do
 
     assert {:ok, querry} = Context.decrypt_all("key")
     assert 10 = length(querry)
+    
+    TestHelpers.cleanup_temp_files()
   end
 
   test "Delete all cyphers", %{msg: msg} do
@@ -97,6 +106,8 @@ defmodule MaxGallery.ContextTest do
     end
 
     assert {:ok, 10} = Context.delete_all("key")
+    
+    TestHelpers.cleanup_temp_files()
   end
 
   test "Update all cyphers", %{msg: msg} do
@@ -110,5 +121,7 @@ defmodule MaxGallery.ContextTest do
     assert {:ok, 10} = Context.update_all("key", "lock")
     assert {:error, "invalid key"} = Context.update_all("other_key", "key")
     assert {:ok, 10} = Context.update_all("lock", "key")
+    
+    TestHelpers.cleanup_temp_files()
   end
 end

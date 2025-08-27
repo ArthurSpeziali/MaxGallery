@@ -3,6 +3,7 @@ defmodule MaxGallery.Core.Group do
   alias MaxGallery.Core.Cypher
   alias MaxGallery.Core.User
 
+  @foreign_key_type :binary_id
   schema "groups" do
     field :name_iv, :binary
     field :name, :binary

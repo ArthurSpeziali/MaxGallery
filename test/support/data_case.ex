@@ -29,6 +29,8 @@ defmodule MaxGallery.DataCase do
 
   setup tags do
     MaxGallery.DataCase.setup_sandbox(tags)
+    # Clear storage mock between tests
+    MaxGallery.Storage.Mock.clear()
     :ok
   end
 
