@@ -3,6 +3,16 @@ defmodule MaxGallery.Core.Cypher.Api do
   alias MaxGallery.Core.Cypher
   alias MaxGallery.Repo
 
+  def all_size(user) do
+    from(Cypher)
+    |> where(user_id: ^user)
+    |> select([c], c.length)
+    |> Repo.all()
+    |> case do
+      querry -> {:ok, querry}
+    end
+  end
+
   def get_own(id) do
     from(Cypher)
     |> where(id: ^id)

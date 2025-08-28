@@ -3,6 +3,17 @@
   <body>
     <form phx-submit="upload" phx-change="validate">
       <div class="flex flex-col justify-center items-center mt-[8rem]">
+        <%= if @storage_exceeded do %>
+          <div class="md:w-[45%] w-[90%] bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <strong class="font-bold">Storage Limit Exceeded!</strong>
+            <span class="block sm:inline">
+              You have exceeded your storage limit of <%= Float.round(@max_size_gb, 2) %> GB. 
+              Current usage: <%= Float.round(@current_size_gb, 2) %> GB.
+              Please delete some files before uploading new ones.
+            </span>
+          </div>
+        <% end %>
+        
         <%= if @zip do %>
           <h2 class="font-bold text-red-800 text-xl mb-2">
             Please, submit a ".zip" file. Then, we unzip it, and we insert it in database.
@@ -11,7 +22,8 @@
 
         <.live_file_input
           upload={@uploads.file_import}
-          class="md:w-[45%] w-[90%] border py-2 px-4 rounded bg-white text-lg inline-block text-center font-semibold shadow-xl"
+          class={"md:w-[45%] w-[90%] border py-2 px-4 rounded text-lg inline-block text-center font-semibold shadow-xl #{if @storage_exceeded, do: "bg-gray-200 cursor-not-allowed", else: "bg-white"}"}
+          disabled={@storage_exceeded}
         />
 
         <div class="md:w-[45%] w-[90%] text-center break-words">
@@ -30,7 +42,8 @@
           <button
             phx-click="loading"
             type="submit"
-            class="text-white bg-orange-600 rounded-lg border mt-6 py-2 px-4 shadow-xl text-[1.3rem]"
+            disabled={@storage_exceeded}
+            class={"rounded-lg border mt-6 py-2 px-4 shadow-xl text-[1.3rem] #{if @storage_exceeded, do: "text-gray-500 bg-gray-300 cursor-not-allowed", else: "text-white bg-orange-600"}"}
           >
             Send
           </button>

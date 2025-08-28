@@ -18,6 +18,8 @@ defmodule MaxGallery.Variables do
   @delete_reqs 12 * 60 * 60 * 1000
   @gen_clound "encrypted_files"
   @max_objects 25_000
+  ## 5GB per user limit
+  @max_size_user 5.0
 
   def chunk_size, do: @chunk_size
   def tmp_dir, do: @tmp_dir
@@ -33,4 +35,5 @@ defmodule MaxGallery.Variables do
   def bucket_name, do: System.get_env("BLACKBLAZE_BUCKET_NAME", "maxgallery-files")
   def gen_clound, do: @gen_clound
   def max_objects, do: @max_objects
+  def max_size_user, do: @max_size_user
 end

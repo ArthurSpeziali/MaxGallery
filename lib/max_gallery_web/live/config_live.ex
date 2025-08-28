@@ -4,8 +4,15 @@ defmodule MaxGalleryWeb.Live.ConfigLive do
   alias MaxGallery.Phantom
   alias MaxGallery.Validate
   alias MaxGallery.Context
+  alias MaxGallery.Utils
+  alias MaxGallery.Variables
 
   def mount(_params, %{"user_auth" => user_id}, socket) do
+    # Calculate current user storage usage
+    current_size_gb = Utils.user_size(user_id)
+    max_size_gb = Variables.max_size_user()
+    usage_percentage = if max_size_gb > 0, do: current_size_gb / max_size_gb * 100, else: 0
+
     socket =
       assign(socket,
         changekey_iframe: nil,
@@ -14,7 +21,10 @@ defmodule MaxGalleryWeb.Live.ConfigLive do
         changepasswd_iframe: nil,
         deleteaccount_iframe: nil,
         err: nil,
-        user_id: user_id
+        user_id: user_id,
+        current_size_gb: current_size_gb,
+        max_size_gb: max_size_gb,
+        usage_percentage: usage_percentage
       )
 
     {:ok, socket, layout: false}
@@ -22,6 +32,14 @@ defmodule MaxGalleryWeb.Live.ConfigLive do
 
   def mount(_params, _session, socket) do
     {:ok, push_navigate(socket, to: "/")}
+  end
+
+  def storage_bar(percent) do
+    cond do
+      percent >= 90 -> "bg-red-500"
+      percent >= 70 -> "bg-yellow-500"
+      true -> "bg-green-500"
+    end
   end
 
   def handle_event("redirect", _params, socket) do

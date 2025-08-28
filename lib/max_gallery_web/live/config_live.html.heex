@@ -54,7 +54,34 @@
         </div>
 
         <strong class="text-blue-900 text-[1.8rem] mt-20 ml-4">Database Config.</strong>
-        <div name="change_key" class="mt-10 ml-8">
+
+        <div name="storage_usage" class="mt-10 ml-8">
+          <h1 class="text-xl font-bold text-gray-800">Storage Usage</h1>
+          <p class="text-sm text-gray-500 break-words mb-2">
+            Current storage usage for your account. You can upload files until you reach the limit.
+          </p>
+
+          <div class="mb-4">
+            <div class="flex justify-between text-sm text-gray-600 mb-1">
+              <span>{Float.round(@current_size_gb, 2)} GB used</span>
+              <span>{Float.round(@max_size_gb, 2)} GB total</span>
+            </div>
+
+            <div class="w-full bg-gray-200 rounded-full h-3">
+              <div
+                class={"h-3 rounded-full transition-all duration-300 #{MaxGalleryWeb.Live.ConfigLive.storage_bar(@usage_percentage)}"}
+                style={"width: #{min(@usage_percentage, 100)}%"}
+              >
+              </div>
+            </div>
+
+            <div class="text-xs text-gray-500 mt-1">
+              {Float.round(@usage_percentage, 1)}% of storage used
+            </div>
+          </div>
+        </div>
+
+        <div name="change_key" class="mt-8 ml-8">
           <h1 class="text-xl font-bold text-gray-800">Change the Database key</h1>
           <p class="text-sm text-gray-500 break-words mb-2">
             The only way to change your database key, is exporting all the files, and deleting them from the database, then, you could insert any other key, and importing the files.

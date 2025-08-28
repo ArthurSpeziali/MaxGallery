@@ -39,6 +39,20 @@ defmodule MaxGallery.Context do
   All operations require a valid encryption key to ensure security and integrity.
   """
 
+  # Private function to check if adding a file would exceed user storage limit
+  defp check_limit(user, new_file) do
+    ## In GigaBytes
+    current = Utils.user_size(user)
+    new_file = new_file / (1024 * 1024 * 1024)
+    total = current + new_file
+
+    if total <= Variables.max_size_user() do
+      :ok
+    else
+      {:error, "storage_limit_exceeded"}
+    end
+  end
+
   @doc """
   Encrypts and inserts a file into the system, storing both its encrypted contents and metadata.
 
@@ -103,6 +117,7 @@ defmodule MaxGallery.Context do
          {:ok, {blob_iv, blob}} <- Encrypter.file(:encrypt, path, key),
          {:ok, {msg_iv, msg}} <- Encrypter.encrypt(Phantom.get_text(), key),
          {:ok, _querry} <- UserApi.exists(user),
+         :ok <- check_limit(user, byte_size(blob)),
          {:ok, querry} <-
            CypherApi.insert(%{
              user_id: user,
@@ -120,6 +135,9 @@ defmodule MaxGallery.Context do
     else
       false ->
         {:error, "invalid key/user"}
+
+      {:error, "storage_limit_exceeded"} ->
+        {:error, "storage_limit_exceeded"}
 
       error ->
         error

@@ -787,6 +787,28 @@ defmodule MaxGallery.Utils do
     Base.url_encode64(iv <> enc)
   end
 
+  @doc """
+  Calculates the total storage size used by a user in GB.
+
+  ## Parameters
+  - `user` - The user ID to calculate storage for
+
+  ## Returns
+  - Float representing total storage used in GB
+
+  ## Notes
+  - Sums all file sizes for the user across all groups
+  - Converts bytes to GB (1 GB = 1,073,741,824 bytes)
+  - Returns 0.0 if user has no files
+  """
+  @spec user_size(user :: binary()) :: float()
+  def user_size(user) do
+    {:ok, sizes} = CypherApi.all_size(user)
+
+    # Convert bytes to GB (1 GB = 1024^3 bytes)
+    Enum.sum(sizes) / (1024 * 1024 * 1024)
+  end
+
   @spec dec_timestamp(base :: String.t()) :: {DateTime.t(), String.t()} | {:error, String.t()}
   def dec_timestamp(base) do
     ivenc = Base.url_decode64(base)
