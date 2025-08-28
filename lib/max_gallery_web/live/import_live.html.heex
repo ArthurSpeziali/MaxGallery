@@ -1,19 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
   <body>
+    <p class="text-lg text-red-600 font-bold break-words mb-2 flex justify-center items-center text-center mt-[8rem]">
+      {@err}
+    </p>
+
     <form phx-submit="upload" phx-change="validate">
-      <div class="flex flex-col justify-center items-center mt-[8rem]">
+      <div class="flex flex-col justify-center items-center">
         <%= if @storage_exceeded do %>
           <div class="md:w-[45%] w-[90%] bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             <strong class="font-bold">Storage Limit Exceeded!</strong>
             <span class="block sm:inline">
-              You have exceeded your storage limit of <%= Float.round(@max_size_gb, 2) %> GB. 
-              Current usage: <%= Float.round(@current_size_gb, 2) %> GB.
+              You have exceeded your storage limit of {Float.round(@max_size_gb, 2)} GB.
+              Current usage: {Float.round(@current_size_gb, 2)} GB.
               Please delete some files before uploading new ones.
             </span>
           </div>
         <% end %>
-        
+
         <%= if @zip do %>
           <h2 class="font-bold text-red-800 text-xl mb-2">
             Please, submit a ".zip" file. Then, we unzip it, and we insert it in database.

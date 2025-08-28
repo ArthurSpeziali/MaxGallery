@@ -7,7 +7,7 @@ defmodule MaxGalleryWeb.Live.ImportLive do
 
   def mount(params, %{"auth_key" => key, "user_auth" => user}, socket) do
     group_id = Map.get(params, "page_id")
-    
+
     # Calculate current user storage
     current_size_gb = Utils.user_size(user)
     max_size_gb = Variables.max_size_user()
@@ -39,6 +39,7 @@ defmodule MaxGalleryWeb.Live.ImportLive do
       )
       |> assign(
         key: key,
+        err: nil,
         user: user,
         loading: false,
         zip: zip?,
@@ -84,6 +85,8 @@ defmodule MaxGalleryWeb.Live.ImportLive do
     user = socket.assigns[:user]
     storage_exceeded = socket.assigns[:storage_exceeded]
 
+    {:ok, agent} = Agent.start_link(fn -> false end)
+
     if storage_exceeded do
       # Don't upload if storage limit is exceeded
       {:noreply, socket}
@@ -97,16 +100,32 @@ defmodule MaxGalleryWeb.Live.ImportLive do
           end
         else
           case Context.cypher_insert(path, user, key, name: name, group: group_id) do
-            {:ok, _id} -> :ok
-            {:error, "storage_limit_exceeded"} -> :storage_limit_exceeded
-            {:error, _reason} -> :error
+            {:ok, _id} ->
+              :ok
+
+            {:error, "storage_limit_exceeded"} ->
+              Agent.update(agent, fn _state -> true end)
+              :error
+
+            {:error, _reason} ->
+              :error
           end
         end
 
         {:ok, nil}
       end)
 
-      {:noreply, push_navigate(socket, to: "/user/data/#{group_id}")}
+      full_size? = Agent.get(agent, fn state -> state end)
+
+      if full_size? do
+        {:noreply,
+         assign(socket,
+           err: "You storage is full! Delete some files and groups to free up.",
+           loading: false
+         )}
+      else
+        {:noreply, push_navigate(socket, to: "/user/data/#{group_id}")}
+      end
     end
   end
 

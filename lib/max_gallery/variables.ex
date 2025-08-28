@@ -2,8 +2,8 @@ defmodule MaxGallery.Variables do
   ## 1MB
   @chunk_size 1 * 1024 * 1024
   @tmp_dir "/tmp/max_gallery/"
-  ## 2GB
-  @file_size 2 * 10 ** 9
+  ## 1 GB (1e⁹)
+  @file_size 1 * 10 ** 9
   @email_subject "Max Gallery"
   @email_user "os.maxgallery@gmail.com"
   @file_limit 64
@@ -19,7 +19,7 @@ defmodule MaxGallery.Variables do
   @gen_clound "encrypted_files"
   @max_objects 25_000
   ## 5GB per user limit
-  @max_size_user 5.0
+  @max_size_user 3.0
 
   def chunk_size, do: @chunk_size
   def tmp_dir, do: @tmp_dir

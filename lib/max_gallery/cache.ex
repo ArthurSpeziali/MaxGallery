@@ -11,7 +11,13 @@ defmodule MaxGallery.Cache do
   alias MaxGallery.Phantom
   alias MaxGallery.Variables
 
-  @tmp_path Variables.tmp_dir() <> "cache/"
+  defp tmp_path() do
+    if(Mix.env() == :dev) do
+      Variables.tmp_dir() <> "cache/"
+    else
+      Variables.tmp_dir() <> "test/"
+    end
+  end
 
   @doc """
   Gets a decrypted file, using cache if available or downloading from S3.
@@ -50,7 +56,7 @@ defmodule MaxGallery.Cache do
   @spec write_chunk(user :: binary(), binary(), binary(), String.t()) :: Path.t()
   def write_chunk(user, id, blob_iv, key) do
     file_path = get_path(user, id)
-    File.mkdir_p!(@tmp_path)
+    File.mkdir_p!(tmp_path())
 
     {:ok, enc_blob} = Storage.get(user, id)
     {:ok, blob} = Encrypter.decrypt({blob_iv, enc_blob}, key)
@@ -124,7 +130,7 @@ defmodule MaxGallery.Cache do
   """
   @spec get_path(user :: binary(), binary()) :: Path.t()
   def get_path(user, id) do
-    @tmp_path <> "#{user}_#{Mix.env()}_#{id}"
+    tmp_path() <> "#{user}_#{Mix.env()}_#{id}"
   end
 
   @spec get_cache(user :: binary(), binary()) :: binary() | :error
@@ -144,15 +150,15 @@ defmodule MaxGallery.Cache do
   """
   @spec cleanup_old_files(non_neg_integer()) :: :ok
   def cleanup_old_files(max_age_minutes \\ 120) do
-    File.mkdir_p!(@tmp_path)
+    File.mkdir_p!(tmp_path())
 
-    case File.ls(@tmp_path) do
+    case File.ls(tmp_path()) do
       {:ok, files} ->
         now_gregorian = :calendar.datetime_to_gregorian_seconds(:calendar.universal_time())
         max_age_seconds = max_age_minutes * 60
 
         Enum.each(files, fn file ->
-          file_path = Path.join(@tmp_path, file)
+          file_path = Path.join(tmp_path(), file)
 
           case File.stat(file_path) do
             {:ok, %{mtime: mtime}} ->

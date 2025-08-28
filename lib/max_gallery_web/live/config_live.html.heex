@@ -62,12 +62,12 @@
           </p>
 
           <div class="mb-4">
-            <div class="flex justify-between text-sm text-gray-600 mb-1">
+            <div class="flex justify-between text-sm w-[90%] text-gray-600 mb-1">
               <span>{Float.round(@current_size_gb, 2)} GB used</span>
               <span>{Float.round(@max_size_gb, 2)} GB total</span>
             </div>
 
-            <div class="w-full bg-gray-200 rounded-full h-3">
+            <div class="w-[90%] bg-gray-200 rounded-full h-3">
               <div
                 class={"h-3 rounded-full transition-all duration-300 #{MaxGalleryWeb.Live.ConfigLive.storage_bar(@usage_percentage)}"}
                 style={"width: #{min(@usage_percentage, 100)}%"}
@@ -107,7 +107,7 @@
           <p class="text-sm text-gray-500 break-words mb-2">Download the entire database.</p>
 
           <a
-            href="/download?id=main&type=group"
+            href="/user/download?id=main&type=group"
             target="_blank"
             class="text-red-600 bg-transparent border border-red-600 px-2 py-[0.4rem] rounded-lg text-[1rem] mb-4"
           >

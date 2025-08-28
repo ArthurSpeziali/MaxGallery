@@ -4,7 +4,7 @@ defmodule MaxGallery.Server.GarbageServer do
 
   This server periodically checks and removes old files from:
   - zips/ directory (cleaned after 75 minutes)
-  - tests/ directory (cleaned after 120 minutes) 
+  - cache/ directory (cleaned after 120 minutes) 
   - downloads/ directory (cleaned after 30 minutes)
 
   The cleanup runs every 5 minutes automatically.
@@ -35,9 +35,9 @@ defmodule MaxGallery.Server.GarbageServer do
   end
 
   def init(_state) do
-    File.mkdir_p(@path.zips)
-    File.mkdir_p(@path.cache)
-    File.mkdir_p(@path.downloads)
+    File.mkdir_p!(@path.zips)
+    File.mkdir_p!(@path.cache)
+    File.mkdir_p!(@path.downloads)
 
     count =
       (File.ls!(@path.zips)
@@ -61,7 +61,7 @@ defmodule MaxGallery.Server.GarbageServer do
   def handle_info(:check_zips, _state) do
     now = NaiveDateTime.utc_now()
 
-    File.mkdir_p(@path.zips)
+    File.mkdir_p!(@path.zips)
     files = File.ls!(@path.zips)
 
     for name <- files do
@@ -98,7 +98,7 @@ defmodule MaxGallery.Server.GarbageServer do
   def handle_info(:check_downloads, _state) do
     now = NaiveDateTime.utc_now()
 
-    File.mkdir_p(@path.downloads)
+    File.mkdir_p!(@path.downloads)
     files = File.ls!(@path.downloads)
 
     for name <- files do
