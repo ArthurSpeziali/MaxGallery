@@ -1122,70 +1122,13 @@ defmodule MaxGallery.Context do
     end
   end
 
-  @doc """
-  Deletes a user and all their associated data from the system.
-  
-  This function performs a complete cleanup by:
-  1. Deleting all user's groups from the database
-  2. Deleting all user's files from the database  
-  3. Deleting all user's files from storage (using batch processing)
-  4. Finally deleting the user account
-  
-  ## Parameters
-  - `id` - The binary ID of the user to delete
-  
-  ## Returns
-  - `:ok` - If the user and all data were successfully deleted
-  - `:error` - If any step of the deletion process failed
-  
-  ## Notes
-  - This operation is irreversible
-  - Uses batch processing for storage deletion to handle large numbers of files
-  - Continues with user deletion even if some data cleanup fails
-  - Provides detailed logging for each step of the deletion process
-  """
   @spec user_delete(id :: binary()) :: :ok | :error
   def user_delete(id) do
-    require Logger
-    
-    Logger.info("Starting user deletion process for user #{id}")
-    
-    # Delete all user's groups from database
-    case GroupApi.delete_all(id) do
-      {count_groups, nil} ->
-        Logger.info("Deleted #{count_groups} groups for user #{id}")
-      {count_groups, _error} ->
-        Logger.warning("Deleted #{count_groups} groups for user #{id}, some deletions failed")
-      error ->
-        Logger.error("Failed to delete groups for user #{id}: #{inspect(error)}")
-    end
-    
-    # Delete all user's files from database
-    case CypherApi.delete_all(id) do
-      {count_files, nil} ->
-        Logger.info("Deleted #{count_files} files from database for user #{id}")
-      {count_files, _error} ->
-        Logger.warning("Deleted #{count_files} files from database for user #{id}, some deletions failed")
-      error ->
-        Logger.error("Failed to delete files from database for user #{id}: #{inspect(error)}")
-    end
-    
-    # Delete all user's files from storage using batch processing
-    case Storage.del_all(id) do
-      {:ok, count_storage} ->
-        Logger.info("Deleted #{count_storage} files from storage for user #{id}")
-      {:error, reason} ->
-        Logger.error("Failed to delete files from storage for user #{id}: #{reason}")
-    end
-    
-    # Finally delete the user account
     case UserApi.delete(id) do
       {:ok, _querry} ->
-        Logger.info("Successfully deleted user #{id} and all associated data")
         :ok
 
-      error ->
-        Logger.error("Failed to delete user account #{id}: #{inspect(error)}")
+      _error ->
         :error
     end
   end

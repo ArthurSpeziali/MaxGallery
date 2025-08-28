@@ -37,7 +37,10 @@ defmodule MaxGallery.TestHelpers do
     name = "Test User"
     password = "test_password_123"
 
-    Context.user_insert(name, email, password)
+    case Context.user_insert(name, email, password) do
+      {:ok, user_id} -> user_id
+      {:error, _reason} -> default_test_user()
+    end
   end
 
   @doc """

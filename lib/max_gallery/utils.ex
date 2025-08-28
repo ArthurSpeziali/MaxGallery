@@ -339,7 +339,18 @@ defmodule MaxGallery.Utils do
       case item do
         %{data: data} ->
           {:ok, {name_iv, name}} = Encrypter.encrypt(data.name, key)
-          {:ok, {blob_iv, blob}} = Encrypter.encrypt(data.blob, key)
+          
+          # Handle lazy mode where blob might not be present
+          {blob_iv, length} = 
+            if Map.has_key?(data, :blob) do
+              {:ok, {blob_iv, blob}} = Encrypter.encrypt(data.blob, key)
+              {blob_iv, byte_size(blob)}
+            else
+              # For lazy mode, we need to get the original blob_iv and length
+              # This requires getting the original file data
+              {:ok, original} = CypherApi.get(data.id)
+              {original.blob_iv, original.length}
+            end
 
           {:ok, {msg_iv, msg}} =
             Phantom.get_text()
@@ -348,13 +359,12 @@ defmodule MaxGallery.Utils do
           %{
             name: name,
             name_iv: name_iv,
-            blob: blob,
             blob_iv: blob_iv,
             msg: msg,
             msg_iv: msg_iv,
             ext: data.ext,
-            group_id: data.group,
-            user: data.user
+            length: length,
+            original_id: data.id
           }
           |> Map.merge(params)
           |> fun.(:data)
@@ -362,6 +372,7 @@ defmodule MaxGallery.Utils do
         ## Uses the recursive function to modify an item for insertion, returns nothing in the end. If it’s a group, the returned item will be the `params` field for its child item.
 
         %{group: {group, subitems}} ->
+          # Always generate fresh encryption for group names to avoid constraint violations
           {:ok, {name_iv, name}} = Encrypter.encrypt(group.name, key)
 
           {:ok, {msg_iv, msg}} =
@@ -369,9 +380,11 @@ defmodule MaxGallery.Utils do
             |> Encrypter.encrypt(key)
 
           sub_params =
-            %{name: name, name_iv: name_iv, msg: msg, msg_iv: msg_iv, group_id: group.group}
+            %{name: name, name_iv: name_iv, msg: msg, msg_iv: msg_iv}
             |> Map.merge(params)
             |> fun.(:group)
+            # Remove name and name_iv from sub_params to avoid overwriting child names
+            |> Map.drop([:name, :name_iv])
 
           mount_tree(subitems, sub_params, fun, key)
       end

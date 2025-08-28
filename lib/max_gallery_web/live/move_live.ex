@@ -19,6 +19,8 @@ defmodule MaxGalleryWeb.Live.MoveLive do
         page_id
       end
 
+    id = Validate.int!(id)
+
     action =
       if action in ~w(move copy) do
         action
@@ -71,10 +73,13 @@ defmodule MaxGalleryWeb.Live.MoveLive do
     {:ok, push_navigate(socket, to: "/user/data")}
   end
 
-  def handle_event("open", %{"id" => id}, socket) do
+  def handle_event("open", %{"id" => new_id}, socket) do
     action = socket.assigns[:action]
+    type = socket.assigns[:type]
+    id = socket.assigns[:id]
 
-    {:noreply, push_navigate(socket, to: "/user/move/#{id}?action=#{action}")}
+    {:noreply,
+     push_navigate(socket, to: "/user/move/#{new_id}?action=#{action}&type=#{type}&id=#{id}")}
   end
 
   def handle_event("back", _params, socket) do
@@ -135,7 +140,6 @@ defmodule MaxGalleryWeb.Live.MoveLive do
             %{group_id: nil}
           end
 
-        IO.inspect({user, id, params, key}, label: "HERE")
         Context.group_duplicate(user, id, params, key)
     end
 

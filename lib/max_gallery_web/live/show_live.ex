@@ -4,11 +4,22 @@ defmodule MaxGalleryWeb.Live.ShowLive do
   alias MaxGallery.Context
   alias MaxGallery.Extension
   alias MaxGallery.Phantom
+  alias MaxGallery.Validate
 
-  def mount(%{"id" => id} = params, %{"auth_key" => key}, socket) do
-    page_id = Map.get(params, "page_id")
+  def mount(%{"id" => id} = params, %{"auth_key" => key, "user_auth" => user}, socket) do
+    page_id =
+      Map.get(params, "page_id")
 
-    {:ok, raw_querry} = Context.decrypt_one(id, key, lazy: true)
+    page_id =
+      if page_id do
+        Validate.int!(page_id)
+      else
+        page_id
+      end
+
+    id = Validate.int!(id)
+
+    {:ok, raw_querry} = Context.decrypt_one(user, id, key, lazy: true)
 
     lazy =
       if Extension.get_ext(raw_querry.ext) != "text" do
@@ -17,7 +28,7 @@ defmodule MaxGalleryWeb.Live.ShowLive do
         nil
       end
 
-    {:ok, querry} = Context.decrypt_one(id, key, lazy: lazy)
+    {:ok, querry} = Context.decrypt_one(user, id, key, lazy: lazy)
 
     socket =
       assign(socket,
