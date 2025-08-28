@@ -241,8 +241,8 @@ defmodule MaxGalleryWeb.Live.DataLive do
     key = socket.assigns[:key]
     group = socket.assigns[:page_id]
 
-    path = Variables.tmp_dir() <> "cache/#{user}_sys_#{Enum.random(1..999//1)}"
-    File.mkdir_p(Variables.tmp_dir() <> "/cache")
+    path = Variables.tmp_dir() <> "tests/#{user}_sys_#{Enum.random(1..999//1)}"
+    File.mkdir_p(Variables.tmp_dir() <> "tests/")
     File.write(path, "", [:write])
 
     Context.cypher_insert(path, user, key, name: name, group: group)

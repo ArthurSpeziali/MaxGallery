@@ -1,7 +1,7 @@
 defmodule MaxGallery.TestHelpers do
   alias MaxGallery.Variables
   alias MaxGallery.Context
-  @tmp_path Variables.tmp_dir() <> "test/"
+  @tmp_path Variables.tmp_dir() <> "tests/"
 
   @moduledoc """
   Helper functions for tests to create test data quickly without external dependencies.

@@ -82,7 +82,19 @@ defmodule MaxGallery.Request do
     with {:ok, auth_data} <- consume_storage_auth(),
          {:ok, download_url} <- build_download_url(auth_data, key),
          {:ok, response} <- download_file(download_url, auth_data) do
-      {:ok, response.body}
+      if Map.get(response, :temp_file) do
+        case File.read(response.body) do
+          {:ok, content} ->
+            File.rm(response.body)
+            {:ok, content}
+
+          {:error, reason} ->
+            File.rm(response.body)
+            {:error, "Failed to read temp file: #{inspect(reason)}"}
+        end
+      else
+        {:ok, response.body}
+      end
     else
       {:error, reason} -> {:error, reason}
     end
@@ -248,18 +260,78 @@ defmodule MaxGallery.Request do
       {"Authorization", auth_data["authorizationToken"]}
     ]
 
-    case HTTPoison.get(url, headers) do
-      {:ok, %HTTPoison.Response{status_code: 200} = response} ->
-        {:ok, response}
+    download_dir = MaxGallery.Variables.tmp_dir() <> "downloads/"
+    File.mkdir_p!(download_dir)
+    temp_file = Path.join(download_dir, "download_#{:erlang.unique_integer([:positive])}.tmp")
 
-      {:ok, %HTTPoison.Response{status_code: 404}} ->
-        {:error, "File not found"}
+    options = [
+      timeout: 300_000,
+      recv_timeout: 300_000,
+      stream_to: self(),
+      async: :once
+    ]
 
-      {:ok, %HTTPoison.Response{status_code: status_code, body: error_body}} ->
-        {:error, "Failed to download file: #{status_code} - #{error_body}"}
+    case HTTPoison.get(url, headers, options) do
+      {:ok, %HTTPoison.AsyncResponse{id: id}} ->
+        case stream_to_file(id, temp_file) do
+          {:ok, file_path} ->
+            {:ok, %{body: file_path, temp_file: true}}
+
+          {:error, reason} ->
+            File.rm(temp_file)
+            {:error, reason}
+        end
 
       {:error, %HTTPoison.Error{reason: reason}} ->
         {:error, "Network error downloading file: #{inspect(reason)}"}
+    end
+  end
+
+  defp stream_to_file(id, file_path) do
+    case File.open(file_path, [:write, :binary]) do
+      {:ok, file} ->
+        try do
+          stream_response(id, file)
+          File.close(file)
+          {:ok, file_path}
+        rescue
+          error ->
+            File.close(file)
+            File.rm(file_path)
+            {:error, "Stream error: #{inspect(error)}"}
+        end
+
+      {:error, reason} ->
+        {:error, "Failed to create temp file: #{inspect(reason)}"}
+    end
+  end
+
+  defp stream_response(id, file) do
+    receive do
+      %HTTPoison.AsyncStatus{id: ^id, code: 200} ->
+        HTTPoison.stream_next(%HTTPoison.AsyncResponse{id: id})
+        stream_response(id, file)
+
+      %HTTPoison.AsyncStatus{id: ^id, code: 404} ->
+        throw({:error, "File not found"})
+
+      %HTTPoison.AsyncStatus{id: ^id, code: code} ->
+        throw({:error, "HTTP error: #{code}"})
+
+      %HTTPoison.AsyncHeaders{id: ^id} ->
+        HTTPoison.stream_next(%HTTPoison.AsyncResponse{id: id})
+        stream_response(id, file)
+
+      %HTTPoison.AsyncChunk{id: ^id, chunk: chunk} ->
+        IO.binwrite(file, chunk)
+        HTTPoison.stream_next(%HTTPoison.AsyncResponse{id: id})
+        stream_response(id, file)
+
+      %HTTPoison.AsyncEnd{id: ^id} ->
+        :ok
+    after
+      300_000 ->
+        throw({:error, "Download timeout"})
     end
   end
 

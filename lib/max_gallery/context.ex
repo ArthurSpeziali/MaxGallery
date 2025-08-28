@@ -116,7 +116,7 @@ defmodule MaxGallery.Context do
              group_id: group
            }),
          {:ok, _storage_key} <- Storage.put(user, querry.id, blob) do
-      querry.id
+      {:ok, querry.id}
     else
       false ->
         {:error, "invalid key/user"}
