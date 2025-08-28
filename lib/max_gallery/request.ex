@@ -1,15 +1,99 @@
 defmodule MaxGallery.Request do
+  @moduledoc """
+  HTTP client module for BlackBlaze B2 cloud storage operations.
+
+  This module handles all HTTP communication with the BlackBlaze B2 API,
+  including authentication, file operations, and batch processing. It provides
+  a comprehensive interface for cloud storage management with proper error
+  handling and performance optimizations.
+
+  ## Key Features
+
+  - Automatic authentication and token management
+  - File upload/download with streaming support
+  - Batch operations for large datasets
+  - Comprehensive error handling and logging
+  - Timeout management for large files
+  - Parallel processing capabilities
+
+  ## Authentication
+
+  The module manages BlackBlaze B2 authentication automatically:
+  - Caches auth tokens with expiration tracking
+  - Refreshes tokens when needed
+  - Handles authentication failures gracefully
+  - Uses environment variables for credentials
+
+  ## File Operations
+
+  Supports all standard file operations:
+  - Upload with SHA1 verification
+  - Download with streaming for large files
+  - Deletion with batch processing
+  - Existence checking and metadata retrieval
+  - Directory listing with pagination
+
+  ## Performance Optimizations
+
+  - Connection pooling via HTTPoison
+  - Streaming downloads to temporary files
+  - Configurable timeouts based on file size
+  - Parallel processing for batch operations
+  - Efficient pagination for large listings
+
+  ## Error Handling
+
+  Comprehensive error handling for:
+  - Network connectivity issues
+  - Authentication failures
+  - API rate limiting
+  - File not found scenarios
+  - Timeout conditions
+  """
+
   alias MaxGallery.Server.LiveServer
   alias MaxGallery.Variables
   alias MaxGallery.Extension
   require Logger
 
+  @doc """
+  Gets the URL for a specific storage operation.
+
+  ## Parameters
+  - `:storage_auth` - Returns the BlackBlaze B2 authorization URL
+
+  ## Returns
+  - String URL for the requested operation
+
+  ## Notes
+  - Currently only supports storage authentication URL
+  - Can be extended for other API endpoints
+  """
   @spec url_fetch(atom()) :: String.t()
   def url_fetch(:storage_auth) do
     "https://api.backblazeb2.com/b2api/v2/b2_authorize_account"
   end
 
   # Storage Authentication Functions
+
+  @doc """
+  Gets cached authentication data or refreshes if expired.
+
+  ## Returns
+  - `{:ok, auth_data}` - Valid authentication data
+  - `{:error, reason}` - Authentication failure
+
+  ## Behavior
+  1. Checks LiveServer cache for existing auth data
+  2. Validates expiration time
+  3. Refreshes authentication if expired
+  4. Returns cached data if still valid
+
+  ## Notes
+  - Automatically handles token refresh
+  - Caches tokens for 1 hour
+  - Thread-safe via LiveServer
+  """
   @spec consume_storage_auth() :: {:ok, map()} | {:error, String.t()}
   def consume_storage_auth() do
     LiveServer.get(:storage_auth)
@@ -26,6 +110,29 @@ defmodule MaxGallery.Request do
     end
   end
 
+  @doc """
+  Authenticates with BlackBlaze B2 and caches the result.
+
+  ## Returns
+  - `{:ok, auth_data}` - Authentication successful
+  - `{:error, reason}` - Authentication failed
+
+  ## Process
+  1. Reads credentials from environment variables
+  2. Encodes credentials for Basic auth
+  3. Makes authentication request
+  4. Caches result with expiration time
+  5. Returns authentication data
+
+  ## Environment Variables
+  - `BLACKBLAZE_KEY_ID` - Account key ID
+  - `BLACKBLAZE_APP_KEY` - Application key
+
+  ## Notes
+  - Tokens are cached for 1 hour
+  - Uses Basic authentication for initial request
+  - Stores result in LiveServer for sharing across processes
+  """
   @spec storage_auth() :: {:ok, map()} | {:error, String.t()}
   def storage_auth() do
     key_id = System.get_env("BLACKBLAZE_KEY_ID")
@@ -66,6 +173,30 @@ defmodule MaxGallery.Request do
 
   # Storage Operations using HTTP
 
+  @doc """
+  Uploads a file to BlackBlaze B2 storage.
+
+  ## Parameters
+  - `key` - Storage key/path for the file
+  - `blob` - Binary content to upload
+
+  ## Returns
+  - `{:ok, storage_key}` - Upload successful
+  - `{:error, reason}` - Upload failed
+
+  ## Process
+  1. Authenticates with storage service
+  2. Gets upload URL for the bucket
+  3. Calculates SHA1 hash for verification
+  4. Uploads file with appropriate headers
+  5. Handles timeouts based on file size
+
+  ## Notes
+  - Automatically determines MIME type
+  - Includes SHA1 verification
+  - Configures timeouts based on file size
+  - Logs upload progress for large files
+  """
   @spec storage_put(String.t(), binary()) :: {:ok, String.t()} | {:error, String.t()}
   def storage_put(key, blob) do
     with {:ok, auth_data} <- consume_storage_auth(),
@@ -77,6 +208,29 @@ defmodule MaxGallery.Request do
     end
   end
 
+  @doc """
+  Downloads a file from BlackBlaze B2 storage.
+
+  ## Parameters
+  - `key` - Storage key/path of the file to download
+
+  ## Returns
+  - `{:ok, binary_content}` - Download successful
+  - `{:error, reason}` - Download failed
+
+  ## Process
+  1. Authenticates with storage service
+  2. Builds download URL
+  3. Downloads file with streaming for large files
+  4. Handles temporary files for large downloads
+  5. Returns content or cleans up on error
+
+  ## Notes
+  - Uses streaming for large files
+  - Creates temporary files for downloads
+  - Automatically cleans up temporary files
+  - Handles various download scenarios
+  """
   @spec storage_get(String.t()) :: {:ok, binary()} | {:error, String.t()}
   def storage_get(key) do
     with {:ok, auth_data} <- consume_storage_auth(),
@@ -100,6 +254,27 @@ defmodule MaxGallery.Request do
     end
   end
 
+  @doc """
+  Deletes a file from BlackBlaze B2 storage.
+
+  ## Parameters
+  - `key` - Storage key/path of the file to delete
+
+  ## Returns
+  - `:ok` - Deletion successful
+  - `{:error, reason}` - Deletion failed
+
+  ## Process
+  1. Authenticates with storage service
+  2. Gets file information for deletion
+  3. Calls delete API with file details
+  4. Returns success or error status
+
+  ## Notes
+  - Requires file info before deletion
+  - Permanent operation (cannot be undone)
+  - Handles file not found scenarios
+  """
   @spec storage_delete(String.t()) :: :ok | {:error, String.t()}
   def storage_delete(key) do
     with {:ok, auth_data} <- consume_storage_auth(),
@@ -111,6 +286,21 @@ defmodule MaxGallery.Request do
     end
   end
 
+  @doc """
+  Checks if a file exists in BlackBlaze B2 storage.
+
+  ## Parameters
+  - `key` - Storage key/path to check
+
+  ## Returns
+  - `true` - File exists
+  - `false` - File does not exist
+
+  ## Notes
+  - Uses get_info internally
+  - Does not download file content
+  - Useful for validation before operations
+  """
   @spec storage_exists?(String.t()) :: boolean()
   def storage_exists?(key) do
     case storage_get_info(key) do
@@ -119,6 +309,21 @@ defmodule MaxGallery.Request do
     end
   end
 
+  @doc """
+  Gets metadata information for a file.
+
+  ## Parameters
+  - `key` - Storage key/path of the file
+
+  ## Returns
+  - `{:ok, file_info}` - File information retrieved
+  - `{:error, reason}` - Failed to get info
+
+  ## Notes
+  - Returns file metadata without content
+  - Includes size, timestamps, and other attributes
+  - Used internally by other operations
+  """
   @spec storage_get_info(String.t()) :: {:ok, map()} | {:error, String.t()}
   def storage_get_info(key) do
     with {:ok, auth_data} <- consume_storage_auth(),
@@ -129,6 +334,28 @@ defmodule MaxGallery.Request do
     end
   end
 
+  @doc """
+  Deletes all files with a specific user prefix using batch processing.
+
+  ## Parameters
+  - `user` - Binary user ID for prefix filtering
+
+  ## Returns
+  - `{:ok, success_count}` - Number of successfully deleted files
+  - `{:error, reason}` - Batch deletion failed
+
+  ## Process
+  1. Lists all files with user prefix
+  2. Deletes files in parallel batches
+  3. Tracks success and failure counts
+  4. Returns total successful deletions
+
+  ## Notes
+  - Uses parallel processing for performance
+  - Continues on individual file failures
+  - Logs detailed progress information
+  - Suitable for large-scale cleanup operations
+  """
   @spec storage_delete_all_encrypted_files(user :: binary()) ::
           {:ok, integer()} | {:error, String.t()}
   def storage_delete_all_encrypted_files(user) do
@@ -166,6 +393,32 @@ defmodule MaxGallery.Request do
     end
   end
 
+  @doc """
+  Lists all files with a specific user prefix and returns metadata.
+
+  ## Parameters
+  - `user` - Binary user ID for prefix filtering
+
+  ## Returns
+  - `{:ok, file_list}` - List of file metadata maps
+  - `{:error, reason}` - Listing failed
+
+  ## File Metadata
+  Each file map contains:
+  - `file_name` - Full file path/name
+  - `file_id` - Unique file identifier
+  - `size` - File size in bytes
+  - `content_type` - MIME type
+  - `upload_timestamp` - Upload time
+  - `content_sha1` - SHA1 hash
+  - `file_info` - Additional metadata
+
+  ## Notes
+  - Uses pagination to handle large listings
+  - Filters by user prefix for security
+  - Returns comprehensive metadata
+  - Suitable for administrative operations
+  """
   @spec storage_list_all_encrypted_files(user :: binary()) ::
           {:ok, list(map())} | {:error, String.t()}
   def storage_list_all_encrypted_files(user) do
@@ -197,6 +450,7 @@ defmodule MaxGallery.Request do
 
   # Private helper functions for BlackBlaze B2 API
 
+  # Gets an upload URL for file uploads
   defp get_upload_url(auth_data) do
     bucket_id = get_bucket_id(auth_data)
     url = "#{auth_data["apiUrl"]}/b2api/v2/b2_get_upload_url"
@@ -220,6 +474,7 @@ defmodule MaxGallery.Request do
     end
   end
 
+  # Uploads a file with proper headers and timeout handling
   defp upload_file(upload_url_data, key, blob) do
     url = upload_url_data["uploadUrl"]
     auth_token = upload_url_data["authorizationToken"]
@@ -263,6 +518,7 @@ defmodule MaxGallery.Request do
     end
   end
 
+  # Builds download URL for a file
   defp build_download_url(auth_data, key) do
     download_url = auth_data["downloadUrl"]
     bucket_name = System.get_env("BLACKBLAZE_BUCKET_NAME", "maxgallery-files")
@@ -270,6 +526,7 @@ defmodule MaxGallery.Request do
     {:ok, full_url}
   end
 
+  # Downloads a file with streaming support for large files
   defp download_file(url, auth_data) do
     headers = [
       {"Authorization", auth_data["authorizationToken"]}
@@ -302,6 +559,7 @@ defmodule MaxGallery.Request do
     end
   end
 
+  # Streams HTTP response to a file
   defp stream_to_file(id, file_path) do
     case File.open(file_path, [:write, :binary]) do
       {:ok, file} ->
@@ -321,6 +579,7 @@ defmodule MaxGallery.Request do
     end
   end
 
+  # Handles streaming HTTP response chunks
   defp stream_response(id, file) do
     receive do
       %HTTPoison.AsyncStatus{id: ^id, code: 200} ->
@@ -350,6 +609,7 @@ defmodule MaxGallery.Request do
     end
   end
 
+  # Gets file information for a specific key
   defp get_file_info(auth_data, key) do
     bucket_id = get_bucket_id(auth_data)
     url = "#{auth_data["apiUrl"]}/b2api/v2/b2_list_file_names"
@@ -395,6 +655,7 @@ defmodule MaxGallery.Request do
     end
   end
 
+  # Deletes a specific file version
   defp delete_file_version(auth_data, file_info) do
     url = "#{auth_data["apiUrl"]}/b2api/v2/b2_delete_file_version"
 
@@ -421,6 +682,7 @@ defmodule MaxGallery.Request do
     end
   end
 
+  # Gets bucket ID from auth data or by listing buckets
   defp get_bucket_id(auth_data) do
     bucket_name = System.get_env("BLACKBLAZE_BUCKET_NAME", "maxgallery-files")
 
@@ -442,6 +704,7 @@ defmodule MaxGallery.Request do
     end
   end
 
+  # Lists all buckets for the account
   defp list_buckets(auth_data) do
     url = "#{auth_data["apiUrl"]}/b2api/v2/b2_list_buckets"
 
@@ -467,11 +730,13 @@ defmodule MaxGallery.Request do
     end
   end
 
+  # Lists all files with a given prefix using pagination
   defp list_all_files_with_prefix(auth_data, prefix) do
     bucket_id = get_bucket_id(auth_data)
     list_files_recursive(auth_data, bucket_id, prefix, [], nil)
   end
 
+  # Recursively lists files with pagination support
   defp list_files_recursive(auth_data, bucket_id, prefix, acc, start_file_name) do
     url = "#{auth_data["apiUrl"]}/b2api/v2/b2_list_file_names"
 

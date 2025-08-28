@@ -4,6 +4,30 @@ defmodule MaxGallery.Storage.Deleter do
 
   This module implements a batched approach to delete large numbers of files
   without hitting the maxFileCount limit of 25,000 files per request.
+
+  ## Key Features
+
+  - Batch processing to handle large file deletions
+  - Automatic retry and error handling
+  - Progress tracking and logging
+  - Configurable batch sizes based on API limits
+  - Parallel processing within batches for performance
+
+  ## Batch Strategy
+
+  The deletion process works as follows:
+  1. Calculate safe batch size (40% of API limit)
+  2. List files in batches using pagination
+  3. Delete files in parallel within each batch
+  4. Continue until all files are processed
+  5. Provide detailed logging and progress tracking
+
+  ## Error Handling
+
+  - Continues processing even if individual files fail
+  - Tracks both successful and failed deletions
+  - Returns total count of successfully deleted files
+  - Logs detailed information about failures
   """
 
   alias MaxGallery.Request
@@ -19,6 +43,19 @@ defmodule MaxGallery.Storage.Deleter do
   ## Returns
   - `{:ok, total_deleted}` - Number of successfully deleted files
   - `{:error, reason}` - Error message if the operation fails
+
+  ## Process
+  1. Authenticates with storage service
+  2. Calculates optimal batch size
+  3. Recursively processes file batches
+  4. Tracks progress and handles errors
+  5. Returns total deletion count
+
+  ## Notes
+  - Uses 40% of max API limit for safety
+  - Includes small delays between batches
+  - Processes files in parallel within batches
+  - Continues on individual file failures
   """
   @spec delete_all_user_files(binary()) :: {:ok, integer()} | {:error, String.t()}
   def delete_all_user_files(user) do
@@ -40,16 +77,20 @@ defmodule MaxGallery.Storage.Deleter do
 
   # Private functions
 
+  # Calculate a safe batch size to avoid hitting API limits
+  # Uses 40% of the maximum to allow for API overhead and safety margin
   defp calculate_safe_batch_size do
-    # Use 40% of the max limit to be safe and allow for API overhead
     max_limit = Variables.max_objects()
     div(max_limit * 40, 100)
   end
 
+  # Main batch processing function that orchestrates the deletion
   defp delete_files_in_batches(auth_data, bucket_id, prefix, batch_size) do
     delete_batch_recursive(auth_data, bucket_id, prefix, 0, 0, nil, batch_size)
   end
 
+  # Recursive function that processes batches until all files are deleted
+  # Tracks total deleted/failed counts and handles pagination
   defp delete_batch_recursive(
          auth_data,
          bucket_id,
@@ -116,6 +157,7 @@ defmodule MaxGallery.Storage.Deleter do
     end
   end
 
+  # Lists a batch of files with pagination support
   defp list_files_batch(auth_data, bucket_id, prefix, start_file_name, batch_size) do
     url = "#{auth_data["apiUrl"]}/b2api/v2/b2_list_file_names"
 
@@ -160,6 +202,7 @@ defmodule MaxGallery.Storage.Deleter do
     end
   end
 
+  # Deletes a batch of files using parallel processing for performance
   defp delete_files_batch(auth_data, files) do
     # Process files in parallel for better performance, but limit concurrency
     # Process 10 files at a time
@@ -197,6 +240,7 @@ defmodule MaxGallery.Storage.Deleter do
     end)
   end
 
+  # Deletes a single file version using the B2 API
   defp delete_file_version(auth_data, file_info) do
     url = "#{auth_data["apiUrl"]}/b2api/v2/b2_delete_file_version"
 
@@ -223,6 +267,7 @@ defmodule MaxGallery.Storage.Deleter do
     end
   end
 
+  # Gets the bucket ID from auth data or by listing buckets
   defp get_bucket_id(auth_data) do
     bucket_name = System.get_env("BLACKBLAZE_BUCKET_NAME", "maxgallery-files")
 
@@ -244,6 +289,7 @@ defmodule MaxGallery.Storage.Deleter do
     end
   end
 
+  # Lists all buckets for the authenticated account
   defp list_buckets(auth_data) do
     url = "#{auth_data["apiUrl"]}/b2api/v2/b2_list_buckets"
 
