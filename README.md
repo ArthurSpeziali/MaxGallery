@@ -9,7 +9,7 @@
 
 🌐 **Live Demo**: [www.exemple.com](https://www.exemple.com)
 
-![Screenshot.png](https://imgur.com/a/RnbkgL9)
+![Screenshot.png](https://i.imgur.com/nOPvqht.png)
 
 ## ✨ Key Features
 
