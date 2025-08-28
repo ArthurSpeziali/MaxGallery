@@ -236,14 +236,29 @@ defmodule MaxGallery.Request do
       {"X-Bz-Content-Sha1", sha1_hash}
     ]
 
-    case HTTPoison.post(url, blob, headers) do
+    # Configure timeouts based on file size
+    # Base timeout of 10 minutes + 2 minutes per 10MB
+    file_size_mb = byte_size(blob) / (1024 * 1024)
+    timeout = max(600_000, trunc(600_000 + (file_size_mb / 10) * 120_000))
+    
+    options = [
+      timeout: timeout,
+      recv_timeout: timeout
+    ]
+
+    Logger.info("Uploading file #{key} (#{trunc(file_size_mb)}MB) with timeout #{trunc(timeout/1000)}s")
+
+    case HTTPoison.post(url, blob, headers, options) do
       {:ok, %HTTPoison.Response{status_code: 200, body: response_body}} ->
+        Logger.info("Successfully uploaded file #{key}")
         Jason.decode(response_body)
 
       {:ok, %HTTPoison.Response{status_code: status_code, body: error_body}} ->
+        Logger.error("Failed to upload file #{key}: #{status_code} - #{error_body}")
         {:error, "Failed to upload file: #{status_code} - #{error_body}"}
 
       {:error, %HTTPoison.Error{reason: reason}} ->
+        Logger.error("Network error uploading file #{key}: #{inspect(reason)}")
         {:error, "Network error uploading file: #{inspect(reason)}"}
     end
   end
