@@ -7,10 +7,10 @@ defmodule MaxGallery.StorageAdapter do
     Application.get_env(:max_gallery, :storage_impl, MaxGallery.Storage)
   end
 
-  def put(cypher_id, blob), do: impl().put(cypher_id, blob)
-  def get(cypher_id), do: impl().get(cypher_id)
-  def del(cypher_id \\ nil), do: impl().del(cypher_id)
-  def del_all, do: impl().del_all()
-  def exists?(cypher_id), do: impl().exists?(cypher_id)
-  def list, do: impl().list()
+  def put(user, id, blob), do: impl().put(user, id, blob)
+  def get(user, id), do: impl().get(user, id)
+  def del(user, id), do: impl().del(user, id)
+  def del_all(user), do: impl().del_all(user)
+  def exists?(user, id), do: impl().exists?(user, id)
+  def list(user), do: impl().list(user)
 end

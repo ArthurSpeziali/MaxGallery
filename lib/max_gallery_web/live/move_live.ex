@@ -2,11 +2,12 @@ defmodule MaxGalleryWeb.Live.MoveLive do
   ## Module for the site's moving and copying action in the page.
   use MaxGalleryWeb, :live_view
   alias MaxGallery.Context
+  alias MaxGallery.Validate
   alias MaxGallery.Utils
 
   def mount(
         %{"action" => action, "id" => id, "type" => type} = params,
-        %{"auth_key" => key},
+        %{"auth_key" => key, "user_auth" => user},
         socket
       ) do
     page_id = Map.get(params, "page_id")
@@ -27,17 +28,18 @@ defmodule MaxGalleryWeb.Live.MoveLive do
 
     {:ok, group_info} =
       if page_id do
-        Context.decrypt_one(page_id, key, group: true)
+        Context.decrypt_one(user, page_id, key, group: true)
       else
         {:ok, %{name: "Main"}}
       end
 
-    {:ok, raw_groups} = Context.decrypt_all(key, only: :groups, group: page_id)
+    {:ok, raw_groups} = Context.decrypt_all(user, key, only: :groups, group: page_id)
 
     groups =
       if type == "group" do
         {:ok, content} =
           Context.decrypt_one(
+            user,
             id,
             key,
             group: true
@@ -51,6 +53,7 @@ defmodule MaxGalleryWeb.Live.MoveLive do
 
     socket =
       assign(socket,
+        user: user,
         key: key,
         group_name: group_info[:name],
         page_id: page_id,
@@ -90,8 +93,13 @@ defmodule MaxGalleryWeb.Live.MoveLive do
   end
 
   def handle_event("select", %{"id" => dest_id}, socket) do
+    user = socket.assigns[:user]
     key = socket.assigns[:key]
-    id = socket.assigns[:id]
+
+    id =
+      socket.assigns[:id]
+      |> Validate.int!()
+
     type = socket.assigns[:type]
     action = socket.assigns[:action]
 
@@ -99,15 +107,15 @@ defmodule MaxGalleryWeb.Live.MoveLive do
       if dest_id == "main" do
         nil
       else
-        dest_id
+        Validate.int!(dest_id)
       end
 
     case {type, action} do
       {"data", "move"} ->
-        Context.cypher_update(id, %{group_id: dest_id}, key)
+        Context.cypher_update(user, id, %{group_id: dest_id}, key)
 
       {"group", "move"} ->
-        Context.group_update(id, %{group_id: dest_id}, key)
+        Context.group_update(user, id, %{group_id: dest_id}, key)
 
       {"data", "copy"} ->
         params =
@@ -117,7 +125,7 @@ defmodule MaxGalleryWeb.Live.MoveLive do
             %{group_id: nil}
           end
 
-        Context.cypher_duplicate(id, params, key)
+        Context.cypher_duplicate(user, id, params, key)
 
       {"group", "copy"} ->
         params =
@@ -127,7 +135,8 @@ defmodule MaxGalleryWeb.Live.MoveLive do
             %{group_id: nil}
           end
 
-        Context.group_duplicate(id, params, key)
+        IO.inspect({user, id, params, key}, label: "HERE")
+        Context.group_duplicate(user, id, params, key)
     end
 
     {:noreply, push_navigate(socket, to: "/user/data/#{dest_id}")}

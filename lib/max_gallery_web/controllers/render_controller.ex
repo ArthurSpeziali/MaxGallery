@@ -9,7 +9,8 @@ defmodule MaxGalleryWeb.RenderController do
   ## Decrypt the file and shows instantly.
   defp content_render(conn, id) do
     key = get_session(conn, :auth_key)
-    {:ok, querry} = Context.decrypt_one(id, key)
+    user = get_session(conn, "user_auth")
+    {:ok, querry} = Context.decrypt_one(user, id, key)
 
     mime =
       Map.fetch!(querry, :ext)
@@ -33,13 +34,14 @@ defmodule MaxGalleryWeb.RenderController do
   ## Load the file, and chunk it. It ensures the videos load faster.
   def videos(conn, %{"id" => id}) do
     key = get_session(conn, :auth_key)
+    user = get_session(conn, "user_auth")
 
     # Get cypher info first to get blob_iv
-    {:ok, cypher} = Context.decrypt_one(id, key, lazy: true)
+    {:ok, cypher} = Context.decrypt_one(user, id, key, lazy: true)
     {:ok, cypher_full} = MaxGallery.Core.Cypher.Api.get(id)
 
     # Use cache to get file path for streaming
-    {file_path, _was_downloaded} = Cache.consume_cache(id, cypher_full.blob_iv, key)
+    {file_path, _was_downloaded} = Cache.consume_cache(user, id, cypher_full.blob_iv, key)
 
     if File.exists?(file_path) do
       mime = Extension.get_mime(cypher.ext)
@@ -70,7 +72,7 @@ defmodule MaxGalleryWeb.RenderController do
     user = get_session(conn, "user_auth")
 
     if key do
-      {:ok, file_path} = Context.zip_content(id, key, group: true)
+      {:ok, file_path} = Context.zip_content(user, id, key, group: true)
 
       Logger.debug(
         "Sending dowload from #{user}\n Path: #{file_path}\n" <> String.duplicate("!-", 50)
@@ -84,9 +86,10 @@ defmodule MaxGalleryWeb.RenderController do
 
   def download(conn, %{"id" => id, "type" => "data"}) do
     key = get_session(conn, :auth_key)
+    user = get_session(conn, "user_auth")
 
     if key do
-      {:ok, file_path} = Context.zip_content(id, key)
+      {:ok, file_path} = Context.zip_content(user, id, key)
 
       send_download(conn, {:file, file_path})
     else

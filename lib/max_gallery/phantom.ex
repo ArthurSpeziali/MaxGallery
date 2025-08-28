@@ -221,9 +221,9 @@ defmodule MaxGallery.Phantom do
   - Uses phantom validation pattern
   - Should be checked before all insert operations
   """
-  @spec insert_line?(key :: String.t()) :: boolean()
-  def insert_line?(key) do
-    case Api.first() do
+  @spec insert_line?(user :: binary(), key :: String.t()) :: boolean()
+  def insert_line?(user, key) do
+    case Api.first_one(user) do
       {:error, "not found"} -> true
       {:ok, querry} -> valid?(querry, key)
     end

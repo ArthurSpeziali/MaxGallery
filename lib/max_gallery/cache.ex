@@ -24,14 +24,14 @@ defmodule MaxGallery.Cache do
   ## Returns
   - `{path, was_downloaded}`: Tuple with file path and boolean indicating if it was downloaded
   """
-  @spec consume_cache(binary(), binary(), String.t()) :: {Path.t(), boolean()}
-  def consume_cache(id, blob_iv, key) do
-    path = @tmp_path <> "#{Mix.env()}_#{id}"
+  @spec consume_cache(user :: binary(), binary(), binary(), String.t()) :: {Path.t(), boolean()}
+  def consume_cache(user, id, blob_iv, key) do
+    path = get_path(user, id)
 
-    if File.exists?(path) && Phantom.insert_line?(key) do
+    if File.exists?(path) && Phantom.insert_line?(user, key) do
       {path, false}
     else
-      write_chunk(id, blob_iv, key)
+      write_chunk(user, id, blob_iv, key)
       {path, true}
     end
   end
@@ -47,12 +47,12 @@ defmodule MaxGallery.Cache do
   ## Returns
   - File path where the decrypted content was written
   """
-  @spec write_chunk(binary(), binary(), String.t()) :: Path.t()
-  def write_chunk(id, blob_iv, key) do
-    file_path = @tmp_path <> "#{Mix.env()}_#{id}"
+  @spec write_chunk(user :: binary(), binary(), binary(), String.t()) :: Path.t()
+  def write_chunk(user, id, blob_iv, key) do
+    file_path = get_path(user, id)
     File.mkdir_p!(@tmp_path)
 
-    {:ok, enc_blob} = Storage.get(id)
+    {:ok, enc_blob} = Storage.get(user, id)
     {:ok, blob} = Encrypter.decrypt({blob_iv, enc_blob}, key)
 
     File.write!(file_path, blob, [:write])
@@ -70,9 +70,10 @@ defmodule MaxGallery.Cache do
   ## Returns
   - `{:ok, decrypted_content}`: Decrypted file content
   """
-  @spec get_content(binary(), binary(), String.t()) :: {:ok, binary()} | {:error, any()}
-  def get_content(id, blob_iv, key) do
-    {path, _created} = consume_cache(id, blob_iv, key)
+  @spec get_content(user :: binary(), binary(), binary(), String.t()) ::
+          {:ok, binary()} | {:error, any()}
+  def get_content(user, id, blob_iv, key) do
+    {path, _created} = consume_cache(user, id, blob_iv, key)
     File.read(path)
   end
 
@@ -98,9 +99,9 @@ defmodule MaxGallery.Cache do
   @doc """
   Removes a file from cache.
   """
-  @spec remove_from_cache(binary()) :: :ok
-  def remove_from_cache(id) do
-    path = @tmp_path <> "#{Mix.env()}_#{id}"
+  @spec remove_cache(binary(), binary()) :: :ok
+  def remove_cache(user, id) do
+    path = get_path(user, id)
 
     if File.exists?(path) do
       File.rm!(path)
@@ -112,25 +113,25 @@ defmodule MaxGallery.Cache do
   @doc """
   Checks if a file exists in cache.
   """
-  @spec cached?(binary()) :: boolean()
-  def cached?(id) do
-    path = @tmp_path <> "#{Mix.env()}_#{id}"
+  @spec cached?(user :: binary(), binary()) :: Path.t()
+  def cached?(user, id) do
+    path = get_path(user, id)
     File.exists?(path)
   end
 
   @doc """
   Gets the cache path for a file.
   """
-  @spec get_cache_path(binary()) :: Path.t()
-  def get_cache_path(id) do
-    @tmp_path <> "#{Mix.env()}_#{id}"
+  @spec get_path(user :: binary(), binary()) :: Path.t()
+  def get_path(user, id) do
+    @tmp_path <> "#{user}_#{Mix.env()}_#{id}"
   end
 
-  @spec get_cache(binary()) :: binary() | :error
-  def get_cache(id) do
-    path = @tmp_path <> "#{Mix.env()}_#{id}"
+  @spec get_cache(user :: binary(), binary()) :: binary() | :error
+  def get_cache(user, id) do
+    path = get_path(user, id)
 
-    if cached?(id) do
+    if cached?(user, id) do
       File.read!(path)
     else
       :error

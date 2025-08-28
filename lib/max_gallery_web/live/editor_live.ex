@@ -5,10 +5,10 @@ defmodule MaxGalleryWeb.Live.EditorLive do
   alias MaxGallery.Extension
   alias MaxGallery.Validate
 
-  def mount(%{"id" => id} = params, %{"auth_key" => key}, socket) do
+  def mount(%{"id" => id} = params, %{"auth_key" => key, "user_auth" => user}, socket) do
     page_id = Map.get(params, "page_id")
 
-    {:ok, lazy_data} = Context.decrypt_one(id, key, lazy: true)
+    {:ok, lazy_data} = Context.decrypt_one(user, id, key, lazy: true)
 
     ext =
       Map.fetch!(lazy_data, :ext)
@@ -22,10 +22,11 @@ defmodule MaxGalleryWeb.Live.EditorLive do
         true
       end
 
-    {:ok, querry} = Context.decrypt_one(id, key, lazy: lazy?)
+    {:ok, querry} = Context.decrypt_one(user, id, key, lazy: lazy?)
 
     socket =
       assign(socket,
+        user: user,
         key: key,
         data: querry,
         id: id,
@@ -60,19 +61,21 @@ defmodule MaxGalleryWeb.Live.EditorLive do
       socket.assigns[:id]
       |> Validate.int!()
 
+    user = socket.assigns[:user]
     key = socket.assigns[:key]
     page_id = socket.assigns[:page_id]
 
-    Context.cypher_update(id, %{name: name, blob: content}, key)
+    Context.cypher_update(user, id, %{name: name, blob: content}, key)
     {:noreply, push_navigate(socket, to: "/user/data/#{page_id}")}
   end
 
   def handle_event("confirm_edit", %{"new_name" => name}, socket) do
     id = socket.assigns[:id]
+    user = socket.assigns[:user]
     key = socket.assigns[:key]
     page_id = socket.assigns[:page_id]
 
-    Context.cypher_update(id, %{name: name}, key)
+    Context.cypher_update(user, id, %{name: name}, key)
     {:noreply, push_navigate(socket, to: "/user/data/#{page_id}")}
   end
 

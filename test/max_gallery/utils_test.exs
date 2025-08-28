@@ -4,8 +4,9 @@ defmodule MaxGallery.UtilsTest do
   alias MaxGallery.Context
   alias MaxGallery.TestHelpers
 
-  setup do
+  setup %{test_user: test_user} do
     {:ok,
+     test_user: test_user,
      msg: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
      tree: [
        %{
@@ -34,13 +35,13 @@ defmodule MaxGallery.UtilsTest do
     assert :ok = File.rm(path)
   end
 
-  test "Check the size", %{msg: msg} do
+  test "Check the size", %{msg: msg, test_user: test_user} do
     path = create_file(msg)
-    {:ok, id} = Context.cypher_insert(path, "key")
+    {:ok, id} = Context.cypher_insert(path, test_user, "key")
 
     # 56 bytes the Lorem Ipsulum fragment
-    assert 56 = Utils.get_size(id)
-    
+    assert 56 = Utils.get_size(test_user, id)
+
     TestHelpers.cleanup_temp_files()
   end
 end

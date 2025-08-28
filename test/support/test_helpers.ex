@@ -1,7 +1,52 @@
 defmodule MaxGallery.TestHelpers do
+  alias MaxGallery.Variables
+  alias MaxGallery.Context
+  @tmp_path Variables.tmp_dir() <> "test/"
+
   @moduledoc """
   Helper functions for tests to create test data quickly without external dependencies.
   """
+
+  @doc """
+  Creates a test user and returns the user ID.
+  """
+  def create_test_user(email \\ nil) do
+    email = email || "test_user_#{System.unique_integer([:positive])}@example.com"
+    name = "Test User"
+    password = "test_password_123"
+
+    case Context.user_insert(name, email, password) do
+      {:ok, user_id} ->
+        user_id
+
+      {:error, "email alredy been taken"} ->
+        # If email already exists, try to get the user
+        case Context.user_get(nil, email: email) do
+          {:ok, user} -> user.id
+          # Try with a new email
+          _ -> create_test_user()
+        end
+    end
+  end
+
+  @doc """
+  Creates a test user in the database and returns the user ID.
+  """
+  def create_real_test_user do
+    email = "test_user_#{System.unique_integer([:positive])}@example.com"
+    name = "Test User"
+    password = "test_password_123"
+
+    Context.user_insert(name, email, password)
+  end
+
+  @doc """
+  Returns a default test user ID for tests.
+  """
+  def default_test_user do
+    # Generate a valid UUID for testing
+    Ecto.UUID.generate()
+  end
 
   @doc """
   Creates test content without creating actual files.
@@ -17,8 +62,8 @@ defmodule MaxGallery.TestHelpers do
   """
   def create_temp_file(content \\ nil) do
     content = content || create_test_content()
-    path = "/tmp/max_gallery/tests/test#{System.unique_integer([:positive])}"
-    File.mkdir_p!("/tmp/max_gallery/tests")
+    path = @tmp_path <> "#{System.unique_integer([:positive])}"
+    File.mkdir_p!(@tmp_path)
     File.write!(path, content, [:write])
     path
   end
@@ -38,6 +83,6 @@ defmodule MaxGallery.TestHelpers do
   Cleanup temporary test files.
   """
   def cleanup_temp_files do
-    File.rm_rf!("/tmp/max_gallery/tests")
+    File.rm_rf!(@tmp_path)
   end
 end

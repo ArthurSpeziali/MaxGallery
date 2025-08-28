@@ -89,22 +89,23 @@ defmodule MaxGallery.Utils do
   - Returns empty list if the group contains no items
   - Does not recursively fetch items from nested subgroups
   """
-  @spec get_group(id :: binary(), opts :: Keyword.t()) :: {:ok, MaxGallery.Context.querry()}
-  def get_group(id, opts \\ []) do
+  @spec get_group(user :: binary(), id :: binary(), opts :: Keyword.t()) ::
+          {:ok, MaxGallery.Context.querry()}
+  def get_group(user, id, opts \\ []) do
     only = Keyword.get(opts, :only)
 
     case only do
       nil ->
-        {:ok, datas} = CypherApi.all_group(id)
-        {:ok, groups} = GroupApi.all_group(id)
+        {:ok, datas} = CypherApi.all_group(user, id)
+        {:ok, groups} = GroupApi.all_group(user, id)
 
         {:ok, groups ++ datas}
 
       :datas ->
-        CypherApi.all_group(id)
+        CypherApi.all_group(user, id)
 
       :groups ->
-        GroupApi.all_group(id)
+        GroupApi.all_group(user, id)
     end
   end
 
@@ -130,12 +131,12 @@ defmodule MaxGallery.Utils do
   - Returns raw size values without unit conversion
   - May raise exceptions if the item doesn't exist or lacks required fields
   """
-  @spec get_size(id :: binary(), opts :: Keyword.t()) :: non_neg_integer()
-  def get_size(id, opts \\ []) do
+  @spec get_size(user :: binary(), id :: binary(), opts :: Keyword.t()) :: non_neg_integer()
+  def get_size(user, id, opts \\ []) do
     group? = Keyword.get(opts, :group)
 
     if group? do
-      {:ok, contents} = get_group(id)
+      {:ok, contents} = get_group(user, id)
 
       if contents == [] do
         0
@@ -148,7 +149,7 @@ defmodule MaxGallery.Utils do
               true
             end
 
-          get_size(item.id, group: subgroup?)
+          get_size(user, item.id, group: subgroup?)
         end)
         |> Enum.sum()
       end
@@ -230,10 +231,10 @@ defmodule MaxGallery.Utils do
   - Maintains original hierarchy and relationships
   - Performance scales with group size and depth when not lazy
   """
-  @spec get_tree(id :: binary(), Keyword.t()) :: MaxGallery.Context.querry()
-  def get_tree(id, key, opts \\ []) do
+  @spec get_tree(user :: binary(), id :: binary(), Keyword.t()) :: MaxGallery.Context.querry()
+  def get_tree(user, id, key, opts \\ []) do
     lazy? = Keyword.get(opts, :lazy)
-    {:ok, contents} = get_group(id)
+    {:ok, contents} = get_group(user, id)
 
     if contents == [] do
       []
@@ -253,13 +254,15 @@ defmodule MaxGallery.Utils do
                 name: name,
                 ext: item.ext,
                 group: item.group_id,
-                file: item.file_id
+                user: item.user_id
               }
             }
           else
+            {:ok, enc_blob} = Storage.get(user, item.id)
+
             {:ok, blob} =
               Encrypter.decrypt(
-                {item.blob_iv, item.blob},
+                {item.blob_iv, enc_blob},
                 key
               )
 
@@ -270,7 +273,7 @@ defmodule MaxGallery.Utils do
                 blob: blob,
                 ext: item.ext,
                 group: item.group_id,
-                file: item.file_id
+                user: item.user_id
               }
             }
           end
@@ -288,7 +291,7 @@ defmodule MaxGallery.Utils do
                 name: name,
                 group: item.group_id
               },
-              get_tree(item.id, key, lazy: lazy?)
+              get_tree(user, item.id, key, lazy: lazy?)
             }
           }
         end
@@ -351,7 +354,7 @@ defmodule MaxGallery.Utils do
             msg_iv: msg_iv,
             ext: data.ext,
             group_id: data.group,
-            file_id: data.file
+            user: data.user
           }
           |> Map.merge(params)
           |> fun.(:data)
@@ -569,8 +572,9 @@ defmodule MaxGallery.Utils do
 
   def binary_chunk(bin, _range), do: [bin]
 
-  @spec create_folder(folder :: Path.t(), key :: binary(), opts :: Keyword.t()) :: :ok
-  def create_folder(folder, key, opts \\ []) do
+  @spec create_folder(user :: binary(), folder :: Path.t(), key :: binary(), opts :: Keyword.t()) ::
+          :ok
+  def create_folder(user, folder, key, opts \\ []) do
     group = Keyword.get(opts, :group)
     agent = Keyword.get(opts, :agent)
 
@@ -598,6 +602,7 @@ defmodule MaxGallery.Utils do
         folder,
         persists,
         agent,
+        user,
         new_group,
         key
       )
@@ -607,6 +612,7 @@ defmodule MaxGallery.Utils do
         folder,
         zip_path,
         agent,
+        user,
         group,
         key
       )
@@ -636,7 +642,7 @@ defmodule MaxGallery.Utils do
     end
   end
 
-  defp recursive_path([head | []], lock, _persists, _agent, group, key) do
+  defp recursive_path([head | []], lock, _persists, _agent, user, group, key) do
     file = File.read!(lock)
 
     {:ok, {name_iv, name}} =
@@ -668,6 +674,7 @@ defmodule MaxGallery.Utils do
 
     {:ok, %{id: id}} =
       CypherApi.insert(%{
+        user_id: user,
         name: name,
         name_iv: name_iv,
         blob_iv: blob_iv,
@@ -679,10 +686,10 @@ defmodule MaxGallery.Utils do
       })
 
     # Store encrypted blob directly in S3 instead of chunks
-    Storage.put(id, blob)
+    Storage.put(user, id, blob)
   end
 
-  defp recursive_path([head | tail], lock, persists, agent, group, key) do
+  defp recursive_path([head | tail], lock, persists, agent, user, group, key) do
     {:ok, {name_iv, name}} =
       Encrypter.encrypt(
         head,
@@ -697,6 +704,7 @@ defmodule MaxGallery.Utils do
 
     {:ok, %{id: id}} =
       GroupApi.insert(%{
+        user_id: user,
         name: name,
         name_iv: name_iv,
         msg: msg,
@@ -723,7 +731,7 @@ defmodule MaxGallery.Utils do
       end)
     end
 
-    recursive_path(tail, lock, new_path, agent, id, key)
+    recursive_path(tail, lock, new_path, agent, user, id, key)
   end
 
   @spec zip_valid?(path :: Path.t()) :: boolean()

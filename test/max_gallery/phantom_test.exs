@@ -2,10 +2,14 @@ defmodule MaxGallery.PhatomTest do
   use MaxGallery.DataCase
   alias MaxGallery.Phantom
   alias MaxGallery.Context
+  alias MaxGallery.Variables
   alias MaxGallery.Core.Cypher.Api
 
-  setup do
+  @tmp_path Variables.tmp_dir() <> "tests/"
+
+  setup %{test_user: test_user} do
     {:ok,
+     test_user: test_user,
      msg: "Hello World!",
      fail_datas: [
        %{
@@ -45,8 +49,8 @@ defmodule MaxGallery.PhatomTest do
   end
 
   defp create_file(msg) do
-    path = "/tmp/max_gallery/tests/test#{Enum.random(0..10_000//1)}"
-    File.mkdir("/tmp/max_gallery/tests")
+    path = @tmp_path <> "#{Enum.random(0..10_000//1)}"
+    File.mkdir_p(@tmp_path)
     File.write(path, msg, [:write])
     path
   end
@@ -59,34 +63,37 @@ defmodule MaxGallery.PhatomTest do
     assert "/54TES50eHQ=" = Phantom.encode_bin(data) |> List.first() |> Map.get(:name)
   end
 
-  test "Test if an cypher encrypted with a valid key is valid", %{msg: msg} do
+  test "Test if an cypher encrypted with a valid key is valid", %{msg: msg, test_user: test_user} do
     path = create_file(msg)
 
-    assert {:ok, id} = Context.cypher_insert(path, "key")
+    assert {:ok, id} = Context.cypher_insert(path, test_user, "key")
     assert {:ok, querry} = Api.get(id)
     assert Phantom.valid?(querry, "key")
   end
 
-  test "Test if an cypher encrypted with a invalid key is valid", %{msg: msg} do
+  test "Test if an cypher encrypted with a invalid key is valid", %{
+    msg: msg,
+    test_user: test_user
+  } do
     path = create_file(msg)
 
-    assert {:ok, id} = Context.cypher_insert(path, "key")
+    assert {:ok, id} = Context.cypher_insert(path, test_user, "key")
     assert {:ok, querry} = Api.get(id)
     refute Phantom.valid?(querry, "key2")
   end
 
-  test "If is valid to insert an line", %{msg: msg} do
+  test "If is valid to insert an line", %{msg: msg, test_user: test_user} do
     path = create_file(msg)
-    assert {:ok, _id} = Context.cypher_insert(path, "key")
+    assert {:ok, _id} = Context.cypher_insert(path, test_user, "key")
 
-    assert Phantom.insert_line?("key")
+    assert Phantom.insert_line?(test_user, "key")
   end
 
-  test "If is not valid to insert an line", %{msg: msg} do
+  test "If is not valid to insert an line", %{msg: msg, test_user: test_user} do
     path = create_file(msg)
-    assert {:ok, _id} = Context.cypher_insert(path, "key")
+    assert {:ok, _id} = Context.cypher_insert(path, test_user, "key")
 
-    refute Phantom.insert_line?("key2")
+    refute Phantom.insert_line?(test_user, "key2")
   end
 
   test "The validate_bin/1 function is working" do

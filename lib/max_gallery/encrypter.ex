@@ -94,6 +94,9 @@ defmodule MaxGallery.Encrypter do
   @spec file(:decrypt, cypher(), path :: Path.t(), key :: String.t()) ::
           {:ok, cypher()} | {:error, atom()}
   def file(:decrypt, {iv, cypher}, path, key) do
+    Path.dirname(path)
+    |> File.mkdir_p()
+
     with {:ok, data} <- {iv, cypher} |> decrypt(key),
          :ok <- File.write(path, data, [:write]) do
       {:ok, data}

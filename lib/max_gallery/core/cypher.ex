@@ -14,13 +14,22 @@ defmodule MaxGallery.Core.Cypher do
     field :length, :integer, default: 0
 
     belongs_to :user, User
-    belongs_to :group, Group
+    belongs_to :group, Group, type: :integer
     # Chunks removed - files now stored directly in S3
     timestamps()
   end
 
   def changeset(model, params) do
-    Ecto.Changeset.cast(model, params, [:name, :name_iv, :blob_iv, :ext, :group_id, :msg, :msg_iv])
+    Ecto.Changeset.cast(model, params, [
+      :name,
+      :name_iv,
+      :blob_iv,
+      :ext,
+      :group_id,
+      :msg,
+      :msg_iv,
+      :user_id
+    ])
   end
 
   ## Return all `Cypher` fields.

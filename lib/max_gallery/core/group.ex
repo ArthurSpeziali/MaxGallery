@@ -11,7 +11,7 @@ defmodule MaxGallery.Core.Group do
     field :msg, :binary
 
     belongs_to :user, User
-    belongs_to :group, __MODULE__
+    belongs_to :group, __MODULE__, type: :integer
 
     ## `group_id` can be inserted in both structs (Cyphers and Groups). that represents your parent folder.
     has_many :cypher, Cypher
@@ -21,7 +21,7 @@ defmodule MaxGallery.Core.Group do
   end
 
   def changeset(model, params) do
-    Ecto.Changeset.cast(model, params, [:name, :name_iv, :group_id, :msg, :msg_iv])
+    Ecto.Changeset.cast(model, params, [:name, :name_iv, :group_id, :msg, :msg_iv, :user_id])
   end
 
   def fields() do

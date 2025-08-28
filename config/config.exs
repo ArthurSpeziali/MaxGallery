@@ -9,7 +9,7 @@ import Config
 
 config :max_gallery,
   ecto_repos: [MaxGallery.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime, binary_id: true]
 
 # Configures the endpoint
 config :max_gallery, MaxGalleryWeb.Endpoint,

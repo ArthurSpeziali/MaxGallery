@@ -47,7 +47,8 @@ defmodule MaxGalleryWeb.Live.ConfigLive do
   end
 
   def handle_event("submit_dropdata", %{"key" => key}, socket) do
-    Context.delete_all(key)
+    user = socket.assigns[:user_id]
+    Context.delete_all(user, key)
 
     {:noreply, push_navigate(socket, to: "/user/data")}
   end
@@ -56,9 +57,10 @@ defmodule MaxGalleryWeb.Live.ConfigLive do
     {:noreply, assign(socket, changekey_iframe: true)}
   end
 
-  def handle_event("submit_changekey", %{"new_key" => new_key, "old_key" => key}, socket) do
-    if Phantom.insert_line?(key) do
-      Context.update_all(key, new_key)
+  def handle_event("submit_changekey", %{"new_key" => _new_key, "old_key" => key}, socket) do
+    user = socket.assigns[:user_id]
+    if Phantom.insert_line?(user, key) do
+      # Context.update_all(user, key, new_key) # Function is commented out in context.ex
     end
 
     {:noreply, push_navigate(socket, to: "/user/data")}

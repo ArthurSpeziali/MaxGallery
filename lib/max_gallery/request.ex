@@ -1,5 +1,6 @@
 defmodule MaxGallery.Request do
   alias MaxGallery.Server.LiveServer
+  alias MaxGallery.Variables
   alias MaxGallery.Extension
   require Logger
 
@@ -116,28 +117,31 @@ defmodule MaxGallery.Request do
     end
   end
 
-  @spec storage_delete_all_encrypted_files() :: {:ok, integer()} | {:error, String.t()}
-  def storage_delete_all_encrypted_files() do
-    prefix = "encrypted_files/"
-    
+  @spec storage_delete_all_encrypted_files(user :: binary()) ::
+          {:ok, integer()} | {:error, String.t()}
+  def storage_delete_all_encrypted_files(user) do
+    prefix = "encrypted_files/#{user}"
+
     with {:ok, auth_data} <- consume_storage_auth(),
          {:ok, files} <- list_all_files_with_prefix(auth_data, prefix) do
       delete_count = length(files)
-      
-      results = 
+
+      results =
         files
         |> Enum.map(fn file_info ->
           case delete_file_version(auth_data, file_info) do
-            {:ok, _} -> :ok
-            {:error, reason} -> 
+            {:ok, _} ->
+              :ok
+
+            {:error, reason} ->
               Logger.warning("Failed to delete file #{file_info["fileName"]}: #{reason}")
               :error
           end
         end)
-      
+
       failed_count = Enum.count(results, &(&1 == :error))
       success_count = delete_count - failed_count
-      
+
       if failed_count == 0 do
         Logger.info("Successfully deleted #{success_count} files from encrypted_files folder")
         {:ok, success_count}
@@ -150,15 +154,15 @@ defmodule MaxGallery.Request do
     end
   end
 
-  @spec storage_list_all_encrypted_files() :: {:ok, list(map())} | {:error, String.t()}
-  def storage_list_all_encrypted_files() do
-    prefix = "encrypted_files/"
-    
+  @spec storage_list_all_encrypted_files(user :: binary()) ::
+          {:ok, list(map())} | {:error, String.t()}
+  def storage_list_all_encrypted_files(user) do
+    prefix = "encrypted_files/#{user}"
+
     with {:ok, auth_data} <- consume_storage_auth(),
          {:ok, files} <- list_all_files_with_prefix(auth_data, prefix) do
-      
       # Extract relevant metadata from each file
-      file_metadata = 
+      file_metadata =
         files
         |> Enum.map(fn file_info ->
           %{
@@ -171,7 +175,7 @@ defmodule MaxGallery.Request do
             file_info: file_info["fileInfo"] || %{}
           }
         end)
-      
+
       Logger.info("Listed #{length(file_metadata)} files from encrypted_files folder")
       {:ok, file_metadata}
     else
@@ -391,11 +395,11 @@ defmodule MaxGallery.Request do
 
     body_params = %{
       "bucketId" => bucket_id,
-      "maxFileCount" => 10000,
+      "maxFileCount" => Variables.max_objects(),
       "prefix" => prefix
     }
 
-    body_params = 
+    body_params =
       if start_file_name do
         Map.put(body_params, "startFileName", start_file_name)
       else
@@ -409,7 +413,7 @@ defmodule MaxGallery.Request do
         case Jason.decode(response_body) do
           {:ok, %{"files" => files, "nextFileName" => next_file_name}} ->
             new_acc = acc ++ files
-            
+
             if next_file_name && length(files) > 0 do
               list_files_recursive(auth_data, bucket_id, prefix, new_acc, next_file_name)
             else

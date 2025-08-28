@@ -25,9 +25,9 @@ defmodule MaxGallery.Storage.Mock do
   end
 
   @impl true
-  def put(cypher_id, blob) do
+  def put(user, id, blob) do
     ensure_started()
-    key = generate_key(cypher_id)
+    key = generate_key(user, id)
     Agent.update(__MODULE__, fn state ->
       Map.put(state, key, blob)
     end)
@@ -35,9 +35,9 @@ defmodule MaxGallery.Storage.Mock do
   end
 
   @impl true
-  def get(cypher_id) do
+  def get(user, id) do
     ensure_started()
-    key = generate_key(cypher_id)
+    key = generate_key(user, id)
     case Agent.get(__MODULE__, fn state -> Map.get(state, key) end) do
       nil -> {:error, "File not found"}
       blob -> {:ok, blob}
@@ -45,9 +45,9 @@ defmodule MaxGallery.Storage.Mock do
   end
 
   @impl true
-  def del(cypher_id) do
+  def del(user, id) do
     ensure_started()
-    key = generate_key(cypher_id)
+    key = generate_key(user, id)
     Agent.update(__MODULE__, fn state ->
       Map.delete(state, key)
     end)
@@ -55,25 +55,32 @@ defmodule MaxGallery.Storage.Mock do
   end
 
   @impl true
-  def del_all do
+  def del_all(user) do
     ensure_started()
-    count = Agent.get(__MODULE__, fn state -> map_size(state) end)
-    Agent.update(__MODULE__, fn _state -> %{} end)
-    {:ok, count}
+    prefix = "encrypted_files/#{user}/"
+    deleted_count = Agent.get_and_update(__MODULE__, fn state ->
+      {to_delete, to_keep} = Enum.split_with(state, fn {key, _blob} ->
+        String.starts_with?(key, prefix)
+      end)
+      {length(to_delete), Map.new(to_keep)}
+    end)
+    {:ok, deleted_count}
   end
 
   @impl true
-  def exists?(cypher_id) do
+  def exists?(user, id) do
     ensure_started()
-    key = generate_key(cypher_id)
+    key = generate_key(user, id)
     Agent.get(__MODULE__, fn state -> Map.has_key?(state, key) end)
   end
 
   @impl true
-  def list do
+  def list(user) do
     ensure_started()
+    prefix = "encrypted_files/#{user}/"
     files = Agent.get(__MODULE__, fn state ->
       state
+      |> Enum.filter(fn {key, _blob} -> String.starts_with?(key, prefix) end)
       |> Enum.map(fn {key, blob} ->
         %{
           file_name: key,
@@ -95,11 +102,11 @@ defmodule MaxGallery.Storage.Mock do
     end
   end
 
-  defp generate_key(cypher_id) do
-    if cypher_id do
-      "encrypted_files/#{cypher_id}"
+  defp generate_key(user, id) do
+    if id do
+      "encrypted_files/#{user}/#{id}"
     else
-      "encrypted_files"
+      "encrypted_files/#{user}"
     end
   end
 end

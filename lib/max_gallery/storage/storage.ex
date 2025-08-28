@@ -1,12 +1,12 @@
 defmodule MaxGallery.Storage do
   @behaviour MaxGallery.Storage.Behaviour
-  
+
   alias MaxGallery.Request
   alias MaxGallery.Variables
   require Logger
 
-  def put(cypher_id, blob) do
-    key = generate(cypher_id)
+  def put(user, id, blob) do
+    key = generate(user, id)
 
     case Request.storage_put(key, blob) do
       {:ok, _key} ->
@@ -17,8 +17,8 @@ defmodule MaxGallery.Storage do
     end
   end
 
-  def get(cypher_id) do
-    key = generate(cypher_id)
+  def get(user, id) do
+    key = generate(user, id)
 
     case Request.storage_get(key) do
       {:ok, blob} ->
@@ -29,8 +29,8 @@ defmodule MaxGallery.Storage do
     end
   end
 
-  def del(cypher_id \\ nil) do
-    key = generate(cypher_id)
+  def del(user, id) do
+    key = generate(user, id)
 
     case Request.storage_delete(key) do
       :ok ->
@@ -41,8 +41,8 @@ defmodule MaxGallery.Storage do
     end
   end
 
-  def exists?(cypher_id) do
-    key = generate(cypher_id)
+  def exists?(user, id) do
+    key = generate(user, id)
     Request.storage_exists?(key)
   end
 
@@ -51,15 +51,21 @@ defmodule MaxGallery.Storage do
   Returns {:ok, count} where count is the number of successfully deleted files,
   or {:error, reason} if the operation fails.
   """
-  @spec del_all() :: {:ok, integer()} | {:error, String.t()}
-  def del_all() do
-    case Request.storage_delete_all_encrypted_files() do
+  @spec del_all(user :: binary()) :: {:ok, integer()} | {:error, String.t()}
+  def del_all(user) do
+    case Request.storage_delete_all_encrypted_files(user) do
       {:ok, count} ->
-        Logger.info("Storage.delete_all_encrypted_files: Successfully deleted #{count} files")
+        Logger.info(
+          "Storage.delete_all_encrypted_files: Successfully deleted #{count} files from #{user} user"
+        )
+
         {:ok, count}
 
       {:error, reason} ->
-        Logger.error("Storage.delete_all_encrypted_files: Failed with reason: #{reason}")
+        Logger.error(
+          "Storage.delete_all_encrypted_files: Failed with reason: #{reason} from #{user} user"
+        )
+
         {:error, reason}
     end
   end
@@ -78,9 +84,9 @@ defmodule MaxGallery.Storage do
   - content_sha1: SHA1 hash of the file content
   - file_info: Additional metadata map
   """
-  @spec list() :: {:ok, list(map())} | {:error, String.t()}
-  def list() do
-    case Request.storage_list_all_encrypted_files() do
+  @spec list(user :: binary()) :: {:ok, list(map())} | {:error, String.t()}
+  def list(user) do
+    case Request.storage_list_all_encrypted_files(user) do
       {:ok, files} ->
         {:ok, files}
 
@@ -89,11 +95,11 @@ defmodule MaxGallery.Storage do
     end
   end
 
-  defp generate(cypher_id) do
-    if cypher_id do
-      "#{Variables.gen_clound()}/#{cypher_id}"
+  defp generate(user, id) do
+    if id do
+      "#{Variables.gen_clound()}/#{user}/#{id}"
     else
-      "#{Variables.gen_clound()}"
+      "#{Variables.gen_clound()}/#{user}"
     end
   end
 end

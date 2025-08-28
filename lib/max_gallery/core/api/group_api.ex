@@ -1,10 +1,21 @@
 defmodule MaxGallery.Core.Group.Api do
-  import Ecto.Query, only: [from: 2]
+  import Ecto.Query
   alias MaxGallery.Core.Group
   alias MaxGallery.Repo
 
+  def get_own(id) do
+    from(Group)
+    |> where(id: ^id)
+    |> select([g], g.user_id)
+    |> Repo.one()
+    |> case do
+      nil -> {:error, "not found"}
+      querry -> {:ok, querry}
+    end
+  end
+
   ## Get all groups who are children. It's not recursive.
-  def all_group(group_id) do
+  def all_group(user, group_id) do
     querry =
       case group_id do
         nil ->
@@ -13,6 +24,7 @@ defmodule MaxGallery.Core.Group.Api do
         id ->
           from(g in Group, where: g.group_id == ^id)
       end
+      |> where(user_id: ^user)
       |> Repo.all()
 
     case querry do
@@ -21,8 +33,10 @@ defmodule MaxGallery.Core.Group.Api do
     end
   end
 
-  def all() do
-    Repo.all(Group)
+  def all(user) do
+    from(Group)
+    |> where(user_id: ^user)
+    |> Repo.all(Group)
     |> case do
       group when is_list(group) -> {:ok, group}
       error -> error
@@ -68,7 +82,9 @@ defmodule MaxGallery.Core.Group.Api do
     end
   end
 
-  def delete_all() do
-    Repo.delete_all(Group)
+  def delete_all(user) do
+    from(Group)
+    |> where(user_id: ^user)
+    |> Repo.delete_all()
   end
 end

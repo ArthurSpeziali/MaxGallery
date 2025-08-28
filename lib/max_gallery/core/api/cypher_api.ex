@@ -3,6 +3,17 @@ defmodule MaxGallery.Core.Cypher.Api do
   alias MaxGallery.Core.Cypher
   alias MaxGallery.Repo
 
+  def get_own(id) do
+    from(Cypher)
+    |> where(id: ^id)
+    |> select([c], c.user_id)
+    |> Repo.one()
+    |> case do
+      nil -> {:error, "not found"}
+      querry -> {:ok, querry}
+    end
+  end
+
   def get_length(id) do
     from(Cypher)
     |> where(id: ^id)
@@ -15,7 +26,7 @@ defmodule MaxGallery.Core.Cypher.Api do
   end
 
   ## Get all datas who are children. It's not recursive.
-  def all_group(group_id) do
+  def all_group(user, group_id) do
     querry =
       case group_id do
         nil ->
@@ -24,6 +35,7 @@ defmodule MaxGallery.Core.Cypher.Api do
         id ->
           from(d in Cypher, where: d.group_id == ^id)
       end
+      |> where(user_id: ^user)
       |> Repo.all()
 
     case querry do
@@ -32,18 +44,21 @@ defmodule MaxGallery.Core.Cypher.Api do
     end
   end
 
-  def all() do
-    Repo.all(Cypher)
+  def all(user) do
+    from(Cypher)
+    |> where(user_id: ^user)
+    |> Repo.all()
     |> case do
       data when is_list(data) -> {:ok, data}
       error -> error
     end
   end
 
-  def first() do
+  def first_one(user) do
     fields = Cypher.fields()
 
     from(d in Cypher, select: map(d, ^fields))
+    |> where(user_id: ^user)
     |> first()
     |> Repo.one()
     |> case do
@@ -91,7 +106,9 @@ defmodule MaxGallery.Core.Cypher.Api do
     end
   end
 
-  def delete_all() do
-    Repo.delete_all(Cypher)
+  def delete_all(user) do
+    from(Cypher)
+    |> where(user_id: ^user)
+    |> Repo.delete_all()
   end
 end

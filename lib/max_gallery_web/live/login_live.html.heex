@@ -66,16 +66,16 @@
         </p>
 
         <div class="flex justify-between items-end mt-auto">
+          <button type="submit" class="rounded-lg shadow-md bg-blue-700 text-white py-2 px-4">
+            Send
+          </button>
+
           <a
             href={"/login?action=#{@counter}"}
             class="text-sm bg-transparent rounded-lg border border-blue-600 shadow-md text-blue-600 py-2 md:px-4 px-2"
           >
             {@counter |> String.capitalize()} instead
           </a>
-
-          <button type="submit" class="rounded-lg shadow-md bg-blue-700 text-white py-2 px-4">
-            Send
-          </button>
         </div>
       </form>
     </div>

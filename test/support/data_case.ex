@@ -31,7 +31,11 @@ defmodule MaxGallery.DataCase do
     MaxGallery.DataCase.setup_sandbox(tags)
     # Clear storage mock between tests
     MaxGallery.Storage.Mock.clear()
-    :ok
+    
+    # Create a test user for each test
+    test_user = MaxGallery.TestHelpers.create_real_test_user()
+    
+    {:ok, test_user: test_user}
   end
 
   @doc """

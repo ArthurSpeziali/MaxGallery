@@ -22,6 +22,8 @@ defmodule MaxGallery.EncrypterTest do
     assert {:ok, {iv, cypher}} = Encrypter.file(:encrypt, path, "key")
     assert {:ok, ^msg} = Encrypter.file(:decrypt, {iv, cypher}, path <> "_dec", "key")
     
+    # Clean up the decrypted file
+    File.rm(path <> "_dec")
     TestHelpers.cleanup_temp_files()
   end
 end

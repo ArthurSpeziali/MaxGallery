@@ -6,13 +6,12 @@ defmodule MaxGallery.Context do
   alias MaxGallery.Core.Group
   alias MaxGallery.Core.Group.Api, as: GroupApi
   alias MaxGallery.Core.User.Api, as: UserApi
-  # alias MaxGallery.Core.User
   alias MaxGallery.Encrypter
   alias MaxGallery.Phantom
-  alias MaxGallery.Repo
   alias MaxGallery.Utils
-  alias MaxGallery.Validate
   alias MaxGallery.Variables
+  alias MaxGallery.Validate
+  alias MaxGallery.Repo
   @type querry :: [%Cypher{} | %Group{} | map()]
   @type response :: {:ok, querry()} | {:error, String.t()}
 
@@ -100,32 +99,37 @@ defmodule MaxGallery.Context do
         |> Encrypter.encrypt(key)
       end
 
-    with true <- Phantom.insert_line?(key),
-         {:ok, {blob_iv, blob}} <- Encrypter.file(:encrypt, path, key),
-         {:ok, {msg_iv, msg}} <- Encrypter.encrypt(Phantom.get_text(), key),
-         {:ok, _querry} <- UserApi.exists(user),
-         {:ok, querry} <-
-           CypherApi.insert(%{
-             user_id: user,
-             name_iv: name_iv,
-             name: name,
-             blob_iv: blob_iv,
-             ext: ext,
-             msg: msg,
-             msg_iv: msg_iv,
-             length: byte_size(blob),
-             group_id: group
-           }),
-         {:ok, _storage_key} <- Storage.put(querry.id, blob) do
-      {:ok, querry.id}
-    else
-      false -> {:error, ""}
-      error -> error
-    end
+    Repo.transaction(fn ->
+      with true <- Phantom.insert_line?(user, key),
+           {:ok, {blob_iv, blob}} <- Encrypter.file(:encrypt, path, key),
+           {:ok, {msg_iv, msg}} <- Encrypter.encrypt(Phantom.get_text(), key),
+           {:ok, _querry} <- UserApi.exists(user),
+           {:ok, querry} <-
+             CypherApi.insert(%{
+               user_id: user,
+               name_iv: name_iv,
+               name: name,
+               blob_iv: blob_iv,
+               ext: ext,
+               msg: msg,
+               msg_iv: msg_iv,
+               length: byte_size(blob),
+               group_id: group
+             }),
+           {:ok, _storage_key} <- Storage.put(user, querry.id, blob) do
+        querry.id
+      else
+        false ->
+          Repo.rollback("invalid key/user")
+
+        {:error, reason} ->
+          Repo.rollback(reason)
+      end
+    end)
   end
 
   ## Private recursive function to return the already encrypted data of each date/group to be stored in the database.
-  defp send_package(%{ext: _ext} = item, lazy?, memory?, key) do
+  defp send_package(%{ext: _ext} = item, user, lazy?, memory?, key) do
     {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
 
     if lazy? do
@@ -138,7 +142,7 @@ defmodule MaxGallery.Context do
     else
       if memory? do
         # Return blob in memory using new cache system
-        {:ok, blob} = Cache.get_content(item.id, item.blob_iv, key)
+        {:ok, blob} = Cache.get_content(user, item.id, item.blob_iv, key)
 
         %{
           name: name,
@@ -149,7 +153,7 @@ defmodule MaxGallery.Context do
         }
       else
         # Return file path using cache system
-        {path, _downloaded} = Cache.consume_cache(item.id, item.blob_iv, key)
+        {path, _downloaded} = Cache.consume_cache(user, item.id, item.blob_iv, key)
 
         %{
           name: name,
@@ -163,7 +167,7 @@ defmodule MaxGallery.Context do
     |> Map.update!(:name, fn item -> Phantom.validate_bin(item) end)
   end
 
-  defp send_package(item, _lazy, _memory, key) do
+  defp send_package(item, _user, _lazy, _memory, key) do
     {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
     %{name: name, id: item.id, group: item.group_id} |> Phantom.encode_bin()
   end
@@ -194,13 +198,14 @@ defmodule MaxGallery.Context do
   def decrypt_all(user, key, opts \\ []) do
     lazy? = Keyword.get(opts, :lazy)
     only = Keyword.get(opts, :only)
+    memory? = !Keyword.get(opts, :disk)
     group_id = Keyword.get(opts, :group)
 
-    {:ok, contents} = Utils.get_group(group_id, only: only)
+    {:ok, contents} = Utils.get_group(user, group_id, only: only)
 
     querry =
       for item <- contents do
-        send_package(item, lazy?, true, key)
+        send_package(item, user, lazy?, memory?, key)
       end
 
     {:ok, querry}
@@ -228,17 +233,24 @@ defmodule MaxGallery.Context do
     - `{:error, "invalid key"}`: If the key is not authorized to delete the file.
     - `{:error, reason}`: If any operation (get, delete, etc.) fails.
   """
-  @spec cypher_delete(id :: binary(), key :: String.t()) :: response()
-  def cypher_delete(id, key) do
-    with {:ok, querry} <- CypherApi.get(id),
-         true <- Phantom.valid?(querry, key),
-         {:ok, _querry} <- CypherApi.delete(id),
-         :ok <- Storage.del(id) do
-      {:ok, querry}
-    else
-      false -> {:error, "invalid key"}
-      error -> error
-    end
+  @spec cypher_delete(user :: binary(), id :: binary(), key :: String.t()) :: response()
+  def cypher_delete(user, id, key) do
+    Repo.transaction(fn ->
+      with {:ok, querry} <- CypherApi.get(id),
+           {:ok, get_user} <- CypherApi.get_own(id),
+           true <- get_user == user,
+           true <- Phantom.valid?(querry, key),
+           {:ok, _querry} <- CypherApi.delete(id),
+           :ok <- Storage.del(user, id) do
+        querry
+      else
+        false ->
+          Repo.rollback("invalid key/user")
+
+        {:error, reason} ->
+          Repo.rollback(reason)
+      end
+    end)
   end
 
   @doc """
@@ -267,7 +279,7 @@ defmodule MaxGallery.Context do
     - `{:error, reason}`: If any decryption or retrieval fails.
   """
   @spec decrypt_one(id :: binary(), key :: String.t(), opts :: Keyword.t()) :: response()
-  def decrypt_one(id, key, opts \\ []) do
+  def decrypt_one(user, id, key, opts \\ []) do
     lazy? = Keyword.get(opts, :lazy)
     group? = Keyword.get(opts, :group)
 
@@ -293,7 +305,7 @@ defmodule MaxGallery.Context do
 
       {nil, nil} ->
         # Full file: download and decrypt using cache system
-        {:ok, blob} = Cache.get_content(querry.id, querry.blob_iv, key)
+        {:ok, blob} = Cache.get_content(user, querry.id, querry.blob_iv, key)
 
         {:ok,
          %{
@@ -348,8 +360,8 @@ defmodule MaxGallery.Context do
     - `{:ok, updated}`: On success, returns the updated file struct.
     - `{:error, "invalid key"}`: If the provided encryption key is not valid for this file.
   """
-  @spec cypher_update(id :: binary(), map(), key :: String.t()) :: response()
-  def cypher_update(id, %{name: new_name, blob: new_blob}, key) do
+  @spec cypher_update(user :: binary(), id :: binary(), map(), key :: String.t()) :: response()
+  def cypher_update(user, id, %{name: new_name, blob: new_blob}, key) do
     ext = Path.extname(new_name)
     new_name = Path.basename(new_name, ext)
 
@@ -358,19 +370,25 @@ defmodule MaxGallery.Context do
 
     {:ok, querry} = CypherApi.get(id)
 
-    if Phantom.valid?(querry, key) do
-      params = %{name_iv: name_iv, name: name, blob_iv: blob_iv, ext: ext}
+    Repo.transaction(fn ->
+      if Phantom.valid?(querry, key) do
+        params = %{name_iv: name_iv, name: name, blob_iv: blob_iv, ext: ext}
 
-      Storage.put(id, blob)
-      Cache.remove_from_cache(id)
+        case Storage.put(user, id, blob) do
+          {:ok, _} ->
+            Cache.remove_cache(user, id)
+            CypherApi.update(id, params)
 
-      CypherApi.update(id, params)
-    else
-      {:error, "invalid key"}
-    end
+          {:error, reason} ->
+            Repo.rollback(reason)
+        end
+      else
+        {:error, "invalid key/user"}
+      end
+    end)
   end
 
-  def cypher_update(id, %{name: new_name}, key) do
+  def cypher_update(user, id, %{name: new_name}, key) do
     ext = Path.extname(new_name)
     new_name = Path.basename(new_name, ext)
 
@@ -379,20 +397,26 @@ defmodule MaxGallery.Context do
     params = %{name_iv: name_iv, name: name, ext: ext}
     {:ok, querry} = CypherApi.get(id)
 
-    if Phantom.valid?(querry, key) do
+    with {:ok, owner} <- CypherApi.get_own(id),
+         true <- owner == user,
+         true <- Phantom.valid?(querry, key) do
       CypherApi.update(id, params)
     else
-      {:error, "invalid key"}
+      false -> {:error, "invalid key/user"}
+      error -> error
     end
   end
 
-  def cypher_update(id, %{group_id: new_group}, key) do
+  def cypher_update(user, id, %{group_id: new_group}, key) do
     {:ok, querry} = CypherApi.get(id)
 
-    if Phantom.valid?(querry, key) do
+    with {:ok, owner} <- CypherApi.get_own(id),
+         true <- owner == user,
+         true <- Phantom.valid?(querry, key) do
       CypherApi.update(id, %{group_id: new_group})
     else
-      {:error, "invalid key"}
+      false -> {:error, "invalid key/user"}
+      error -> error
     end
   end
 
@@ -418,19 +442,23 @@ defmodule MaxGallery.Context do
     - `{:ok, id}`: The binary ID of the newly inserted group on success.
     - `nil`: If the key validation fails (`Phantom.insert_line?/1` returns `false`).
   """
-  @spec group_insert(group_name :: String.t(), key :: String.t(), opts :: Keyword.t()) ::
+  @spec group_insert(
+          group_name :: String.t(),
+          user :: binary,
+          key :: String.t(),
+          opts :: Keyword.t()
+        ) ::
           response()
-  def group_insert(group_name, key, opts \\ []) do
-    group =
-      Keyword.get(opts, :group)
-      |> Validate.int!()
+  def group_insert(group_name, user, key, opts \\ []) do
+    group = Keyword.get(opts, :group)
 
-    if Phantom.insert_line?(key) do
+    if Phantom.insert_line?(user, key) do
       {:ok, {name_iv, name}} = Encrypter.encrypt(group_name, key)
       {:ok, {msg_iv, msg}} = Phantom.get_text() |> Encrypter.encrypt(key)
 
       {:ok, querry} =
         GroupApi.insert(%{
+          user_id: user,
           name_iv: name_iv,
           name: name,
           msg_iv: msg_iv,
@@ -467,25 +495,31 @@ defmodule MaxGallery.Context do
     - `{:ok, updated}`: On successful update.
     - `{:error, "invalid key"}`: If the encryption key is invalid for the group.
   """
-  @spec group_update(id :: binary(), map(), key :: String.t()) :: response()
-  def group_update(id, %{name: new_name}, key) do
+  @spec group_update(user :: binary(), id :: binary(), map(), key :: String.t()) :: response()
+  def group_update(user, id, %{name: new_name}, key) do
     {:ok, querry} = GroupApi.get(id)
     {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
 
-    if Phantom.valid?(querry, key) do
+    with {:ok, owner} <- GroupApi.get_own(id),
+         true <- owner == user,
+         true <- Phantom.valid?(querry, key) do
       GroupApi.update(id, %{name: name, name_iv: name_iv})
     else
-      {:error, "invalid key"}
+      false -> {:error, "invalid key/user"}
+      error -> error
     end
   end
 
-  def group_update(id, %{group_id: group_id}, key) do
+  def group_update(user, id, %{group_id: group_id}, key) do
     {:ok, querry} = GroupApi.get(id)
 
-    if Phantom.valid?(querry, key) do
+    with {:ok, owner} <- GroupApi.get_own(id),
+         true <- owner == user,
+         true <- Phantom.valid?(querry, key) do
       GroupApi.update(id, %{group_id: group_id})
     else
-      {:error, "invalid key"}
+      false -> {:error, "invalid key/user"}
+      error -> error
     end
   end
 
@@ -518,11 +552,11 @@ defmodule MaxGallery.Context do
   Requires a valid encryption key that matches the group's encryption scheme.
   The operation is irreversible and will permanently remove all nested content.
   """
-  @spec group_delete(id :: binary(), key :: String.t()) :: response()
-  def group_delete(id, key) do
+  @spec group_delete(user :: binary(), id :: binary(), key :: String.t()) :: response()
+  def group_delete(user, id, key) do
     with {:ok, querry} <- GroupApi.get(id),
          true <- Phantom.valid?(querry, key),
-         {:ok, _boolean} <- delete_cascade(id, key) do
+         {:ok, _boolean} <- delete_cascade(user, id, key) do
       ## Calls the private function `delete_cascade/2` to recursively delete all content within a group.
 
       {:ok, querry}
@@ -532,18 +566,18 @@ defmodule MaxGallery.Context do
     end
   end
 
-  defp repeat_cascate(group_id, key) do
-    {:ok, groups} = GroupApi.all_group(group_id)
-    {:ok, datas} = CypherApi.all_group(group_id)
+  defp repeat_cascate(user, group_id, key) do
+    {:ok, groups} = GroupApi.all_group(user, group_id)
+    {:ok, datas} = CypherApi.all_group(user, group_id)
 
     contents = groups ++ datas
 
     if contents != [] do
       Enum.each(contents, fn item ->
         if Map.get(item, :ext) do
-          cypher_delete(item.id, key)
+          cypher_delete(user, item.id, key)
         else
-          repeat_cascate(item.id, key)
+          repeat_cascate(user, item.id, key)
         end
       end)
     end
@@ -551,22 +585,24 @@ defmodule MaxGallery.Context do
     GroupApi.delete(group_id)
   end
 
-  defp delete_cascade(group_id, key) do
+  defp delete_cascade(user, group_id, key) do
     with {:ok, querry} <- GroupApi.get(group_id),
+         {:ok, get_user} <- GroupApi.get_own(group_id),
+         true <- get_user == user,
          true <- Phantom.valid?(querry, key),
-         {:ok, groups} <- GroupApi.all_group(group_id),
-         {:ok, datas} <- CypherApi.all_group(group_id) do
+         {:ok, groups} <- GroupApi.all_group(user, group_id),
+         {:ok, datas} <- CypherApi.all_group(user, group_id) do
       contents = groups ++ datas
 
       if contents == [] do
         GroupApi.delete(group_id)
         {:ok, false}
       else
-        repeat_cascate(group_id, key)
+        repeat_cascate(user, group_id, key)
         {:ok, true}
       end
     else
-      false -> {:error, "invalid key"}
+      false -> {:error, "invalid key/user"}
       error -> error
     end
   end
@@ -611,8 +647,9 @@ defmodule MaxGallery.Context do
   - Preserves no direct references to the original's encrypted data
   - Requires valid encryption key for both read and write operations
   """
-  @spec cypher_duplicate(id :: binary(), params :: map(), key :: String.t()) :: response()
-  def cypher_duplicate(id, params, key) do
+  @spec cypher_duplicate(user :: binary(), id :: binary(), params :: map(), key :: String.t()) ::
+          response()
+  def cypher_duplicate(user, id, params, key) do
     {:ok, querry} = CypherApi.get(id)
 
     original =
@@ -621,6 +658,7 @@ defmodule MaxGallery.Context do
         :__meta__,
         :id,
         :group,
+        :user,
         :inserted_at,
         :updated_at
       ])
@@ -650,16 +688,22 @@ defmodule MaxGallery.Context do
         %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
       )
 
-    {:ok, enc_blob} = Storage.get(querry.id)
+    Repo.transaction(fn ->
+      case Storage.get(user, querry.id) do
+        {:ok, enc_blob} ->
+          with true <- Phantom.insert_line?(user, key),
+               {:ok, querry} <- CypherApi.insert(duplicate),
+               {:ok, _storage_key} <- Storage.put(user, querry.id, enc_blob) do
+            querry.id
+          else
+            false -> {:error, "invalid key"}
+            error -> error
+          end
 
-    with true <- Phantom.insert_line?(key),
-         {:ok, querry} <- CypherApi.insert(duplicate),
-         {:ok, _storage_key} <- Storage.put(querry.id, enc_blob) do
-      {:ok, querry.id}
-    else
-      false -> {:error, "invalid key"}
-      error -> error
-    end
+        {:error, reason} ->
+          Repo.rollback(reason)
+      end
+    end)
   end
 
   @doc """
@@ -685,8 +729,9 @@ defmodule MaxGallery.Context do
     - `{:ok, new_id}`: ID of the new group root
     - `{:error, "invalid key"}`: If key validation fails
   """
-  @spec group_duplicate(id :: binary(), params :: map(), key :: String.t()) :: response()
-  def group_duplicate(id, params, key) do
+  @spec group_duplicate(user :: binary(), id :: binary(), params :: map(), key :: String.t()) ::
+          response()
+  def group_duplicate(user, id, params, key) do
     {:ok, querry} = GroupApi.get(id)
 
     original =
@@ -696,6 +741,7 @@ defmodule MaxGallery.Context do
         :id,
         :group,
         :cypher,
+        :user,
         :subgroup,
         :inserted_at,
         :updated_at
@@ -725,7 +771,9 @@ defmodule MaxGallery.Context do
         %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
       )
 
-    if Phantom.insert_line?(key) do
+    with true <- Phantom.insert_line?(user, key),
+         {:ok, owner} <- GroupApi.get_own(id),
+         true <- owner == user do
       {:ok, dup_querry} = GroupApi.insert(duplicate)
 
       duplicate_content = fn
@@ -737,7 +785,7 @@ defmodule MaxGallery.Context do
           %{group_id: subquerry.id}
       end
 
-      Utils.get_tree(querry.id, key)
+      Utils.get_tree(user, querry.id, key)
       |> Utils.mount_tree(
         %{group_id: dup_querry.id},
         duplicate_content,
@@ -746,7 +794,8 @@ defmodule MaxGallery.Context do
 
       {:ok, dup_querry.id}
     else
-      {:error, "invalid key"}
+      false -> {:error, "invalid key/user"}
+      error -> error
     end
   end
 
@@ -776,9 +825,9 @@ defmodule MaxGallery.Context do
     - ZIP binary data on success
     - Original error tuples on failure
   """
-  @spec zip_content(id :: binary(), key :: String.t(), opts :: Keyword.t()) ::
+  @spec zip_content(user :: binary(), id :: binary(), key :: String.t(), opts :: Keyword.t()) ::
           {:ok, Path.t()} | {:error, String.t()}
-  def zip_content(id, key, opts \\ []) do
+  def zip_content(user, id, key, opts \\ []) do
     group? = Keyword.get(opts, :group)
 
     ## Since `nil` can’t be passed as a valid value in a .heex (only strings), this conversion is necessary.
@@ -802,7 +851,7 @@ defmodule MaxGallery.Context do
           {:ok, "Main"}
         end
 
-      tree = Utils.get_tree(id, key)
+      tree = Utils.get_tree(user, id, key)
       Utils.zip_folder(tree, name)
     else
       case CypherApi.get(id) do
@@ -813,7 +862,7 @@ defmodule MaxGallery.Context do
               key
             )
 
-          {:ok, enc_blob} = Storage.get(querry.id)
+          {:ok, enc_blob} = Storage.get(user, querry.id)
 
           {:ok, blob} =
             Encrypter.decrypt(
@@ -853,12 +902,13 @@ defmodule MaxGallery.Context do
   - Requires valid database key
   - Should be restricted to maintenance/emergency use
   """
-  @spec delete_all(key :: String.t()) :: {:ok, non_neg_integer()} | {:error, String.t()}
-  def delete_all(key) do
-    with true <- Phantom.insert_line?(key),
-         {count_group, nil} <- GroupApi.delete_all(),
-         {count_data, nil} <- CypherApi.delete_all(),
-         _ <- Storage.del_all() do
+  @spec delete_all(user :: binary(), key :: String.t()) ::
+          {:ok, non_neg_integer()} | {:error, String.t()}
+  def delete_all(user, key) do
+    with true <- Phantom.insert_line?(user, key),
+         {count_group, nil} <- GroupApi.delete_all(user),
+         {count_data, nil} <- CypherApi.delete_all(user),
+         _ <- Storage.del_all(user) do
       {:ok, count_group + count_data}
     else
       error -> error
@@ -893,101 +943,106 @@ defmodule MaxGallery.Context do
   - Generates fresh IVs for all encrypted fields
   - Does NOT maintain ability to decrypt with old key
   """
-  @spec update_all(key :: String.t(), new_key :: String.t()) ::
-          {:ok, non_neg_integer()} | {:error, String.t()}
-  def update_all(key, new_key) do
-    ## This function is poor, if the user cancel the operation in the process, the entire database will be corrupted.
-    ## Should i refactor that?
-    if Phantom.insert_line?(key) do
-      Repo.transaction(fn ->
-        try do
-          {:ok, group_list} = GroupApi.all()
 
-          Enum.each(group_list, fn group ->
-            {:ok, old_name} =
-              Encrypter.decrypt(
-                {group.name_iv, group.name},
-                key
-              )
+  # @spec update_all(key :: String.t(), new_key :: String.t()) ::
+  #         {:ok, non_neg_integer()} | {:error, String.t()}
+  # def update_all(key, new_key) do
+  #   ## This function is poor, if the user cancel the operation in the process, the entire database will be corrupted.
+  #   ## Should i refactor that?
+  #   if Phantom.insert_line?(key) do
+  #     Repo.transaction(fn ->
+  #       try do
+  #         {:ok, group_list} = GroupApi.all()
 
-            {:ok, {name_iv, name}} =
-              Encrypter.encrypt(
-                old_name,
-                new_key
-              )
+  #         Enum.each(group_list, fn group ->
+  #           {:ok, old_name} =
+  #             Encrypter.decrypt(
+  #               {group.name_iv, group.name},
+  #               key
+  #             )
 
-            {:ok, {msg_iv, msg}} =
-              Encrypter.encrypt(
-                Phantom.get_text(),
-                new_key
-              )
+  #           {:ok, {name_iv, name}} =
+  #             Encrypter.encrypt(
+  #               old_name,
+  #               new_key
+  #             )
 
-            GroupApi.update(
-              group.id,
-              %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
-            )
-          end)
+  #           {:ok, {msg_iv, msg}} =
+  #             Encrypter.encrypt(
+  #               Phantom.get_text(),
+  #               new_key
+  #             )
 
-          {:ok, data_list} = CypherApi.all()
+  #           GroupApi.update(
+  #             group.id,
+  #             %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
+  #           )
+  #         end)
 
-          Enum.each(data_list, fn data ->
-            {:ok, old_name} =
-              Encrypter.decrypt(
-                {data.name_iv, data.name},
-                key
-              )
+  #         {:ok, data_list} = CypherApi.all()
 
-            {:ok, {name_iv, name}} =
-              Encrypter.encrypt(
-                old_name,
-                new_key
-              )
+  #         Enum.each(data_list, fn data ->
+  #           {:ok, old_name} =
+  #             Encrypter.decrypt(
+  #               {data.name_iv, data.name},
+  #               key
+  #             )
 
-            {:ok, enc_blob} = Storage.get(data.id)
+  #           {:ok, {name_iv, name}} =
+  #             Encrypter.encrypt(
+  #               old_name,
+  #               new_key
+  #             )
 
-            {:ok, old_blob} =
-              Encrypter.decrypt(
-                {data.blob_iv, enc_blob},
-                key
-              )
+  #           {:ok, enc_blob} = Storage.get(data.id)
 
-            {:ok, {blob_iv, blob}} =
-              Encrypter.encrypt(
-                old_blob,
-                new_key
-              )
+  #           {:ok, old_blob} =
+  #             Encrypter.decrypt(
+  #               {data.blob_iv, enc_blob},
+  #               key
+  #             )
 
-            {:ok, {msg_iv, msg}} =
-              Encrypter.encrypt(
-                Phantom.get_text(),
-                new_key
-              )
+  #           {:ok, {blob_iv, blob}} =
+  #             Encrypter.encrypt(
+  #               old_blob,
+  #               new_key
+  #             )
 
-            Storage.put(data.id, blob)
+  #           {:ok, {msg_iv, msg}} =
+  #             Encrypter.encrypt(
+  #               Phantom.get_text(),
+  #               new_key
+  #             )
 
-            CypherApi.update(
-              data.id,
-              %{name_iv: name_iv, name: name, blob_iv: blob_iv, msg_iv: msg_iv, msg: msg}
-            )
-          end)
+  #           Storage.put(data.id, blob)
 
-          Enum.count(group_list) + Enum.count(data_list)
-        rescue
-          _error ->
-            Repo.rollback("error in transaction")
-        end
-      end)
-    else
-      {:error, "invalid key"}
-    end
-  end
+  #           CypherApi.update(
+  #             data.id,
+  #             %{name_iv: name_iv, name: name, blob_iv: blob_iv, msg_iv: msg_iv, msg: msg}
+  #           )
+  #         end)
 
-  @spec unzip_content(path :: Path.t(), key :: binary(), opts :: Keyword.t()) :: pos_integer()
-  def unzip_content(path, key, opts \\ []) do
-    group = Keyword.get(opts, :group)
+  #         Enum.count(group_list) + Enum.count(data_list)
+  #       rescue
+  #         _error ->
+  #           Repo.rollback("error in transaction")
+  #       end
+  #     end)
+  #   else
+  #     {:error, "invalid key"}
+  #   end
+  # end
+
+  @spec unzip_content(path :: Path.t(), user :: binary(), key :: binary(), opts :: Keyword.t()) ::
+          pos_integer()
+  def unzip_content(path, user, key, opts \\ []) do
+    group =
+      Keyword.get(opts, :group)
+      |> Validate.int!()
+
     zip_path = Variables.tmp_dir() <> "zips/"
 
-    if Phantom.insert_line?(key) do
+    if Phantom.insert_line?(user, key) do
       {:ok, path_charlist} =
         :zip.extract(
           path |> String.to_charlist(),
@@ -1003,7 +1058,7 @@ defmodule MaxGallery.Context do
 
       count =
         for item <- path_string do
-          Utils.create_folder(item, key, agent: agent, group: group)
+          Utils.create_folder(user, item, key, agent: agent, group: group)
         end
         |> Enum.count()
 

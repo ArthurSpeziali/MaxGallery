@@ -5,14 +5,16 @@ defmodule MaxGalleryWeb.Live.DataLive do
   alias MaxGallery.Extension
   alias MaxGallery.Utils
   alias MaxGallery.Variables
+  alias MaxGallery.Validate
 
-  def mount(params, %{"auth_key" => key}, socket) do
+  def mount(params, %{"auth_key" => key, "user_auth" => user}, socket) do
     group_id = Map.get(params, "page_id")
 
-    {:ok, lazy_datas} = Context.decrypt_all(key, lazy: true, group: group_id)
+    {:ok, lazy_datas} = Context.decrypt_all(user, key, lazy: true, group: group_id)
 
     socket =
       assign(socket,
+        user: user,
         key: key,
         datas: lazy_datas,
         lock_datas: lazy_datas,
@@ -51,9 +53,11 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("confirm_delete", %{"id" => id}, socket) do
+    user = socket.assigns[:user]
     key = socket.assigns[:key]
     page_id = socket.assigns[:page_id]
-    Context.cypher_delete(id, key)
+
+    Context.cypher_delete(user, id, key)
 
     {:noreply, push_navigate(socket, to: "/user/data/#{page_id}")}
   end
@@ -87,9 +91,10 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("confirm_rename", %{"id" => id, "new_name" => name}, socket) do
+    user = socket.assigns[:user]
     key = socket.assigns[:key]
     page_id = socket.assigns[:page_id]
-    Context.group_update(id, %{name: name}, key)
+    Context.group_update(user, id, %{name: name}, key)
 
     {:noreply, push_navigate(socket, to: "/user/data/#{page_id}")}
   end
@@ -105,9 +110,11 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("confirm_remove", %{"id" => id}, socket) do
+    id = Validate.int!(id)
+    user = socket.assigns[:user]
     key = socket.assigns[:key]
     page_id = socket.assigns[:page_id]
-    Context.group_delete(id, key)
+    Context.group_delete(user, id, key)
 
     {:noreply, push_navigate(socket, to: "/user/data/#{page_id}")}
   end
@@ -142,9 +149,10 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("confirm_folder", %{"new_name" => name}, socket) do
+    user = socket.assigns[:user]
     key = socket.assigns[:key]
     page_id = socket.assigns[:page_id]
-    Context.group_insert(name, key, group: page_id)
+    Context.group_insert(name, user, key, group: page_id)
 
     {:noreply, push_navigate(socket, to: "/user/data/#{page_id}")}
   end
@@ -170,6 +178,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("info", %{"id" => id}, socket) do
+    user = socket.assigns[:user]
     key = socket.assigns[:key]
     type = socket.assigns[:type]
 
@@ -180,15 +189,15 @@ defmodule MaxGalleryWeb.Live.DataLive do
         nil
       end
 
-    {:ok, object} = Context.decrypt_one(id, key, group: group?, lazy: true)
+    {:ok, object} = Context.decrypt_one(user, id, key, group: group?, lazy: true)
 
     size =
-      Utils.get_size(id, group: group?)
+      Utils.get_size(user, id, group: group?)
       |> Extension.convert_size()
 
     group_name =
       if object.group do
-        {:ok, querry} = Context.decrypt_one(object.group, key, group: true)
+        {:ok, querry} = Context.decrypt_one(user, object.group, key, group: true)
         Map.fetch!(querry, :name)
       else
         "Main"
@@ -228,13 +237,15 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("confirm_createfile", %{"name" => name}, socket) do
+    user = socket.assigns[:user]
     key = socket.assigns[:key]
     group = socket.assigns[:page_id]
 
-    path = Variables.tmp_dir() <> "cache/sys_#{Enum.random(1..999//1)}"
+    path = Variables.tmp_dir() <> "cache/#{user}_sys_#{Enum.random(1..999//1)}"
+    File.mkdir_p(Variables.tmp_dir() <> "/cache")
     File.write(path, "", [:write])
 
-    Context.cypher_insert(path, key, name: name, group: group)
+    Context.cypher_insert(path, user, key, name: name, group: group)
     {:noreply, push_navigate(socket, to: "/user/data/#{group}")}
   end
 

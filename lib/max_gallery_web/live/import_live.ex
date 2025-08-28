@@ -5,7 +5,7 @@ defmodule MaxGalleryWeb.Live.ImportLive do
   alias MaxGallery.Utils
   alias MaxGallery.Variables
 
-  def mount(params, %{"auth_key" => key}, socket) do
+  def mount(params, %{"auth_key" => key, "user_auth" => user}, socket) do
     group_id = Map.get(params, "page_id")
 
     zip? = Map.get(params, "zip")
@@ -34,6 +34,7 @@ defmodule MaxGalleryWeb.Live.ImportLive do
       )
       |> assign(
         key: key,
+        user: user,
         loading: false,
         zip: zip?,
         page_id: group_id
@@ -58,10 +59,9 @@ defmodule MaxGalleryWeb.Live.ImportLive do
         "No files \".zip\" select."
 
       _entry ->
-        Enum.map(entries, fn item ->
+        Enum.map_join(entries, ", ", fn item ->
           "\"#{item.client_name}\""
         end)
-        |> Enum.join(", ")
     end
   end
 
@@ -73,16 +73,17 @@ defmodule MaxGalleryWeb.Live.ImportLive do
     key = socket.assigns[:key]
     group_id = socket.assigns[:page_id]
     zip? = socket.assigns[:zip]
+    user = socket.assigns[:user]
 
     consume_uploaded_entries(socket, :file_import, fn %{path: path}, %{client_name: name} ->
       if zip? do
         if Utils.zip_valid?(path) do
-          Context.unzip_content(path, key, group: group_id)
+          Context.unzip_content(path, user, key, group: group_id)
         else
           File.rm!(path)
         end
       else
-        Context.cypher_insert(path, key, name: name, group: group_id)
+        Context.cypher_insert(path, user, key, name: name, group: group_id)
       end
 
       {:ok, nil}
