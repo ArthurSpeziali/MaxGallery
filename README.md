@@ -364,7 +364,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **Documentation**: [Project Wiki](https://github.com/your-username/MaxGallery/wiki)
 - **Issues**: [GitHub Issues](https://github.com/your-username/MaxGallery/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/your-username/MaxGallery/discussions)
-- **Email**: support@maxgallery.com
+- **Email**: arthur.speziali2022@gmail.com
 
 ## 🙏 Acknowledgments
 
