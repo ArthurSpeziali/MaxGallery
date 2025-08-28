@@ -99,33 +99,31 @@ defmodule MaxGallery.Context do
         |> Encrypter.encrypt(key)
       end
 
-    Repo.transaction(fn ->
-      with true <- Phantom.insert_line?(user, key),
-           {:ok, {blob_iv, blob}} <- Encrypter.file(:encrypt, path, key),
-           {:ok, {msg_iv, msg}} <- Encrypter.encrypt(Phantom.get_text(), key),
-           {:ok, _querry} <- UserApi.exists(user),
-           {:ok, querry} <-
-             CypherApi.insert(%{
-               user_id: user,
-               name_iv: name_iv,
-               name: name,
-               blob_iv: blob_iv,
-               ext: ext,
-               msg: msg,
-               msg_iv: msg_iv,
-               length: byte_size(blob),
-               group_id: group
-             }),
-           {:ok, _storage_key} <- Storage.put(user, querry.id, blob) do
-        querry.id
-      else
-        false ->
-          Repo.rollback("invalid key/user")
+    with true <- Phantom.insert_line?(user, key),
+         {:ok, {blob_iv, blob}} <- Encrypter.file(:encrypt, path, key),
+         {:ok, {msg_iv, msg}} <- Encrypter.encrypt(Phantom.get_text(), key),
+         {:ok, _querry} <- UserApi.exists(user),
+         {:ok, querry} <-
+           CypherApi.insert(%{
+             user_id: user,
+             name_iv: name_iv,
+             name: name,
+             blob_iv: blob_iv,
+             ext: ext,
+             msg: msg,
+             msg_iv: msg_iv,
+             length: byte_size(blob),
+             group_id: group
+           }),
+         {:ok, _storage_key} <- Storage.put(user, querry.id, blob) do
+      querry.id
+    else
+      false ->
+        {:error, "invalid key/user"}
 
-        {:error, reason} ->
-          Repo.rollback(reason)
-      end
-    end)
+      error ->
+        error
+    end
   end
 
   ## Private recursive function to return the already encrypted data of each date/group to be stored in the database.
