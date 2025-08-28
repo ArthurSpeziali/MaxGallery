@@ -1,21 +1,21 @@
-defmodule MaxGallery.Storage.BatchDeleter do
+defmodule MaxGallery.Storage.Deleter do
   @moduledoc """
   Handles batch deletion of files from storage to avoid API limits.
-  
+
   This module implements a batched approach to delete large numbers of files
   without hitting the maxFileCount limit of 25,000 files per request.
   """
-  
+
   alias MaxGallery.Request
   alias MaxGallery.Variables
   require Logger
 
   @doc """
   Deletes all files for a user in batches to avoid API limits.
-  
+
   ## Parameters
   - `user` - The user ID whose files should be deleted
-  
+
   ## Returns
   - `{:ok, total_deleted}` - Number of successfully deleted files
   - `{:error, reason}` - Error message if the operation fails
@@ -23,16 +23,16 @@ defmodule MaxGallery.Storage.BatchDeleter do
   @spec delete_all_user_files(binary()) :: {:ok, integer()} | {:error, String.t()}
   def delete_all_user_files(user) do
     prefix = "encrypted_files/#{user}"
-    
+
     case Request.consume_storage_auth() do
       {:ok, auth_data} ->
         bucket_id = get_bucket_id(auth_data)
         batch_size = calculate_safe_batch_size()
-        
+
         Logger.info("Starting batch deletion for user #{user} with batch size #{batch_size}")
-        
+
         delete_files_in_batches(auth_data, bucket_id, prefix, batch_size)
-        
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -50,37 +50,63 @@ defmodule MaxGallery.Storage.BatchDeleter do
     delete_batch_recursive(auth_data, bucket_id, prefix, 0, 0, nil, batch_size)
   end
 
-  defp delete_batch_recursive(auth_data, bucket_id, prefix, total_deleted, total_failed, start_file_name, batch_size) do
+  defp delete_batch_recursive(
+         auth_data,
+         bucket_id,
+         prefix,
+         total_deleted,
+         total_failed,
+         start_file_name,
+         batch_size
+       ) do
     case list_files_batch(auth_data, bucket_id, prefix, start_file_name, batch_size) do
       {:ok, files, next_file_name} ->
-        if length(files) == 0 do
+        if Enum.empty?(files) do
           # No more files to delete
-          Logger.info("Batch deletion completed: #{total_deleted} deleted, #{total_failed} failed")
+          Logger.info(
+            "Batch deletion completed: #{total_deleted} deleted, #{total_failed} failed"
+          )
+
           {:ok, total_deleted}
         else
           # Delete current batch
           Logger.info("Processing batch of #{length(files)} files...")
-          
+
           {batch_deleted, batch_failed} = delete_files_batch(auth_data, files)
-          
+
           new_total_deleted = total_deleted + batch_deleted
           new_total_failed = total_failed + batch_failed
-          
-          Logger.info("Batch completed: #{batch_deleted} deleted, #{batch_failed} failed. Total: #{new_total_deleted} deleted, #{new_total_failed} failed")
-          
+
+          Logger.info(
+            "Batch completed: #{batch_deleted} deleted, #{batch_failed} failed. Total: #{new_total_deleted} deleted, #{new_total_failed} failed"
+          )
+
           # Continue with next batch if there are more files
           if next_file_name do
             # Add a small delay between batches to be nice to the API
             Process.sleep(100)
-            delete_batch_recursive(auth_data, bucket_id, prefix, new_total_deleted, new_total_failed, next_file_name, batch_size)
+
+            delete_batch_recursive(
+              auth_data,
+              bucket_id,
+              prefix,
+              new_total_deleted,
+              new_total_failed,
+              next_file_name,
+              batch_size
+            )
           else
-            Logger.info("All batches completed: #{new_total_deleted} deleted, #{new_total_failed} failed")
+            Logger.info(
+              "All batches completed: #{new_total_deleted} deleted, #{new_total_failed} failed"
+            )
+
             {:ok, new_total_deleted}
           end
         end
-        
+
       {:error, reason} ->
         Logger.error("Failed to list files in batch: #{reason}")
+
         if total_deleted > 0 do
           Logger.info("Partial deletion completed: #{total_deleted} files deleted before error")
           {:ok, total_deleted}
@@ -136,33 +162,37 @@ defmodule MaxGallery.Storage.BatchDeleter do
 
   defp delete_files_batch(auth_data, files) do
     # Process files in parallel for better performance, but limit concurrency
-    chunk_size = 10  # Process 10 files at a time
-    
+    # Process 10 files at a time
+    chunk_size = 10
+
     files
     |> Enum.chunk_every(chunk_size)
     |> Enum.reduce({0, 0}, fn chunk, {total_deleted, total_failed} ->
-      results = 
+      results =
         chunk
         |> Task.async_stream(
           fn file_info ->
             case delete_file_version(auth_data, file_info) do
-              {:ok, _} -> :ok
+              {:ok, _} ->
+                :ok
+
               {:error, reason} ->
                 Logger.warning("Failed to delete file #{file_info["fileName"]}: #{reason}")
                 :error
             end
           end,
           max_concurrency: chunk_size,
-          timeout: 30_000  # 30 seconds timeout per file
+          # 30 seconds timeout per file
+          timeout: 30_000
         )
-        |> Enum.map(fn 
+        |> Enum.map(fn
           {:ok, result} -> result
           {:exit, _reason} -> :error
         end)
-      
+
       chunk_failed = Enum.count(results, &(&1 == :error))
       chunk_deleted = length(chunk) - chunk_failed
-      
+
       {total_deleted + chunk_deleted, total_failed + chunk_failed}
     end)
   end

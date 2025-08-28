@@ -59,6 +59,7 @@ defmodule MaxGalleryWeb.Live.ConfigLive do
 
   def handle_event("submit_changekey", %{"new_key" => _new_key, "old_key" => key}, socket) do
     user = socket.assigns[:user_id]
+
     if Phantom.insert_line?(user, key) do
       # Context.update_all(user, key, new_key) # Function is commented out in context.ex
     end

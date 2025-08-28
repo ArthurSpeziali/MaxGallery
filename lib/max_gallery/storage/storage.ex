@@ -50,13 +50,13 @@ defmodule MaxGallery.Storage do
   Deletes all files in the encrypted_files folder using batch processing.
   This method handles large numbers of files by processing them in batches
   to avoid API limits (maxFileCount: 25000).
-  
+
   Returns {:ok, count} where count is the number of successfully deleted files,
   or {:error, reason} if the operation fails.
   """
   @spec del_all(user :: binary()) :: {:ok, integer()} | {:error, String.t()}
   def del_all(user) do
-    case MaxGallery.Storage.BatchDeleter.delete_all_user_files(user) do
+    case MaxGallery.Storage.Deleter.delete_all_user_files(user) do
       {:ok, count} ->
         Logger.info(
           "Storage.delete_all_encrypted_files: Successfully deleted #{count} files from #{user} user using batch processing"

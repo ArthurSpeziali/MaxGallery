@@ -73,7 +73,7 @@ defmodule MaxGallery.Storage.MockTest do
     test "list returns file metadata", %{test_user: test_user} do
       blob1 = "content1"
       blob2 = "content2"
-      
+
       Mock.put(test_user, "id1", blob1)
       Mock.put(test_user, "id2", blob2)
 

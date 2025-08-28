@@ -339,9 +339,9 @@ defmodule MaxGallery.Utils do
       case item do
         %{data: data} ->
           {:ok, {name_iv, name}} = Encrypter.encrypt(data.name, key)
-          
+
           # Handle lazy mode where blob might not be present
-          {blob_iv, length} = 
+          {blob_iv, length} =
             if Map.has_key?(data, :blob) do
               {:ok, {blob_iv, blob}} = Encrypter.encrypt(data.blob, key)
               {blob_iv, byte_size(blob)}

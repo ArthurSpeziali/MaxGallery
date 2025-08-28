@@ -38,8 +38,12 @@ defmodule MaxGallery.TestHelpers do
     password = "test_password_123"
 
     case Context.user_insert(name, email, password) do
-      {:ok, user_id} -> user_id
-      {:error, _reason} -> default_test_user()
+      {:ok, user_id} ->
+        user_id
+
+      {:error, reason} ->
+        # If user creation fails, raise an error instead of returning a fake UUID
+        raise "Failed to create test user: #{reason}"
     end
   end
 

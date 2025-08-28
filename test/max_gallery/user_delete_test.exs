@@ -6,7 +6,7 @@ defmodule MaxGallery.UserDeleteTest do
   setup do
     # Ensure storage mock is started
     MaxGallery.Storage.Mock.start_link()
-    
+
     {:ok, msg: "Test file content for user deletion test"}
   end
 
@@ -43,8 +43,12 @@ defmodule MaxGallery.UserDeleteTest do
   test "user_delete returns error for non-existent user" do
     # Try to delete a non-existent user using a valid UUID format
     fake_user_id = Ecto.UUID.generate()
-    
-    # Should return error
-    assert :error = Context.user_delete(fake_user_id)
+
+    # Should return error (this will generate an expected error log)
+    import ExUnit.CaptureLog
+
+    assert capture_log(fn ->
+             assert :error = Context.user_delete(fake_user_id)
+           end) =~ "Failed to delete user account"
   end
 end

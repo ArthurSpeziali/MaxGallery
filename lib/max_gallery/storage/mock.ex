@@ -28,9 +28,11 @@ defmodule MaxGallery.Storage.Mock do
   def put(user, id, blob) do
     ensure_started()
     key = generate_key(user, id)
+
     Agent.update(__MODULE__, fn state ->
       Map.put(state, key, blob)
     end)
+
     {:ok, key}
   end
 
@@ -38,6 +40,7 @@ defmodule MaxGallery.Storage.Mock do
   def get(user, id) do
     ensure_started()
     key = generate_key(user, id)
+
     case Agent.get(__MODULE__, fn state -> Map.get(state, key) end) do
       nil -> {:error, "File not found"}
       blob -> {:ok, blob}
@@ -48,9 +51,11 @@ defmodule MaxGallery.Storage.Mock do
   def del(user, id) do
     ensure_started()
     key = generate_key(user, id)
+
     Agent.update(__MODULE__, fn state ->
       Map.delete(state, key)
     end)
+
     :ok
   end
 
@@ -58,12 +63,17 @@ defmodule MaxGallery.Storage.Mock do
   def del_all(user) do
     ensure_started()
     prefix = "encrypted_files/#{user}/"
-    deleted_count = Agent.get_and_update(__MODULE__, fn state ->
-      {to_delete, to_keep} = Enum.split_with(state, fn {key, _blob} ->
-        String.starts_with?(key, prefix)
+
+    deleted_count =
+      Agent.get_and_update(__MODULE__, fn state ->
+        {to_delete, to_keep} =
+          Enum.split_with(state, fn {key, _blob} ->
+            String.starts_with?(key, prefix)
+          end)
+
+        {length(to_delete), Map.new(to_keep)}
       end)
-      {length(to_delete), Map.new(to_keep)}
-    end)
+
     {:ok, deleted_count}
   end
 
@@ -78,21 +88,24 @@ defmodule MaxGallery.Storage.Mock do
   def list(user) do
     ensure_started()
     prefix = "encrypted_files/#{user}/"
-    files = Agent.get(__MODULE__, fn state ->
-      state
-      |> Enum.filter(fn {key, _blob} -> String.starts_with?(key, prefix) end)
-      |> Enum.map(fn {key, blob} ->
-        %{
-          file_name: key,
-          file_id: key,
-          size: byte_size(blob),
-          content_type: "application/octet-stream",
-          upload_timestamp: System.system_time(:millisecond),
-          content_sha1: :crypto.hash(:sha, blob) |> Base.encode16(case: :lower),
-          file_info: %{}
-        }
+
+    files =
+      Agent.get(__MODULE__, fn state ->
+        state
+        |> Enum.filter(fn {key, _blob} -> String.starts_with?(key, prefix) end)
+        |> Enum.map(fn {key, blob} ->
+          %{
+            file_name: key,
+            file_id: key,
+            size: byte_size(blob),
+            content_type: "application/octet-stream",
+            upload_timestamp: System.system_time(:millisecond),
+            content_sha1: :crypto.hash(:sha, blob) |> Base.encode16(case: :lower),
+            file_info: %{}
+          }
+        end)
       end)
-    end)
+
     {:ok, files}
   end
 

@@ -7,7 +7,7 @@ defmodule MaxGallery.ContextTest do
   setup %{test_user: test_user} do
     # Ensure storage mock is started
     MaxGallery.Storage.Mock.start_link()
-    
+
     {:ok,
      test_user: test_user,
      msg: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
@@ -18,7 +18,10 @@ defmodule MaxGallery.ContextTest do
     TestHelpers.create_temp_file(msg)
   end
 
-  test "Create a file, put it encrypted in the database, then get it", %{msg: msg, test_user: test_user} do
+  test "Create a file, put it encrypted in the database, then get it", %{
+    msg: msg,
+    test_user: test_user
+  } do
     path = create_file(msg)
     assert {:ok, id} = Context.cypher_insert(path, test_user, "key")
     assert {:ok, _querry} = Api.get(id)
@@ -50,7 +53,12 @@ defmodule MaxGallery.ContextTest do
     assert blob = data.blob
 
     assert {:ok, _querry} =
-             Context.cypher_update(test_user, id, %{name: data.name <> data.ext, blob: blob}, "key")
+             Context.cypher_update(
+               test_user,
+               id,
+               %{name: data.name <> data.ext, blob: blob},
+               "key"
+             )
 
     TestHelpers.cleanup_temp_files()
   end
