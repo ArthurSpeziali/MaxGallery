@@ -293,6 +293,56 @@ defmodule MaxGallery.Cache do
   end
 
   @doc """
+  Removes all cache files for a specific user.
+
+  ## Parameters
+  - `user` - Binary user ID whose cache files should be removed
+
+  ## Returns
+  - `{:ok, count}` - Number of files removed
+  - `{:error, reason}` - Error if directory listing fails
+
+  ## Process
+  1. Creates cache directory if it doesn't exist
+  2. Lists all files in cache directory
+  3. Filters files that belong to the specified user
+  4. Removes matching files
+  5. Returns count of removed files
+
+  ## Notes
+  - Matches files with pattern: `{user}_{env}_{file_id}`
+  - Safe to call even if no files exist for the user
+  - Gracefully handles permission errors on individual files
+  - Used during logout to clean up user-specific cache
+  """
+  @spec cleanup_user_cache(user :: binary()) :: {:ok, non_neg_integer()} | {:error, any()}
+  def cleanup_user_cache(user) do
+    File.mkdir_p!(tmp_path())
+
+    case File.ls(tmp_path()) do
+      {:ok, files} ->
+        user_prefix = "#{user}_#{Mix.env()}_"
+        
+        removed_count = 
+          files
+          |> Enum.filter(&String.starts_with?(&1, user_prefix))
+          |> Enum.reduce(0, fn file, acc ->
+            file_path = Path.join(tmp_path(), file)
+            
+            case File.rm(file_path) do
+              :ok -> acc + 1
+              {:error, _reason} -> acc  # Continue even if individual file removal fails
+            end
+          end)
+        
+        {:ok, removed_count}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
   Cleans up old cache files.
   Removes files older than the specified age in minutes.
 

@@ -69,7 +69,7 @@ defmodule MaxGallery.Validate do
         {:error, "Your String is not valid!"}
 
       String.length(str) < 3 ->
-        {:error, "Your Password must contain in the minimum 3 characters."}
+        {:error, "Your Name must contain in the minimum 3 characters."}
 
       String.length(str) > 32 ->
         {:error, "Your Name is too long! (more than 32)."}
