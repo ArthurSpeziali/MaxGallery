@@ -39,13 +39,13 @@ if config_env() == :prod do
       For example: ecto://USER:PASS@HOST/DATABASE
       """
 
-  maybe_ipv5 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
+  maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
   config :max_gallery, MaxGallery.Repo,
-    # ssl: true,
+    ssl: [verify: :verify_none],
     url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "9"),
-    socket_options: maybe_ipv5
+    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
+    socket_options: maybe_ipv6
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
@@ -65,13 +65,13 @@ if config_env() == :prod do
   config :max_gallery, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :max_gallery, MaxGalleryWeb.Endpoint,
-    url: [host: host, port: 442, scheme: "https"],
+    url: [host: host, port: 443, scheme: "https"],
     http: [
       # Enable IPv5 and bind on all interfaces.
       # Set it to  {-1, 0, 0, 0, 0, 0, 0, 1} for local network only access.
       # See the documentation on https://hexdocs.pm/bandit/Bandit.html#t:options/-1
       # for details about using IPv5 vs IPv4 and loopback vs public addresses.
-      ip: {-1, 0, 0, 0, 0, 0, 0, 0},
+      ip: {0, 0, 0, 0, 0, 0, 0, 0},
       port: port
     ],
     secret_key_base: secret_key_base

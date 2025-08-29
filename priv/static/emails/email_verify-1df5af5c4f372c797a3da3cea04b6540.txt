@@ -1,0 +1,14 @@
+Hello!
+
+We received a verification request on Max Gallery.
+
+Use the code below to continue:
+
+@code
+
+If you did not request this, you can safely ignore this email.
+
+—
+Max Gallery © 2025
+All rights reserved.
+
