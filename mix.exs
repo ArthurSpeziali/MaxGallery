@@ -5,7 +5,7 @@ defmodule MaxGallery.MixProject do
     [
       app: :max_gallery,
       version: "1.0.1",
-      elixir: "~> 1.18",
+      elixir: "~> 1.17",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
