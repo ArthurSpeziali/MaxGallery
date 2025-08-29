@@ -7,7 +7,7 @@
 
 **MaxGallery** is a high-security file storage system built with Phoenix LiveView that provides end-to-end encryption for all files and metadata using AES-256-CTR encryption. The system ensures that encryption keys remain exclusively with the user, providing zero-knowledge storage architecture.
 
-🌐 **Live Demo**: [www.exemple.com](https://www.exemple.com)
+🌐 **Live Demo**: [www.maxgallery.site](https://www.exemple.com)
 
 ![Max Gallery Screenshot](https://i.imgur.com/avg2pIH.png)
 
@@ -364,7 +364,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **Documentation**: [Project Wiki](https://github.com/your-username/MaxGallery/wiki)
 - **Issues**: [GitHub Issues](https://github.com/your-username/MaxGallery/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/your-username/MaxGallery/discussions)
-- **Email**: arthur.speziali2022@gmail.com
+- **Email**: contact@maxgallery.site
 
 ## 🙏 Acknowledgments
 
