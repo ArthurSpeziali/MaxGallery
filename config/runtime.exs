@@ -27,7 +27,7 @@ config :swoosh,
 
 config :max_gallery, MaxGallery.Mail.Mailer,
   adapter: Swoosh.Adapters.Sendgrid,
-  user: MaxGallery.Variables.email_user(),
+  user: System.get_env("EMAIL_ADDRESS", "maxgallery@support.com"),
   api_key: System.get_env("SENDGRID_API"),
   compress: true
 

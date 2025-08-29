@@ -5,7 +5,6 @@ defmodule MaxGallery.Variables do
   ## 1 GB (1e⁹)
   @file_size 1 * 10 ** 9
   @email_subject "Max Gallery"
-  @email_user "os.maxgallery@gmail.com"
   @file_limit 64
   ## 90 Days! (In seconds)
   @cookie_time 90 * 24 * 60 * 60
@@ -24,7 +23,6 @@ defmodule MaxGallery.Variables do
   def chunk_size, do: @chunk_size
   def tmp_dir, do: @tmp_dir
   def file_size, do: @file_size
-  def email_user, do: @email_user
   def email_subject, do: @email_subject
   def file_limit, do: @file_limit
   def cookie_time, do: @cookie_time

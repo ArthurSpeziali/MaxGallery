@@ -30,7 +30,7 @@ defmodule MaxGallery.Mail.Template do
   def custom(dest, subject, text, html) do
     new()
     |> to(dest)
-    |> from({"MaxGallery", Variables.email_user()})
+    |> from({"MaxGallery", System.get_env("EMAIL_ADDRESS", "maxgallery@support.com")})
     |> subject(subject || Variables.email_subject())
     |> text_body(text)
     |> html_body(html || text)
