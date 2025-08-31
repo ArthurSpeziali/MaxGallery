@@ -2,8 +2,8 @@ defmodule MaxGallery.Variables do
   ## 1MB
   @chunk_size 1 * 1024 * 1024
   @tmp_dir "/tmp/max_gallery/"
-  ## 1 GB (1e⁹)
-  @file_size 1 * 10 ** 9
+  ## 100 MB (1e⁸)
+  @file_size 1 * 10 ** 8
   @email_subject "Max Gallery"
   @file_limit 64
   ## 90 Days! (In seconds)
