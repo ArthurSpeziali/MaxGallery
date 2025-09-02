@@ -1,4 +1,4 @@
-defmodule MaxGallery.Encrypter do
+defmodule MaxGallery.Encrypter.AES do
   @type cypher :: {iv :: binary(), ciphertext :: binary()}
   @moduledoc """
   Provides cryptographic operations for the MaxGallery system.

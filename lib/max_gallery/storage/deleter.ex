@@ -30,7 +30,7 @@ defmodule MaxGallery.Storage.Deleter do
   - Logs detailed information about failures
   """
 
-  alias MaxGallery.Request
+  alias MaxGallery.Storage.Request
   alias MaxGallery.Variables
   require Logger
 

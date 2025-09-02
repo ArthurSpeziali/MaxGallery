@@ -322,19 +322,20 @@ defmodule MaxGallery.Cache do
     case File.ls(tmp_path()) do
       {:ok, files} ->
         user_prefix = "#{user}_#{Mix.env()}_"
-        
-        removed_count = 
+
+        removed_count =
           files
           |> Enum.filter(&String.starts_with?(&1, user_prefix))
           |> Enum.reduce(0, fn file, acc ->
             file_path = Path.join(tmp_path(), file)
-            
+
             case File.rm(file_path) do
               :ok -> acc + 1
-              {:error, _reason} -> acc  # Continue even if individual file removal fails
+              # Continue even if individual file removal fails
+              {:error, _reason} -> acc
             end
           end)
-        
+
         {:ok, removed_count}
 
       {:error, reason} ->

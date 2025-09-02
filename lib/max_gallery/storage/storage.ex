@@ -39,7 +39,7 @@ defmodule MaxGallery.Storage do
 
   @behaviour MaxGallery.Storage.Behaviour
 
-  alias MaxGallery.Request
+  alias MaxGallery.Storage.Request
   alias MaxGallery.Variables
   require Logger
 
@@ -95,8 +95,21 @@ defmodule MaxGallery.Storage do
     key = generate(user, id)
 
     case Request.storage_get(key) do
-      {:ok, blob} ->
-        {:ok, blob}
+      {:ok, path} ->
+        File.read(path)
+
+      error ->
+        error
+    end
+  end
+
+  @spec path(user :: binary(), id :: binary()) :: {:ok, Path.t()} | {:error, String.t()}
+  def path(user, id) do
+    key = generate(user, id)
+
+    case Request.storage_get(key) do
+      {:ok, path} ->
+        {:ok, path}
 
       error ->
         error

@@ -1,4 +1,4 @@
-defmodule MaxGallery.Request do
+defmodule MaxGallery.Storage.Request do
   @moduledoc """
   HTTP client module for BlackBlaze B2 cloud storage operations.
 
@@ -231,24 +231,12 @@ defmodule MaxGallery.Request do
   - Automatically cleans up temporary files
   - Handles various download scenarios
   """
-  @spec storage_get(String.t()) :: {:ok, binary()} | {:error, String.t()}
+  @spec storage_get(String.t()) :: {:ok, Path.t()} | {:error, String.t()}
   def storage_get(key) do
     with {:ok, auth_data} <- consume_storage_auth(),
          {:ok, download_url} <- build_download_url(auth_data, key),
          {:ok, response} <- download_file(download_url, auth_data) do
-      if Map.get(response, :temp_file) do
-        case File.read(response.body) do
-          {:ok, content} ->
-            File.rm(response.body)
-            {:ok, content}
-
-          {:error, reason} ->
-            File.rm(response.body)
-            {:error, "Failed to read temp file: #{inspect(reason)}"}
-        end
-      else
-        {:ok, response.body}
-      end
+      {:ok, response.body}
     else
       {:error, reason} -> {:error, reason}
     end
@@ -494,14 +482,16 @@ defmodule MaxGallery.Request do
     # Configure timeouts based on file size
     # Base timeout of 10 minutes + 2 minutes per 10MB
     file_size_mb = byte_size(blob) / (1024 * 1024)
-    timeout = max(600_000, trunc(600_000 + (file_size_mb / 10) * 120_000))
-    
+    timeout = max(600_000, trunc(600_000 + file_size_mb / 10 * 120_000))
+
     options = [
       timeout: timeout,
       recv_timeout: timeout
     ]
 
-    Logger.info("Uploading file #{key} (#{trunc(file_size_mb)}MB) with timeout #{trunc(timeout/1000)}s")
+    Logger.info(
+      "Uploading file #{key} (#{trunc(file_size_mb)}MB) with timeout #{trunc(timeout / 1000)}s"
+    )
 
     case HTTPoison.post(url, blob, headers, options) do
       {:ok, %HTTPoison.Response{status_code: 200, body: response_body}} ->

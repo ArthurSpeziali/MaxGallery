@@ -572,7 +572,7 @@ defmodule MaxGallery.Utils do
   - Uses Erlang's `binary_part/3` and `binary_slice/2`
   """
   @spec binary_chunk(bin :: binary(), range :: pos_integer()) :: [binary()]
-  def binary_chunk(bin, range) when byte_size(bin) >= range do
+  def binary_chunk(bin, range) when byte_size(bin) > range do
     ## In my mind, this function is O(log n), but my supervisor insists it’s O(n).
     [
       binary_part(bin, 0, range)
