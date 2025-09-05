@@ -5,7 +5,7 @@
       <% "text" -> %>
         <div class="py-4 px-6 mx-auto mt-4 mb-8 md:max-w-[75%] max-w-[90%] border rounded-lg shadow-2xl">
           <div class="flex justify-between">
-            <h1 class="text-2xl font-bold">{@data.name <> @data.ext}</h1>
+            <h1 class="text-2xl font-bold truncate w-[85%]">{@data.name <> @data.ext}</h1>
 
             <button phx-click="cancel">
               <img src="/images/close.png" alt="Close" class="w-auto h-8" />
@@ -19,7 +19,7 @@
       <% "image" -> %>
         <div>
           <div class="flex justify-between items-center px-6 py-2 max-w-[90%] mx-auto mt-4 border shadow-md rounded">
-            <strong class="text-[1.5rem]">{@data.name <> @data.ext}</strong>
+            <strong class="text-[1.5rem] truncate w-[85%]">{@data.name <> @data.ext}</strong>
             <button phx-click="cancel">
               <img src="/images/close.png" alt="Close" class="w-auto h-12" />
             </button>
@@ -32,7 +32,7 @@
       <% "video" -> %>
         <div>
           <div class="flex justify-between items-center px-6 py-2 max-w-[90%] mx-auto mt-4 border shadow-md rounded">
-            <strong class="text-[1.5rem]">{@data.name <> @data.ext}</strong>
+            <strong class="text-[1.5rem] truncate w-[85%]">{@data.name <> @data.ext}</strong>
             <button phx-click="cancel">
               <img src="/images/close.png" alt="Close" class="w-auto h-12" />
             </button>
@@ -50,7 +50,7 @@
       <% "audio" -> %>
         <div>
           <div class="flex justify-between items-center px-6 py-2 max-w-[90%] mx-auto mt-4 border shadow-md rounded">
-            <strong class="text-[1.5rem]">{@data.name <> @data.ext}</strong>
+            <strong class="text-[1.5rem] w-[85%]">{@data.name <> @data.ext}</strong>
             <button phx-click="cancel">
               <img src="/images/close.png" alt="Close" class="w-auto h-12" />
             </button>

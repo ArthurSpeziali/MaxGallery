@@ -241,6 +241,13 @@ defmodule MaxGalleryWeb.Live.DataLive do
     key = socket.assigns[:key]
     group = socket.assigns[:page_id]
 
+    group =
+      if group do
+        Variables.int!(group)
+      else
+        group
+      end
+
     path = Variables.tmp_dir() <> "tests/#{user}_sys_#{Enum.random(1..999//1)}"
     File.mkdir_p(Variables.tmp_dir() <> "tests/")
     File.write(path, "", [:write])
