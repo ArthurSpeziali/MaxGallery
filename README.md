@@ -7,7 +7,7 @@
 
 **MaxGallery** is a high-security file storage system built with Phoenix LiveView that provides end-to-end encryption for all files and metadata using AES-256-CTR encryption. The system ensures that encryption keys remain exclusively with the user, providing zero-knowledge storage architecture.
 
-🌐 **Live Demo**: [www.maxgallery.site](https://www.exemple.com)
+🌐 **Live Demo**: [www.maxgallery.site](https://maxgallery.site)
 
 ![Max Gallery Screenshot](https://i.imgur.com/avg2pIH.png)
 
