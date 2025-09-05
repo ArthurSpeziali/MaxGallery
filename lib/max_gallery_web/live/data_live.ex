@@ -243,7 +243,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
 
     group =
       if group do
-        Variables.int!(group)
+        Validate.int!(group)
       else
         group
       end
