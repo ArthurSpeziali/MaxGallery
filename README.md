@@ -44,7 +44,7 @@
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   User Browser  │───▶│  Phoenix LiveView │───▶│  Context Layer  │
+│   User Browser  │───▶│ Phoenix LiveView │───▶│  Context Layer  │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                                 │                        │
                                 ▼                        ▼
@@ -116,7 +116,7 @@
    ```
 
 8. **Access the application**
-   
+
    Open your browser and navigate to: **http://localhost:4000**
 
 ## 📋 System Requirements
@@ -340,9 +340,6 @@ _build/prod/rel/max_gallery/bin/max_gallery eval "MaxGallery.Release.migrate"
 _build/prod/rel/max_gallery/bin/max_gallery start
 ```
 
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
 ### Development Setup
 
@@ -361,9 +358,7 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 
 ## 🆘 Support
 
-- **Documentation**: [Project Wiki](https://github.com/your-username/MaxGallery/wiki)
-- **Issues**: [GitHub Issues](https://github.com/your-username/MaxGallery/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-username/MaxGallery/discussions)
+- **Issues**: [GitHub Issues](https://github.com/ArthurSpeziali/MaxGallery/issues)
 - **Email**: contact@maxgallery.site
 
 ## 🙏 Acknowledgments
