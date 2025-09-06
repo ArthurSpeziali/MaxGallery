@@ -39,9 +39,10 @@ defmodule MaxGallery.Storage do
 
   @behaviour MaxGallery.Storage.Behaviour
 
-  alias MaxGallery.Storage.Request
+  alias ExAws.S3
   alias MaxGallery.Variables
-  require Logger
+  import SweetXml, only: [sigil_x: 2]
+  @bucket Variables.bucket_name()
 
   @doc """
   Stores an encrypted file blob in cloud storage.
@@ -61,16 +62,17 @@ defmodule MaxGallery.Storage do
   - Does not perform encryption (expects pre-encrypted content)
   """
   @spec put(user :: binary(), id :: binary(), blob :: binary()) ::
-          {:ok, String.t()} | {:error, String.t()}
+          :ok | {:error, String.t()}
   def put(user, id, blob) do
     key = generate(user, id)
+    req = S3.put_object(@bucket, key, blob)
 
-    case Request.storage_put(key, blob) do
-      {:ok, _key} ->
-        {:ok, key}
+    case ExAws.request(req) do
+      {:ok, _status} ->
+        :ok
 
-      error ->
-        error
+      {:error, {_, _, %{body: xml}}} ->
+        {:error, xml_parser(xml)}
     end
   end
 
@@ -93,26 +95,14 @@ defmodule MaxGallery.Storage do
   @spec get(user :: binary(), id :: binary()) :: {:ok, binary()} | {:error, String.t()}
   def get(user, id) do
     key = generate(user, id)
+    req = S3.get_object(@bucket, key)
 
-    case Request.storage_get(key) do
-      {:ok, path} ->
-        File.read(path)
+    case ExAws.request(req) do
+      {:ok, %{body: blob}} ->
+        {:ok, blob}
 
-      error ->
-        error
-    end
-  end
-
-  @spec path(user :: binary(), id :: binary()) :: {:ok, Path.t()} | {:error, String.t()}
-  def path(user, id) do
-    key = generate(user, id)
-
-    case Request.storage_get(key) do
-      {:ok, path} ->
-        {:ok, path}
-
-      error ->
-        error
+      {:error, {_, _, %{body: xml}}} ->
+        {:error, xml_parser(xml)}
     end
   end
 
@@ -135,13 +125,14 @@ defmodule MaxGallery.Storage do
   @spec del(user :: binary(), id :: binary()) :: :ok | {:error, String.t()}
   def del(user, id) do
     key = generate(user, id)
+    req = S3.delete_object(@bucket, key)
 
-    case Request.storage_delete(key) do
-      :ok ->
+    case ExAws.request(req) do
+      {:ok, _status} ->
         :ok
 
-      error ->
-        error
+      {:error, {_, _, %{body: xml}}} ->
+        {:error, xml_parser(xml)}
     end
   end
 
@@ -164,7 +155,15 @@ defmodule MaxGallery.Storage do
   @spec exists?(user :: binary(), id :: binary()) :: boolean()
   def exists?(user, id) do
     key = generate(user, id)
-    Request.storage_exists?(key)
+    req = S3.head_object(@bucket, key)
+
+    case ExAws.request(req) do
+      {:ok, _status} ->
+        true
+
+      {:error, _status} ->
+        false
+    end
   end
 
   @doc """
@@ -175,22 +174,23 @@ defmodule MaxGallery.Storage do
   Returns {:ok, count} where count is the number of successfully deleted files,
   or {:error, reason} if the operation fails.
   """
-  @spec del_all(user :: binary()) :: {:ok, integer()} | {:error, String.t()}
+  @spec del_all(user :: binary()) :: :ok | {:error, String.t()}
   def del_all(user) do
-    case MaxGallery.Storage.Deleter.delete_all_user_files(user) do
-      {:ok, count} ->
-        Logger.info(
-          "Storage.delete_all_encrypted_files: Successfully deleted #{count} files from #{user} user using batch processing"
-        )
+    key = generate(user, nil)
 
-        {:ok, count}
+    stream =
+      S3.list_objects(@bucket, prefix: key)
+      |> ExAws.stream!()
+      |> Stream.map(& &1.key)
 
-      {:error, reason} ->
-        Logger.error(
-          "Storage.delete_all_encrypted_files: Failed with reason: #{reason} from #{user} user"
-        )
+    req = S3.delete_all_objects(@bucket, stream)
 
-        {:error, reason}
+    case ExAws.request(req) do
+      {:ok, _status} ->
+        :ok
+
+      {:error, {_, _, %{body: xml}}} ->
+        {:error, xml_parser(xml)}
     end
   end
 
@@ -210,12 +210,15 @@ defmodule MaxGallery.Storage do
   """
   @spec list(user :: binary()) :: {:ok, list(map())} | {:error, String.t()}
   def list(user) do
-    case Request.storage_list_all_encrypted_files(user) do
-      {:ok, files} ->
-        {:ok, files}
+    key = generate(user, nil)
+    req = S3.list_objects(@bucket, prefix: key)
 
-      {:error, reason} ->
-        {:error, reason}
+    case ExAws.request(req) do
+      {:ok, %{body: %{contents: cont}}} ->
+        {:ok, Enum.map(cont, & &1.key)}
+
+      {:error, {_, _, %{body: xml}}} ->
+        {:error, xml_parser(xml)}
     end
   end
 
@@ -226,7 +229,12 @@ defmodule MaxGallery.Storage do
     if id do
       "#{Variables.gen_clound()}/#{user}/#{id}"
     else
-      "#{Variables.gen_clound()}/#{user}"
+      "#{Variables.gen_clound()}/#{user}/"
     end
+  end
+
+  defp xml_parser(xml) do
+    SweetXml.parse(xml)
+    |> SweetXml.xpath(~x"//Error/Message/text()"s)
   end
 end

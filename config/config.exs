@@ -22,6 +22,25 @@ config :max_gallery, MaxGalleryWeb.Endpoint,
   pubsub_server: MaxGallery.PubSub,
   live_view: [signing_salt: "1cbMQEQA"]
 
+config :swoosh,
+  api_client: Swoosh.ApiClient.Finch,
+  finch_name: MaxGallery.Finch
+
+config :max_gallery, MaxGallery.Mail.Mailer,
+  adapter: Swoosh.Adapters.Sendgrid,
+  user: System.get_env("EMAIL_ADDRESS", "maxgallery@support.com"),
+  api_key: System.get_env("SENDGRID_API"),
+  compress: true
+
+config :ex_aws,
+  access_key_id: System.get_env("BLACKBLAZE_KEY_ID"),
+  secret_access_key: System.get_env("BLACKBLAZE_APP_KEY"),
+  json_codec: Jason,
+  s3: [
+    scheme: "https://",
+    host: "s3.us-east-005.backblazeb2.com"
+  ]
+
 # Configures the mailer
 #
 # By default it uses the "Local" adapter which stores the emails

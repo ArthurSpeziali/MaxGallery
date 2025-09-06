@@ -1,4 +1,4 @@
-defmodule MaxGallery.Encrypter do
+defmodule MaxGallery.Encrypter.Chacha20 do
   alias MaxGallery.Variables
   @nonce_size 8
 

@@ -41,14 +41,14 @@ defmodule MaxGallery.Cache do
   - Supports both memory and disk-based access patterns
   """
 
-  alias MaxGallery.StorageAdapter, as: Storage
+  alias MaxGallery.Storage
   alias MaxGallery.Encrypter
   alias MaxGallery.Phantom
   alias MaxGallery.Variables
 
   # Private function to get the appropriate temporary path based on environment
   defp tmp_path() do
-    if(Mix.env() == :dev) do
+    if Mix.env() == :dev do
       Variables.tmp_dir() <> "cache/"
     else
       Variables.tmp_dir() <> "test/"
