@@ -130,7 +130,7 @@ defmodule MaxGallery.Context do
              length: byte_size(blob),
              group_id: group
            }),
-         {:ok, _storage_key} <- Storage.put(user, querry.id, blob) do
+         :ok <- Storage.put(user, querry.id, blob) do
       {:ok, querry.id}
     else
       false ->
@@ -709,7 +709,7 @@ defmodule MaxGallery.Context do
         {:ok, enc_blob} ->
           with true <- Phantom.insert_line?(user, key),
                {:ok, querry} <- CypherApi.insert(duplicate),
-               {:ok, _storage_key} <- Storage.put(user, querry.id, enc_blob) do
+               :ok <- Storage.put(user, querry.id, enc_blob) do
             querry.id
           else
             false -> {:error, "invalid key"}
@@ -929,7 +929,7 @@ defmodule MaxGallery.Context do
     with true <- Phantom.insert_line?(user, key),
          {count_group, nil} <- GroupApi.delete_all(user),
          {count_data, nil} <- CypherApi.delete_all(user),
-         _ <- Storage.del_all(user) do
+         :ok <- Storage.del_all(user) do
       {:ok, count_group + count_data}
     else
       error -> error
