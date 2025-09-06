@@ -30,9 +30,23 @@ defmodule MaxGalleryWeb.Live.ShowLive do
 
     {:ok, querry} = Context.decrypt_one(user, id, key, lazy: lazy)
 
+    encoded_data = Map.update!(querry, :name, fn item -> 
+      Phantom.validate_bin(item) 
+    end) 
+
+    encoded_data = 
+      if Phantom.insert_line?(user, key) do
+          encoded_data
+        else
+          Map.update!(encoded_data, :blob, fn item -> 
+            Phantom.validate_bin(item)
+          end)
+      end
+
+
     socket =
       assign(socket,
-        data: Map.update!(querry, :name, fn item -> Phantom.validate_bin(item) end),
+        data: encoded_data,
         page_id: page_id,
         id: id
       )

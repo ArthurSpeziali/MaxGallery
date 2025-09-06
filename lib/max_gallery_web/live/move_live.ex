@@ -143,7 +143,8 @@ defmodule MaxGalleryWeb.Live.MoveLive do
         Context.group_duplicate(user, id, params, key)
     end
 
-    {:noreply, push_navigate(socket, to: "/user/data/#{dest_id}")}
+    previous = Utils.get_back(dest_id)
+    {:noreply, push_navigate(socket, to: "/user/data/#{previous}")}
   end
 
   def handle_event("loading", _params, socket) do

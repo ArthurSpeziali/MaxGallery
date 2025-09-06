@@ -180,12 +180,17 @@ defmodule MaxGallery.Context do
         }
       end
     end
-    |> Map.update!(:name, fn item -> Phantom.validate_bin(item) end)
+    |> Map.update!(:name, fn item -> 
+      Phantom.validate_bin(item) 
+    end)
   end
 
   defp send_package(item, _user, _lazy, _memory, key) do
     {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
-    %{name: name, id: item.id, group: item.group_id} |> Phantom.encode_bin()
+    %{name: name, id: item.id, group: item.group_id} 
+    |> Map.update!(:name, fn item -> 
+      Phantom.validate_bin(item) 
+    end)
   end
 
   @doc """
