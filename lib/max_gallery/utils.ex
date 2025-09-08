@@ -55,7 +55,7 @@ defmodule MaxGallery.Utils do
   - Does not validate the existence of the returned parent group
   - Primarily used for navigation within group hierarchies
   """
-  @spec get_back(id :: binary()) :: binary()
+  @spec get_back(id :: integer()) :: binary()
   def get_back(id) do
     case id do
       nil ->
@@ -89,7 +89,7 @@ defmodule MaxGallery.Utils do
   - Returns empty list if the group contains no items
   - Does not recursively fetch items from nested subgroups
   """
-  @spec get_group(user :: binary(), id :: binary(), opts :: Keyword.t()) ::
+  @spec get_group(user :: binary(), id :: integer(), opts :: Keyword.t()) ::
           {:ok, MaxGallery.Context.querry()}
   def get_group(user, id, opts \\ []) do
     only = Keyword.get(opts, :only)
@@ -131,7 +131,7 @@ defmodule MaxGallery.Utils do
   - Returns raw size values without unit conversion
   - May raise exceptions if the item doesn't exist or lacks required fields
   """
-  @spec get_size(user :: binary(), id :: binary(), opts :: Keyword.t()) :: non_neg_integer()
+  @spec get_size(user :: binary(), id :: integer(), opts :: Keyword.t()) :: non_neg_integer()
   def get_size(user, id, opts \\ []) do
     group? = Keyword.get(opts, :group)
 
@@ -181,7 +181,7 @@ defmodule MaxGallery.Utils do
   - Preserves the original timestamp structure from the database
   - Will raise if the item doesn't exist or lacks timestamp fields
   """
-  @spec get_timestamps(id :: binary(), Keyword.t()) :: map()
+  @spec get_timestamps(id :: integer(), Keyword.t()) :: map()
   def get_timestamps(id, opts \\ []) do
     group? = Keyword.get(opts, :group)
 
@@ -231,7 +231,7 @@ defmodule MaxGallery.Utils do
   - Maintains original hierarchy and relationships
   - Performance scales with group size and depth when not lazy
   """
-  @spec get_tree(user :: binary(), id :: binary(), Keyword.t()) :: MaxGallery.Context.querry()
+  @spec get_tree(user :: binary(), id :: integer(), Keyword.t()) :: MaxGallery.Context.querry()
   def get_tree(user, id, key, opts \\ []) do
     lazy? = Keyword.get(opts, :lazy)
     {:ok, contents} = get_group(user, id)
@@ -608,10 +608,10 @@ defmodule MaxGallery.Utils do
     response = find_group(exists_path, agent, exists_path, nil)
 
     if response do
-      {new_group, new_path, persists} = response
+      {new_group, dest, persists} = response
 
       recursive_path(
-        new_path ++ [Path.basename(fpath)],
+        dest ++ [Path.basename(fpath)],
         folder,
         persists,
         agent,
@@ -725,26 +725,26 @@ defmodule MaxGallery.Utils do
         group_id: group
       })
 
-    new_path =
+    dest =
       Path.join(persists, head)
       |> Path.split()
       |> Path.join()
 
     exists? =
       Agent.get(agent, & &1)
-      |> Map.get(new_path)
+      |> Map.get(dest)
 
     if !exists? do
       Agent.update(agent, fn value ->
         Map.put(
           value,
-          new_path,
+          dest,
           id
         )
       end)
     end
 
-    recursive_path(tail, lock, new_path, agent, user, id, key)
+    recursive_path(tail, lock, dest, agent, user, id, key)
   end
 
   @spec zip_valid?(path :: Path.t()) :: boolean()

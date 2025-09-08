@@ -249,7 +249,7 @@ defmodule MaxGallery.Context do
     - `{:error, "invalid key"}`: If the key is not authorized to delete the file.
     - `{:error, reason}`: If any operation (get, delete, etc.) fails.
   """
-  @spec cypher_delete(user :: binary(), id :: binary(), key :: String.t()) :: response()
+  @spec cypher_delete(user :: binary(), id :: integer(), key :: String.t()) :: response()
   def cypher_delete(user, id, key) do
     Repo.transaction(fn ->
       with {:ok, querry} <- CypherApi.get(id),
@@ -294,7 +294,7 @@ defmodule MaxGallery.Context do
     - `{:ok, map}`: A map containing the decrypted fields of the requested item.
     - `{:error, reason}`: If any decryption or retrieval fails.
   """
-  @spec decrypt_one(id :: binary(), key :: String.t(), opts :: Keyword.t()) :: response()
+  @spec decrypt_one(id :: integer(), key :: String.t(), opts :: Keyword.t()) :: response()
   def decrypt_one(user, id, key, opts \\ []) do
     lazy? = Keyword.get(opts, :lazy)
     group? = Keyword.get(opts, :group)
@@ -376,7 +376,7 @@ defmodule MaxGallery.Context do
     - `{:ok, updated}`: On success, returns the updated file struct.
     - `{:error, "invalid key"}`: If the provided encryption key is not valid for this file.
   """
-  @spec cypher_update(user :: binary(), id :: binary(), map(), key :: String.t()) :: response()
+  @spec cypher_update(user :: binary(), id :: integer(), map(), key :: String.t()) :: response()
   def cypher_update(user, id, %{name: new_name, blob: new_blob}, key) do
     ext = Path.extname(new_name)
     new_name = Path.basename(new_name, ext)
@@ -511,7 +511,7 @@ defmodule MaxGallery.Context do
     - `{:ok, updated}`: On successful update.
     - `{:error, "invalid key"}`: If the encryption key is invalid for the group.
   """
-  @spec group_update(user :: binary(), id :: binary(), map(), key :: String.t()) :: response()
+  @spec group_update(user :: binary(), id :: integer(), map(), key :: String.t()) :: response()
   def group_update(user, id, %{name: new_name}, key) do
     {:ok, querry} = GroupApi.get(id)
     {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
@@ -568,7 +568,7 @@ defmodule MaxGallery.Context do
   Requires a valid encryption key that matches the group's encryption scheme.
   The operation is irreversible and will permanently remove all nested content.
   """
-  @spec group_delete(user :: binary(), id :: binary(), key :: String.t()) :: response()
+  @spec group_delete(user :: binary(), id :: integer(), key :: String.t()) :: response()
   def group_delete(user, id, key) do
     with {:ok, querry} <- GroupApi.get(id),
          true <- Phantom.valid?(querry, key),
@@ -663,7 +663,7 @@ defmodule MaxGallery.Context do
   - Preserves no direct references to the original's encrypted data
   - Requires valid encryption key for both read and write operations
   """
-  @spec cypher_duplicate(user :: binary(), id :: binary(), params :: map(), key :: String.t()) ::
+  @spec cypher_duplicate(user :: binary(), id :: integer(), params :: map(), key :: String.t()) ::
           response()
   def cypher_duplicate(user, id, params, key) do
     {:ok, querry} = CypherApi.get(id)
@@ -745,7 +745,7 @@ defmodule MaxGallery.Context do
     - `{:ok, new_id}`: ID of the new group root
     - `{:error, "invalid key"}`: If key validation fails
   """
-  @spec group_duplicate(user :: binary(), id :: binary(), params :: map(), key :: String.t()) ::
+  @spec group_duplicate(user :: binary(), id :: integer(), params :: map(), key :: String.t()) ::
           response()
   def group_duplicate(user, id, params, key) do
     {:ok, querry} = GroupApi.get(id)
@@ -846,7 +846,7 @@ defmodule MaxGallery.Context do
     - ZIP binary data on success
     - Original error tuples on failure
   """
-  @spec zip_content(user :: binary(), id :: binary(), key :: String.t(), opts :: Keyword.t()) ::
+  @spec zip_content(user :: binary(), id :: integer(), key :: String.t(), opts :: Keyword.t()) ::
           {:ok, Path.t()} | {:error, String.t()}
   def zip_content(user, id, key, opts \\ []) do
     group? = Keyword.get(opts, :group)
@@ -1043,7 +1043,7 @@ defmodule MaxGallery.Context do
   - Continues with user deletion even if some data cleanup fails
   - Provides detailed logging for each step of the deletion process
   """
-  @spec user_delete(id :: binary()) :: :ok | :error
+  @spec user_delete(id :: integer()) :: :ok | :error
   def user_delete(id) do
     require Logger
 

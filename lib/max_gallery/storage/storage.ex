@@ -61,11 +61,27 @@ defmodule MaxGallery.Storage do
   - Delegates actual storage operation to Request module
   - Does not perform encryption (expects pre-encrypted content)
   """
-  @spec put(user :: binary(), id :: binary(), blob :: binary()) ::
+  @spec put(user :: binary(), id :: integer(), blob :: binary()) ::
           :ok | {:error, String.t()}
   def put(user, id, blob) do
     key = generate(user, id)
     req = S3.put_object(@bucket, key, blob)
+
+    case ExAws.request(req) do
+      {:ok, _status} ->
+        :ok
+
+      {:error, {_, _, %{body: xml}}} ->
+        {:error, xml_parser(xml)}
+    end
+  end
+
+  @spec put_stream(user :: binary(), id :: integer(), path :: Path.t()) :: :ok | {:error, String.t()}
+  def put_stream(user, id, path) do
+    stream = File.stream!(path, Variables.chunk_size() * 5, [:read])
+
+    key = generate(user, id)
+    req = S3.upload(stream, @bucket, key)
 
     case ExAws.request(req) do
       {:ok, _status} ->
@@ -92,7 +108,7 @@ defmodule MaxGallery.Storage do
   - Returns encrypted content (caller responsible for decryption)
   - Delegates actual retrieval to Request module
   """
-  @spec get(user :: binary(), id :: binary()) :: {:ok, binary()} | {:error, String.t()}
+  @spec get(user :: binary(), id :: integer()) :: {:ok, binary()} | {:error, String.t()}
   def get(user, id) do
     key = generate(user, id)
     req = S3.get_object(@bucket, key)
@@ -103,6 +119,37 @@ defmodule MaxGallery.Storage do
 
       {:error, {_, _, %{body: xml}}} ->
         {:error, xml_parser(xml)}
+    end
+  end
+
+  @spec get_stream(user :: binary(), id :: integer(), dest :: Path.t()) :: :ok | {:error, String.t()}
+  def get_stream(user, id, dest) do
+    key = generate(user, id)
+
+    {ok, res} = 
+      try do 
+        S3.download_file(@bucket, key, :memory)
+        |> ExAws.stream!()
+      rescue 
+        error ->
+          {false, Exception.message(error)}
+      else 
+        value ->
+          {true, value}
+      end
+
+    if ok do
+      File.open(dest, [:write], fn output -> 
+        Enum.each(res, fn chunk -> 
+          IO.binwrite(output, chunk)
+        end)
+      end)
+
+      :ok
+    else
+      {:error, 
+        String.split(res, "\n") |> List.first()
+      }
     end
   end
 
@@ -122,7 +169,7 @@ defmodule MaxGallery.Storage do
   - Permanent operation (cannot be undone)
   - Delegates actual deletion to Request module
   """
-  @spec del(user :: binary(), id :: binary()) :: :ok | {:error, String.t()}
+  @spec del(user :: binary(), id :: integer()) :: :ok | {:error, String.t()}
   def del(user, id) do
     key = generate(user, id)
     req = S3.delete_object(@bucket, key)
@@ -152,7 +199,7 @@ defmodule MaxGallery.Storage do
   - Does not retrieve file content, only checks existence
   - Useful for validation before operations
   """
-  @spec exists?(user :: binary(), id :: binary()) :: boolean()
+  @spec exists?(user :: binary(), id :: integer()) :: boolean()
   def exists?(user, id) do
     key = generate(user, id)
     req = S3.head_object(@bucket, key)
