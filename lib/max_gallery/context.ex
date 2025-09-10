@@ -214,7 +214,7 @@ defmodule MaxGallery.Context do
   def decrypt_all(user, key, opts \\ []) do
     lazy? = Keyword.get(opts, :lazy)
     only = Keyword.get(opts, :only)
-    memory? = !Keyword.get(opts, :disk)
+    memory? = !(Keyword.get(opts, :disk))
     group_id = Keyword.get(opts, :group)
 
     {:ok, contents} = Utils.get_group(user, group_id, only: only)

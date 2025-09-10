@@ -76,8 +76,8 @@ defmodule MaxGallery.Storage do
     end
   end
 
-  @spec put_stream(user :: binary(), id :: integer(), path :: Path.t()) :: :ok | {:error, String.t()}
-  def put_stream(user, id, path) do
+  @spec put_stream(user :: binary(), id :: integer(), Path.t() | Stream.t()) :: :ok | {:error, String.t()}
+  def put_stream(user, id, path) when is_binary(path) do
     stream = File.stream!(path, Variables.chunk_size() * 5, [:read])
 
     key = generate(user, id)
@@ -92,6 +92,18 @@ defmodule MaxGallery.Storage do
     end
   end
 
+  def put_stream(user, id, stream) when is_struct(stream) do
+    key = generate(user, id)
+    req = S3.upload(stream, @bucket, key)
+
+    case ExAws.request(req) do
+      {:ok, _status} ->
+        :ok
+
+      {:error, {_, _, %{body: xml}}} ->
+        {:error, xml_parser(xml)}
+    end
+  end
   @doc """
   Retrieves an encrypted file blob from cloud storage.
 
@@ -123,7 +135,7 @@ defmodule MaxGallery.Storage do
   end
 
   @spec get_stream(user :: binary(), id :: integer(), dest :: Path.t()) :: :ok | {:error, String.t()}
-  def get_stream(user, id, dest) do
+  def get_stream(user, id, dest) when is_binary(dest) do
     key = generate(user, id)
 
     {ok, res} = 
@@ -152,6 +164,32 @@ defmodule MaxGallery.Storage do
       }
     end
   end
+
+  @spec get_stream(user :: binary(), id :: integer()) :: {:ok, Stream.t()} | {:error, String.t()}
+  def get_stream(user, id) do
+    key = generate(user, id)
+
+    {ok, res} = 
+      try do 
+        S3.download_file(@bucket, key, :memory)
+        |> ExAws.stream!()
+      rescue 
+        error ->
+          {false, Exception.message(error)}
+      else 
+        value ->
+          {true, value}
+      end
+
+    if ok do
+      {:ok, res}
+    else
+      {:error, 
+        String.split(res, "\n") |> List.first()
+      }
+    end
+  end
+
 
   @doc """
   Deletes a single encrypted file from cloud storage.
