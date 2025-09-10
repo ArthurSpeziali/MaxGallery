@@ -1,5 +1,5 @@
 defmodule MaxGallery.Context do
-  alias MaxGallery.StorageAdapter, as: Storage
+  alias MaxGallery.Storage
   alias MaxGallery.Cache
   alias MaxGallery.Core.Cypher
   alias MaxGallery.Core.Cypher.Api, as: CypherApi
@@ -38,20 +38,6 @@ defmodule MaxGallery.Context do
 
   All operations require a valid encryption key to ensure security and integrity.
   """
-
-  # Private function to check if adding a file would exceed user storage limit
-  defp check_limit(user, new_file) do
-    ## In GigaBytes
-    current = Utils.user_size(user)
-    new_file = new_file / (1024 * 1024 * 1024)
-    total = current + new_file
-
-    if total <= Variables.max_size_user() do
-      :ok
-    else
-      {:error, "storage_limit_exceeded"}
-    end
-  end
 
   @doc """
   Encrypts and inserts a file into the system, storing both its encrypted contents and metadata.
@@ -104,7 +90,7 @@ defmodule MaxGallery.Context do
         ext
       end
 
-    {:ok, {name_iv, name}} =
+    {name_iv, name} =
       if name do
         Path.basename(name, ext)
         |> Encrypter.encrypt(key)
@@ -114,10 +100,11 @@ defmodule MaxGallery.Context do
       end
 
     with true <- Phantom.insert_line?(user, key),
-         {:ok, {blob_iv, blob}} <- Encrypter.file(:encrypt, path, key),
-         {:ok, {msg_iv, msg}} <- Encrypter.encrypt(Phantom.get_text(), key),
+         size <- File.stat!(path) |> Map.fetch!(:size),
+         Utils.check_limit(user, size),
+         {stream, blob_iv} <- Encrypter.encrypt_stream(path, key),
+         {msg_iv, msg} <- Encrypter.encrypt(Phantom.get_text(), key),
          {:ok, _querry} <- UserApi.exists(user),
-         :ok <- check_limit(user, byte_size(blob)),
          {:ok, querry} <-
            CypherApi.insert(%{
              user_id: user,
@@ -127,17 +114,15 @@ defmodule MaxGallery.Context do
              ext: ext,
              msg: msg,
              msg_iv: msg_iv,
-             length: byte_size(blob),
+             length: size,
              group_id: group
-           }),
-         :ok <- Storage.put(user, querry.id, blob) do
+           }), 
+         :ok <- Storage.put_stream(user, querry.id, stream, true) do
+
       {:ok, querry.id}
     else
       false ->
         {:error, "invalid key/user"}
-
-      {:error, "storage_limit_exceeded"} ->
-        {:error, "storage_limit_exceeded"}
 
       error ->
         error
@@ -146,7 +131,7 @@ defmodule MaxGallery.Context do
 
   ## Private recursive function to return the already encrypted data of each date/group to be stored in the database.
   defp send_package(%{ext: _ext} = item, user, lazy?, memory?, key) do
-    {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
+    {:ok, name} = Encrypter.decrypt(item.name, item.iv, key)
 
     if lazy? do
       %{
@@ -180,11 +165,11 @@ defmodule MaxGallery.Context do
         }
       end
     end
-    |> Map.update!(:name, fn item -> Phantom.validate_bin(item) end)
+    |> Phantom.encode_bin()
   end
 
   defp send_package(item, _user, _lazy, _memory, key) do
-    {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
+    {:ok, name} = Encrypter.decrypt(item.name, item.name_iv, key)
     %{name: name, id: item.id, group: item.group_id} |> Phantom.encode_bin()
   end
 
@@ -214,7 +199,7 @@ defmodule MaxGallery.Context do
   def decrypt_all(user, key, opts \\ []) do
     lazy? = Keyword.get(opts, :lazy)
     only = Keyword.get(opts, :only)
-    memory? = !(Keyword.get(opts, :disk))
+    memory? = Keyword.get(opts, :memory)
     group_id = Keyword.get(opts, :group)
 
     {:ok, contents} = Utils.get_group(user, group_id, only: only)
@@ -306,11 +291,10 @@ defmodule MaxGallery.Context do
         CypherApi.get(id)
       end
 
-    {:ok, name} = Encrypter.decrypt({querry.name_iv, querry.name}, key)
+    {:ok, name} = Encrypter.decrypt(querry.name, querry.name_iv, key)
 
     case {lazy?, group?} do
       {true, nil} ->
-        # Lazy: apenas metadados
         {:ok,
          %{
            id: id,
@@ -321,19 +305,18 @@ defmodule MaxGallery.Context do
 
       {nil, nil} ->
         # Full file: download and decrypt using cache system
-        {:ok, blob} = Cache.get_content(user, querry.id, querry.blob_iv, key)
+        {path, _created} = Cache.consume_cache(user, querry.id, querry.blob_iv, key)
 
         {:ok,
          %{
            id: id,
            name: name,
-           blob: blob,
+           path: path,
            ext: querry.ext,
            group: querry.group_id
          }}
 
       {_boolean, true} ->
-        # Grupo: apenas metadados
         {:ok,
          %{
            id: id,
@@ -381,8 +364,8 @@ defmodule MaxGallery.Context do
     ext = Path.extname(new_name)
     new_name = Path.basename(new_name, ext)
 
-    {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
-    {:ok, {blob_iv, blob}} = Encrypter.encrypt(new_blob, key)
+    {name_iv, name} = Encrypter.encrypt(new_name, key)
+    {blob_iv, blob} = Encrypter.encrypt(new_blob, key)
 
     {:ok, querry} = CypherApi.get(id)
 
@@ -391,7 +374,7 @@ defmodule MaxGallery.Context do
         params = %{name_iv: name_iv, name: name, blob_iv: blob_iv, ext: ext}
 
         case Storage.put(user, id, blob) do
-          {:ok, _} ->
+          :ok ->
             Cache.remove_cache(user, id)
             CypherApi.update(id, params)
 
@@ -408,7 +391,7 @@ defmodule MaxGallery.Context do
     ext = Path.extname(new_name)
     new_name = Path.basename(new_name, ext)
 
-    {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
+    {name_iv, name} = Encrypter.encrypt(new_name, key)
 
     params = %{name_iv: name_iv, name: name, ext: ext}
     {:ok, querry} = CypherApi.get(id)
@@ -469,8 +452,8 @@ defmodule MaxGallery.Context do
     group = Keyword.get(opts, :group)
 
     if Phantom.insert_line?(user, key) do
-      {:ok, {name_iv, name}} = Encrypter.encrypt(group_name, key)
-      {:ok, {msg_iv, msg}} = Phantom.get_text() |> Encrypter.encrypt(key)
+      {name_iv, name} = Encrypter.encrypt(group_name, key)
+      {msg_iv, msg} = Phantom.get_text() |> Encrypter.encrypt(key)
 
       {:ok, querry} =
         GroupApi.insert(%{
@@ -514,7 +497,7 @@ defmodule MaxGallery.Context do
   @spec group_update(user :: binary(), id :: integer(), map(), key :: String.t()) :: response()
   def group_update(user, id, %{name: new_name}, key) do
     {:ok, querry} = GroupApi.get(id)
-    {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
+    {name_iv, name} = Encrypter.encrypt(new_name, key)
 
     with {:ok, owner} <- GroupApi.get_own(id),
          true <- owner == user,
@@ -682,19 +665,20 @@ defmodule MaxGallery.Context do
     duplicate = Map.merge(original, params)
 
     ## This process is necessary about the unique name constraint.
-    {:ok, dec_name} =
+    dec_name =
       Encrypter.decrypt(
-        {duplicate.name_iv, duplicate.name},
+        duplicate.name,
+        duplicate.name_iv,
         key
       )
 
-    {:ok, {name_iv, name}} =
+    {name_iv, name} =
       Encrypter.encrypt(
         dec_name,
         key
       )
 
-    {:ok, {msg_iv, msg}} =
+    {msg_iv, msg} =
       Phantom.get_text()
       |> Encrypter.encrypt(key)
 
@@ -705,11 +689,11 @@ defmodule MaxGallery.Context do
       )
 
     Repo.transaction(fn ->
-      case Storage.get(user, querry.id) do
-        {:ok, enc_blob} ->
+      case Storage.get_stream(user, querry.id) do
+        {:ok, stream} ->
           with true <- Phantom.insert_line?(user, key),
                {:ok, querry} <- CypherApi.insert(duplicate),
-               :ok <- Storage.put(user, querry.id, enc_blob) do
+               :ok <- Storage.put_stream(user, querry.id, stream) do
             querry.id
           else
             false -> {:error, "invalid key"}
@@ -765,19 +749,20 @@ defmodule MaxGallery.Context do
 
     duplicate = Map.merge(original, params)
 
-    {:ok, dec_name} =
+    dec_name =
       Encrypter.decrypt(
-        {duplicate.name_iv, duplicate.name},
+        duplicate.name,
+        duplicate.name_iv,
         key
       )
 
-    {:ok, {name_iv, name}} =
+    {name_iv, name} =
       Encrypter.encrypt(
         dec_name,
         key
       )
 
-    {:ok, {msg_iv, msg}} =
+    {msg_iv, msg} =
       Phantom.get_text()
       |> Encrypter.encrypt(key)
 
@@ -796,8 +781,8 @@ defmodule MaxGallery.Context do
         content, :data ->
           {:ok, new_cypher} = CypherApi.insert(content)
           # Copy the encrypted blob from the original file to the new file
-          {:ok, enc_blob} = Storage.get(user, content.original_id)
-          Storage.put(user, new_cypher.id, enc_blob)
+          {:ok, stream} = Storage.get_stream(user, content.original_id)
+          Storage.put(user, new_cypher.id, stream)
           new_cypher
 
         content, :group ->
@@ -865,7 +850,8 @@ defmodule MaxGallery.Context do
           {:ok, querry} = GroupApi.get(id)
 
           Encrypter.decrypt(
-            {querry.name_iv, querry.name},
+            querry.name,
+            querry.name_iv,
             key
           )
         else
@@ -879,18 +865,13 @@ defmodule MaxGallery.Context do
         {:ok, querry} ->
           {:ok, name} =
             Encrypter.decrypt(
-              {querry.name_iv, querry.name},
+              querry.name,
+              querry.name_iv,
               key
             )
 
-          {:ok, enc_blob} = Storage.get(user, querry.id)
-
-          {:ok, blob} =
-            Encrypter.decrypt(
-              {querry.blob_iv, enc_blob},
-              key
-            )
-
+          blob = Cache.get_content(user, querry.id, querry.blob_iv, key)
+          
           Utils.zip_file(
             name <> querry.ext,
             blob
@@ -989,7 +970,7 @@ defmodule MaxGallery.Context do
         {:error, "email alredy been taken"}
 
       {:error, _reason} ->
-        salt = Encrypter.random()
+        salt = Encrypter.gen_nonce(16)
         passhash = salt <> Encrypter.hash(password)
 
         {:ok, querry} =
@@ -1043,76 +1024,76 @@ defmodule MaxGallery.Context do
   - Continues with user deletion even if some data cleanup fails
   - Provides detailed logging for each step of the deletion process
   """
-  @spec user_delete(id :: integer()) :: :ok | :error
-  def user_delete(id) do
+  @spec user_delete(user :: binary()) :: :ok | :error
+  def user_delete(user) do
     require Logger
 
-    Logger.info("Starting user deletion process for user #{id}")
+    Logger.info("Starting user deletion process for user #{user}")
 
     # Delete all user's groups from database
-    case GroupApi.delete_all(id) do
+    case GroupApi.delete_all(user) do
       {count_groups, nil} ->
-        Logger.info("Deleted #{count_groups} groups for user #{id}")
+        Logger.info("Deleted #{count_groups} groups for user #{user}")
 
       {count_groups, _error} ->
-        Logger.warning("Deleted #{count_groups} groups for user #{id}, some deletions failed")
+        Logger.warning("Deleted #{count_groups} groups for user #{user}, some deletions failed")
 
       error ->
-        Logger.error("Failed to delete groups for user #{id}: #{inspect(error)}")
+        Logger.error("Failed to delete groups for user #{user}: #{inspect(error)}")
     end
 
     # Delete all user's files from database
-    case CypherApi.delete_all(id) do
+    case CypherApi.delete_all(user) do
       {count_files, nil} ->
-        Logger.info("Deleted #{count_files} files from database for user #{id}")
+        Logger.info("Deleted #{count_files} files from database for user #{user}")
 
       {count_files, _error} ->
         Logger.warning(
-          "Deleted #{count_files} files from database for user #{id}, some deletions failed"
+          "Deleted #{count_files} files from database for user #{user}, some deletions failed"
         )
 
       error ->
-        Logger.error("Failed to delete files from database for user #{id}: #{inspect(error)}")
+        Logger.error("Failed to delete files from database for user #{user}: #{inspect(error)}")
     end
 
     # Delete all user's files from storage using batch processing
-    case Storage.del_all(id) do
-      {:ok, count_storage} ->
-        Logger.info("Deleted #{count_storage} files from storage for user #{id}")
+    case Storage.del_all(user) do
+      :ok ->
+        Logger.info("Deleted many files from storage for user #{user}")
 
       {:error, reason} ->
-        Logger.error("Failed to delete files from storage for user #{id}: #{reason}")
+        Logger.error("Failed to delete files from storage for user #{user}: #{reason}")
     end
 
     # Finally delete the user account
-    case UserApi.delete(id) do
+    case UserApi.delete(user) do
       {:ok, _querry} ->
-        Logger.info("Successfully deleted user #{id} and all associated data")
+        Logger.info("Successfully deleted user #{user} and all associated data")
         :ok
 
       error ->
-        Logger.error("Failed to delete user account #{id}: #{inspect(error)}")
+        Logger.error("Failed to delete user account #{user}: #{inspect(error)}")
         :error
     end
   end
 
-  def user_get(id, opts \\ []) do
+  def user_get(user, opts \\ []) do
     email = Keyword.get(opts, :email)
 
     if email do
       UserApi.get_email(email)
     else
-      UserApi.get(id)
+      UserApi.get(user)
     end
   end
 
   def user_update(email, %{password: password}) do
     case UserApi.get_email(email) do
-      {:ok, %{id: id}} ->
+      {:ok, %{id: user}} ->
         salt = Encrypter.random()
         passhash = salt <> Encrypter.hash(password)
 
-        UserApi.update(id, %{passhash: passhash})
+        UserApi.update(user, %{passhash: passhash})
 
       error ->
         error

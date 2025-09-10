@@ -41,6 +41,7 @@ defmodule MaxGallery.Storage do
 
   alias ExAws.S3
   alias MaxGallery.Variables
+  alias MaxGallery.Utils
   import SweetXml, only: [sigil_x: 2]
   @bucket Variables.bucket_name()
 
@@ -76,7 +77,7 @@ defmodule MaxGallery.Storage do
     end
   end
 
-  @spec put_stream(user :: binary(), id :: integer(), Path.t() | Stream.t()) :: :ok | {:error, String.t()}
+  @spec put_stream(user :: binary(), id :: integer(), Path.t() | struct()) :: :ok | {:error, String.t()}
   def put_stream(user, id, path) when is_binary(path) do
     stream = File.stream!(path, Variables.chunk_size() * 5, [:read])
 
@@ -92,8 +93,19 @@ defmodule MaxGallery.Storage do
     end
   end
 
-  def put_stream(user, id, stream) when is_struct(stream) do
+  def put_stream(user, id, stream, part? \\ nil) when is_struct(stream) do
     key = generate(user, id)
+
+    stream = 
+      if part? do 
+        Stream.flat_map(
+          stream, 
+          & Utils.binary_chunk(&1, Variables.chunk_size * 5)
+        )
+      else
+        stream
+      end
+  
     req = S3.upload(stream, @bucket, key)
 
     case ExAws.request(req) do
@@ -165,7 +177,7 @@ defmodule MaxGallery.Storage do
     end
   end
 
-  @spec get_stream(user :: binary(), id :: integer()) :: {:ok, Stream.t()} | {:error, String.t()}
+  @spec get_stream(user :: binary(), id :: integer()) :: {:ok, struct()} | {:error, String.t()}
   def get_stream(user, id) do
     key = generate(user, id)
 

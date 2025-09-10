@@ -42,6 +42,7 @@ defmodule MaxGallery.Cache do
   """
 
   alias MaxGallery.Storage
+  alias MaxGallery.Utils
   alias MaxGallery.Encrypter
   alias MaxGallery.Phantom
   alias MaxGallery.Variables
@@ -120,12 +121,12 @@ defmodule MaxGallery.Cache do
     file_path = get_path(user, id)
     File.mkdir_p!(tmp_path())
 
-    {:ok, enc_blob} = Storage.get(user, id)
-    {:ok, blob} = Encrypter.decrypt({blob_iv, enc_blob}, key)
+    {:ok, stream} = Storage.get_stream(user, id)
+    out_stream = Encrypter.decrypt_stream(stream, blob_iv, key)
 
-    File.write!(file_path, blob, [:write])
+    Utils.exec(out_stream, :write, {file_path})
     file_path
-  end
+  end 
 
   @doc """
   Gets decrypted content directly in memory from S3.
@@ -151,51 +152,12 @@ defmodule MaxGallery.Cache do
   - May trigger download if not cached
   - More memory intensive than streaming approaches
   """
-  @spec get_content(user :: binary(), binary(), binary(), String.t()) ::
-          {:ok, binary()} | {:error, any()}
+  @spec get_content(user :: binary(), binary(), binary(), String.t()) :: binary()
   def get_content(user, id, blob_iv, key) do
     {path, _created} = consume_cache(user, id, blob_iv, key)
     File.read(path)
   end
 
-  @doc """
-  Encodes a file chunk using Phantom validation.
-  This function is kept for compatibility with existing code.
-
-  ## Parameters
-  - `path` - Path to the file to encode
-
-  ## Returns
-  - Encoded file path with environment prefix
-
-  ## Process
-  1. Creates encoded output file
-  2. Streams input file in chunks
-  3. Applies Phantom validation to each chunk
-  4. Writes encoded data to output file
-  5. Removes original file
-  6. Returns encoded file path
-
-  ## Notes
-  - Legacy function maintained for compatibility
-  - Uses streaming to handle large files
-  - Removes original file after encoding
-  - Adds environment prefix to output filename
-  """
-  @spec encode_chunk(Path.t()) :: Path.t()
-  def encode_chunk(path) do
-    File.open!(path <> "_encode", [:write], fn output ->
-      File.stream!(path, [], Variables.chunk_size())
-      |> Stream.each(fn chunk ->
-        encoded_data = Phantom.validate_bin(chunk)
-        IO.binwrite(output, encoded_data)
-      end)
-      |> Stream.run()
-    end)
-
-    File.rm!(path)
-    inspect(Mix.env()) <> "_" <> path <> "_encode"
-  end
 
   @doc """
   Removes a file from cache.

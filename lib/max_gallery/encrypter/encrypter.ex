@@ -1,9 +1,9 @@
-defmodule MaxGallery.Encrypter.Chacha20 do
+defmodule MaxGallery.Encrypter do
   alias MaxGallery.Variables
   @nonce_size 8
 
   def encrypt(data, key) do
-    nonce = gen_nounce()
+    nonce = gen_nonce()
     key = hash(key)
 
     {nonce, Chacha20.crypt(data, key, nonce)}
@@ -23,58 +23,38 @@ defmodule MaxGallery.Encrypter.Chacha20 do
 
   @spec encrypt_stream(path :: Path.t(), dest :: Path.t(), key :: String.t()) :: binary() 
   def encrypt_stream(path, dest, key) when is_binary(path) and is_binary(dest) do
-    nonce = gen_nounce()
+    nonce = gen_nonce()
     key = hash(key)
     params = {key, nonce, 0, ""}
 
-    {:ok, agent} =
-      Agent.start_link(fn ->
-        {"", params}
-      end)
-
     File.open(dest, [:write], fn output ->
       File.stream!(path, Variables.chunk_size(), [:read])
-      |> Stream.each(fn chunk ->
-        {acc, params} = Agent.get(agent, fn state -> state end)
-        {new_acc, new_params} = Chacha20.crypt_bytes(chunk, params, [acc])
+      |> Enum.reduce(params, fn chunk, params ->
+        {cont, new_params} = Chacha20.crypt_bytes(chunk, params, [])
 
-        Agent.update(agent, fn _state ->
-          {new_acc, new_params}
-        end)
-
-        IO.binwrite(output, new_acc)
+        IO.binwrite(output, cont)
+        new_params
       end)
-      |> Stream.run()
     end)
 
     nonce
   end
 
-  @spec encrypt_stream(path :: Path.t(), key :: String.t()) :: {Stream.t(), binary()}
+  @spec encrypt_stream(path :: Path.t(), key :: String.t()) :: {struct(), binary()}
   def encrypt_stream(path, key) do
-    nonce = gen_nounce()
+    nonce = gen_nonce()
     key = hash(key)
     params = {key, nonce, 0, ""}
 
-    {:ok, agent} =
-      Agent.start_link(fn ->
-        {"", params}
-      end)
-
-    stream =
+    stream  =
       File.stream!(path, Variables.chunk_size(), [:read])
-      |> Stream.map(fn chunk ->
-        {acc, params} = Agent.get(agent, fn state -> state end)
-        {new_acc, new_params} = Chacha20.crypt_bytes(chunk, params, [acc])
+      |> Stream.transform(params, fn chunk, params ->
+        {cont, new_params} = Chacha20.crypt_bytes(chunk, params, [])
 
-        Agent.update(agent, fn _state ->
-          {new_acc, new_params}
-        end)
-
-        new_acc
+        {[cont], new_params}
       end)
 
-    {nonce, stream}
+    {stream, nonce}
   end
 
 
@@ -82,49 +62,29 @@ defmodule MaxGallery.Encrypter.Chacha20 do
     key = hash(key)
     params = {key, nonce, 0, ""}
 
-    {:ok, agent} =
-      Agent.start_link(fn ->
-        {"", params}
-      end)
-
     File.open(dest, [:write], fn output ->
       File.stream!(path, Variables.chunk_size(), [:read])
-      |> Stream.each(fn chunk ->
-        {acc, params} = Agent.get(agent, fn state -> state end)
-        {new_acc, new_params} = Chacha20.crypt_bytes(chunk, params, [acc])
+      |> Enum.reduce(params, fn chunk, params ->
+        {cont, new_params} = Chacha20.crypt_bytes(chunk, params, [])
 
-        Agent.update(agent, fn _state ->
-          {new_acc, new_params}
-        end)
-
-        IO.binwrite(output, new_acc)
+        IO.binwrite(output, cont)
+        new_params
       end)
-      |> Stream.run()
     end)
 
     :ok
   end
 
-  @spec decrypt_stream(stream :: Stream.t(), nonce :: binary(), key :: String.t()) :: Stream.t()
+  @spec decrypt_stream(stream :: struct(), nonce :: binary(), key :: String.t()) :: struct()
   def decrypt_stream(stream, nonce, key) do
     key = hash(key)
     params = {key, nonce, 0, ""}
 
-    {:ok, agent} =
-      Agent.start_link(fn ->
-        {"", params}
-      end)
-
     out_stream = 
-      Stream.map(stream, fn chunk ->
-        {acc, params} = Agent.get(agent, fn state -> state end)
-        {new_acc, new_params} = Chacha20.crypt_bytes(chunk, params, [acc])
+      Stream.transform(stream, params, fn chunk, params ->
+        {cont, new_params} = Chacha20.crypt_bytes(chunk, params, [])
 
-        Agent.update(agent, fn _state ->
-          {new_acc, new_params}
-        end)
-
-        new_acc
+        {[cont], new_params}
       end)
 
     out_stream
@@ -135,7 +95,8 @@ defmodule MaxGallery.Encrypter.Chacha20 do
     :crypto.hash(:sha256, data)
   end
 
-  def gen_nounce() do
-    :crypto.strong_rand_bytes(@nonce_size)
+  def gen_nonce(bytes \\ @nonce_size) do
+    :crypto.strong_rand_bytes(bytes)
   end
+
 end

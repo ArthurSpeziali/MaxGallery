@@ -1,6 +1,5 @@
 defmodule MaxGallery.Phantom do
   alias MaxGallery.Encrypter
-  alias MaxGallery.Cache
   alias MaxGallery.Core.Cypher.Api
 
   @moduledoc """
@@ -109,19 +108,7 @@ defmodule MaxGallery.Phantom do
   @spec encode_bin(contents :: Context.querry()) :: Context.querry()
   def encode_bin(contents) when is_list(contents) do
     Enum.map(contents, fn item ->
-      new_content = Map.update!(item, :name, &validate_bin/1)
-
-      case new_content do
-        %{blob: _blob} ->
-          Map.update!(new_content, :blob, &validate_bin/1)
-
-        %{path: path} = params ->
-          new_path = Cache.encode_chunk(path)
-          Map.merge(params, %{path: new_path})
-
-        _ ->
-          new_content
-      end
+      Map.update!(item, :name, &validate_bin/1)
     end)
   end
 
@@ -187,7 +174,7 @@ defmodule MaxGallery.Phantom do
   """
   @spec valid?(map(), key :: String.t()) :: boolean()
   def valid?(%{msg_iv: msg_iv, msg: msg}, key) do
-    {:ok, dec_cypher} = Encrypter.decrypt({msg_iv, msg}, key)
+    dec_cypher = Encrypter.decrypt(msg, msg_iv, key)
 
     dec_cypher == get_text()
   end

@@ -39,6 +39,18 @@ defmodule MaxGallery.Utils do
   are performed in a temporary directory that should be cleaned up after use.
   """
 
+  def check_limit(user, size) do
+    ## In GigaBytes
+    current = user_size(user)
+    size = size / (1024 * 1024 * 1024)
+    total = current + size
+
+    if total <= Variables.max_size_user() do
+      :ok
+    else
+      {:error, "storage_limit_exceeded"}
+    end
+  end
   @doc """
   Retrieves the parent group ID for a given item ID.
 
@@ -243,7 +255,8 @@ defmodule MaxGallery.Utils do
         if Map.get(item, :ext) do
           {:ok, name} =
             Encrypter.decrypt(
-              {item.name_iv, item.name},
+              item.name, 
+              item.name_iv,
               key
             )
 
@@ -262,7 +275,8 @@ defmodule MaxGallery.Utils do
 
             {:ok, blob} =
               Encrypter.decrypt(
-                {item.blob_iv, enc_blob},
+                enc_blob, 
+                item.blob_iv,
                 key
               )
 
@@ -280,7 +294,8 @@ defmodule MaxGallery.Utils do
         else
           {:ok, name} =
             Encrypter.decrypt(
-              {item.name_iv, item.name},
+              item.name, 
+              item.name_iv,
               key
             )
 
@@ -338,7 +353,7 @@ defmodule MaxGallery.Utils do
     Enum.each(tree, fn item ->
       case item do
         %{data: data} ->
-          {:ok, {name_iv, name}} = Encrypter.encrypt(data.name, key)
+          {name_iv, name} = Encrypter.encrypt(data.name, key)
 
           # Handle lazy mode where blob might not be present
           {blob_iv, length} =
@@ -352,7 +367,7 @@ defmodule MaxGallery.Utils do
               {original.blob_iv, original.length}
             end
 
-          {:ok, {msg_iv, msg}} =
+          {msg_iv, msg} =
             Phantom.get_text()
             |> Encrypter.encrypt(key)
 
@@ -373,9 +388,9 @@ defmodule MaxGallery.Utils do
 
         %{group: {group, subitems}} ->
           # Always generate fresh encryption for group names to avoid constraint violations
-          {:ok, {name_iv, name}} = Encrypter.encrypt(group.name, key)
+          {name_iv, name} = Encrypter.encrypt(group.name, key)
 
-          {:ok, {msg_iv, msg}} =
+          {msg_iv, msg} =
             Phantom.get_text()
             |> Encrypter.encrypt(key)
 
@@ -658,13 +673,13 @@ defmodule MaxGallery.Utils do
   defp recursive_path([head | []], lock, _persists, _agent, user, group, key) do
     file = File.read!(lock)
 
-    {:ok, {name_iv, name}} =
+    {name_iv, name} =
       Encrypter.encrypt(
         Path.basename(head, Path.extname(head)),
         key
       )
 
-    {:ok, {msg_iv, msg}} =
+    {msg_iv, msg} =
       Encrypter.encrypt(
         Phantom.get_text(),
         key
@@ -703,13 +718,13 @@ defmodule MaxGallery.Utils do
   end
 
   defp recursive_path([head | tail], lock, persists, agent, user, group, key) do
-    {:ok, {name_iv, name}} =
+    {name_iv, name} =
       Encrypter.encrypt(
         head,
         key
       )
 
-    {:ok, {msg_iv, msg}} =
+    {msg_iv, msg} =
       Encrypter.encrypt(
         Phantom.get_text(),
         key
@@ -843,4 +858,16 @@ defmodule MaxGallery.Utils do
       {:error, "invalid base64"}
     end
   end
+
+
+
+  @spec exec(stream :: struct(), atom(), tuple()) :: any()
+  def exec(stream, :write, {path}) do
+    File.open(path, [:write], fn output -> 
+      Stream.each(stream, fn chunk -> 
+        IO.binwrite(output, chunk)
+      end)
+      |> Stream.run()
+    end)
+  end 
 end
