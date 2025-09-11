@@ -94,8 +94,11 @@ defmodule MaxGalleryWeb.RequestController do
     link =
       "https://" <> host <> "/reset-passwd?token=#{token}"
 
-    Template.reset_passwd(email, link)
-    |> Mail.send()
+    task =
+      Template.reset_passwd(email, link)
+      |> Mail.send()
+
+    spawn(fn -> Mail.response(task, email) end)
 
     LiveServer.add(:timestamp_requests, %{email => DateTime.utc_now()})
 

@@ -63,8 +63,12 @@ defmodule MaxGalleryWeb.PageController do
     user = get_session(conn, :user_validation)
 
     if user do
-      Template.email_verify(user.email, user.code)
-      |> Mail.send()
+      task = 
+        Template.email_verify(user.email, user.code)
+        |> Mail.send()
+
+      ## Logger if it return an error 
+      spawn(fn -> Mail.response(task, user.email) end)
 
       render(conn, :verify, layout: false, hide_header: true, email: user.email, err_code: nil)
     else
