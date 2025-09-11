@@ -16,10 +16,10 @@ defmodule MaxGallery.Server.GarbageServer do
   @mod __MODULE__
   # Time in minutes for cleanup
   @folders_info %{
-    "zips" => 2, #75
-    "cache" => 2, #120
-    "downloads" => 2, #30
-    "test" => 2 #600
+    "zips" => 75,
+    "cache" => 120,
+    "downloads" => 30, 
+    "test" => 600
   }
   # 5 Minutes
   @time_check 1 * 60 * 1000
