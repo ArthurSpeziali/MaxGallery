@@ -276,8 +276,8 @@ defmodule MaxGallery.Cache do
   - Gracefully handles permission errors on individual files
   - Used during logout to clean up user-specific cache
   """
-  @spec cleanup_user_cache(user :: binary()) :: {:ok, non_neg_integer()} | {:error, any()}
-  def cleanup_user_cache(user) do
+  @spec cleanup(user :: binary()) :: {:ok, non_neg_integer()} | {:error, any()}
+  def cleanup(user) do
     File.mkdir_p!(tmp_path())
 
     case File.ls(tmp_path()) do

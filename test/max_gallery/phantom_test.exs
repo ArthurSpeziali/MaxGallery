@@ -5,7 +5,7 @@ defmodule MaxGallery.PhatomTest do
   alias MaxGallery.Variables
   alias MaxGallery.Core.Cypher.Api
 
-  @tmp_path Variables.tmp_dir() <> "tests/"
+  @tmp_path Variables.tmp_dir() <> "test/"
 
   setup %{test_user: test_user} do
     {:ok,

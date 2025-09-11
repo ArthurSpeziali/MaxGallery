@@ -14,7 +14,7 @@ defmodule MaxGalleryWeb.PageController do
     user_auth = get_session(conn, "user_auth") || conn.cookies["auth_user"]
 
     if user_auth do
-      Cache.cleanup_user_cache(user_auth)
+      Cache.cleanup(user_auth)
     end
 
     configure_session(conn, drop: true)
@@ -27,7 +27,7 @@ defmodule MaxGalleryWeb.PageController do
     user_auth = conn.cookies["auth_user"] || get_session(conn, "user_auth")
 
     if user_auth do
-      Cache.cleanup_user_cache(user_auth)
+      Cache.cleanup(user_auth)
     end
 
     configure_session(conn, drop: true)

@@ -11,121 +11,71 @@ defmodule MaxGallery.Server.GarbageServer do
   """
 
   use GenServer
-  alias MaxGallery.Cache
   alias MaxGallery.Variables
 
   @mod __MODULE__
-  @path %{
-    zips: Variables.tmp_dir() <> "zips/",
-    cache: Variables.tmp_dir() <> "cache/",
-    downloads: Variables.tmp_dir() <> "downloads/"
-  }
   # Time in minutes for cleanup
-  @time_delete %{
-    zips: 75,
-    cache: 120,
-    # 30 minutes for downloads
-    downloads: 30
+  @folders_info %{
+    "zips" => 2, #75
+    "cache" => 2, #120
+    "downloads" => 2, #30
+    "test" => 2 #600
   }
   # 5 Minutes
-  @time_check 5 * 60 * 1000
+  @time_check 1 * 60 * 1000
+
+  defp create_folders() do
+    for {dir, _time} <- @folders_info do
+      File.mkdir_p!(
+        Variables.tmp_dir() <> dir
+      )
+    end
+  end
+
+  defp send_interval() do 
+    for {dir, _time} <- @folders_info do
+      :timer.send_interval(@time_check, self(), {:check_general, dir})
+    end
+  end
+
+
 
   def start_link(_opts \\ nil) do
-    GenServer.start_link(@mod, 0, name: @mod)
+    GenServer.start_link(@mod, nil, name: @mod)
   end
 
   def init(_state) do
-    File.mkdir_p!(@path.zips)
-    File.mkdir_p!(@path.cache)
-    File.mkdir_p!(@path.downloads)
+    create_folders()
+    send_interval()
 
-    count =
-      (File.ls!(@path.zips)
-       |> Enum.count()) +
-        (File.ls!(@path.cache)
-         |> Enum.count()) +
-        (File.ls!(@path.downloads)
-         |> Enum.count())
-
-    ## Once every 5 minutes, the function checks if exists any "lost" file.
-    :timer.send_interval(@time_check, self(), :check_zips)
-    :timer.send_interval(@time_check, self(), :check_cache)
-    :timer.send_interval(@time_check, self(), :check_downloads)
-    {:ok, count}
+    {:ok, nil}
   end
 
-  def handle_call(:count, _from, state) do
-    {:reply, state, state}
-  end
-
-  def handle_info(:check_zips, _state) do
+  def handle_info({:check_general, dir}, _state) do
+    delete = @folders_info[dir]
     now = NaiveDateTime.utc_now()
+    path = Variables.tmp_dir() <> dir <> "/"
 
-    File.mkdir_p!(@path.zips)
-    files = File.ls!(@path.zips)
-
+    files = File.ls!(path)
     for name <- files do
       time =
-        File.stat!(@path.zips <> name)
+        File.stat!(path <> name)
         |> Map.fetch!(:ctime)
         |> NaiveDateTime.from_erl!()
 
       diff = NaiveDateTime.diff(now, time, :minute)
 
-      if diff >= @time_delete.zips do
-        File.rm(@path.zips <> name)
+      if diff >= delete do
+        File.rm(path <> name)
       end
     end
 
-    count =
-      File.ls!(@path.zips)
-      |> Enum.count()
-
-    {:noreply, count}
+    {:noreply, nil}
   end
 
-  def handle_info(:check_cache, _state) do
-    # Use the new cache cleanup function
-    Cache.cleanup_old_files(@time_delete.cache)
 
-    count =
-      File.ls!(@path.cache)
-      |> Enum.count()
-
-    {:noreply, count}
-  end
-
-  def handle_info(:check_downloads, _state) do
-    now = NaiveDateTime.utc_now()
-
-    File.mkdir_p!(@path.downloads)
-    files = File.ls!(@path.downloads)
-
-    for name <- files do
-      time =
-        File.stat!(@path.downloads <> name)
-        |> Map.fetch!(:ctime)
-        |> NaiveDateTime.from_erl!()
-
-      diff = NaiveDateTime.diff(now, time, :minute)
-
-      if diff >= @time_delete.downloads do
-        File.rm(@path.downloads <> name)
-      end
-    end
-
-    count =
-      File.ls!(@path.downloads)
-      |> Enum.count()
-
-    {:noreply, count}
-  end
 
   def check do
-    send(@mod, :check_cache)
-    send(@mod, :check_zips)
-    send(@mod, :check_downloads)
+    send(@mod, :check_general)
   end
-
-  def count, do: GenServer.call(@mod, :count)
 end
