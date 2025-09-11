@@ -15,7 +15,7 @@ defmodule MaxGallery.Storage.MockTest do
       cypher_id = "test_id_123"
 
       # Test put
-      assert {:ok, _key} = Mock.put(test_user, cypher_id, blob)
+      assert :ok = Mock.put(test_user, cypher_id, blob)
 
       # Test get
       assert {:ok, ^blob} = Mock.get(test_user, cypher_id)
@@ -62,7 +62,7 @@ defmodule MaxGallery.Storage.MockTest do
       assert Mock.exists?(test_user, "id3")
 
       # Delete all
-      assert {:ok, 3} = Mock.del_all(test_user)
+      assert :ok = Mock.del_all(test_user)
 
       # Verify none exist
       refute Mock.exists?(test_user, "id1")

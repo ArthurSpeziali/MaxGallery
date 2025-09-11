@@ -12,18 +12,21 @@ defmodule MaxGallery.EncrypterTest do
   end
 
   test "Encrypt a message, then decrypt it", %{msg: msg} do
-    assert {:ok, enc} = Encrypter.encrypt(msg, "key")
-    assert {:ok, ^msg} = Encrypter.decrypt(enc, "key")
+    {iv, cypher} = Encrypter.encrypt(msg, "key")
+    assert ^msg = Encrypter.decrypt(cypher, iv, "key")
   end
 
   test "Create an file, encrypt its contents, then decrypt it.", %{msg: msg} do
     path = create_file(msg)
+    
+    # Read file content and encrypt it
+    content = File.read!(path)
+    {iv, cypher} = Encrypter.encrypt(content, "key")
+    
+    # Decrypt and verify
+    decrypted = Encrypter.decrypt(cypher, iv, "key")
+    assert ^msg = decrypted
 
-    assert {:ok, {iv, cypher}} = Encrypter.file(:encrypt, path, "key")
-    assert {:ok, ^msg} = Encrypter.file(:decrypt, {iv, cypher}, path <> "_dec", "key")
-
-    # Clean up the decrypted file
-    File.rm(path <> "_dec")
     TestHelpers.cleanup_temp_files()
   end
 end

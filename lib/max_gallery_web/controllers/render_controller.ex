@@ -75,8 +75,9 @@ defmodule MaxGalleryWeb.RenderController do
     key = get_session(conn, :auth_key)
     user = get_session(conn, "user_auth")
 
+
     if key do
-      {:ok, file_path} = Context.zip_content(user, id, key, group: true)
+      {:ok, file_path} = Context.zip_content(user, id, key, group: true) 
 
       Logger.debug(
         "Sending dowload from #{user}\n Path: #{file_path}\n" <> String.duplicate("!-", 50)

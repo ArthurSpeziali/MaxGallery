@@ -35,9 +35,9 @@ defmodule MaxGallery.ContextTest do
       assert {:ok, _querry} = Context.cypher_insert(path, test_user, "key")
     end
 
-    assert {:ok, querry} = Context.decrypt_all(test_user, "key")
+    assert {:ok, querry} = Context.decrypt_all(test_user, "key", memory: true)
 
-    # The new system returns blob directly, not path
+    # The new system returns blob directly when memory: true
     assert %{name: name, blob: blob} = List.first(querry)
     assert ^msg = blob
     assert ^name = Path.basename(path, Path.extname(path))
@@ -50,7 +50,8 @@ defmodule MaxGallery.ContextTest do
 
     assert {:ok, id} = Context.cypher_insert(path, test_user, "key")
     assert {:ok, data} = Context.decrypt_one(test_user, id, "key")
-    assert blob = data.blob
+    # Read the file content from the path
+    blob = File.read!(data.path)
 
     assert {:ok, _querry} =
              Context.cypher_update(
@@ -103,7 +104,7 @@ defmodule MaxGallery.ContextTest do
       assert {:ok, _querry} = Context.group_insert("Group#{item}", test_user, "key")
     end
 
-    assert {:ok, querry} = Context.decrypt_all(test_user, "key")
+    assert {:ok, querry} = Context.decrypt_all(test_user, "key", lazy: true)
     assert 10 = length(querry)
 
     TestHelpers.cleanup_temp_files()

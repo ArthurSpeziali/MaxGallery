@@ -1,5 +1,5 @@
 defmodule MaxGallery.Context do
-  alias MaxGallery.Storage
+  alias MaxGallery.StorageAdapter, as: Storage
   alias MaxGallery.Cache
   alias MaxGallery.Core.Cypher
   alias MaxGallery.Core.Cypher.Api, as: CypherApi
@@ -131,7 +131,7 @@ defmodule MaxGallery.Context do
   ## Private recursive function to return the already encrypted data of each date/group to be stored in the database.
   @spec send_package(item :: map(), user :: binary(), lazy? :: boolean(), memory? :: boolean(), key :: String.t()) :: querry()
   defp send_package(%{ext: _ext} = item, user, lazy?, memory?, key) do
-    name = Encrypter.decrypt(item.name, item.iv, key)
+    name = Encrypter.decrypt(item.name, item.name_iv, key)
 
     if lazy? do
       %{
@@ -782,7 +782,7 @@ defmodule MaxGallery.Context do
           {:ok, new_cypher} = CypherApi.insert(content)
           # Copy the encrypted blob from the original file to the new file
           {:ok, stream} = Storage.get_stream(user, content.original_id)
-          Storage.put(user, new_cypher.id, stream)
+          Storage.put_stream(user, new_cypher.id, stream)
           new_cypher
 
         content, :group ->
@@ -874,12 +874,10 @@ defmodule MaxGallery.Context do
 
           blob = Cache.get_content(user, querry.id, querry.blob_iv, key)
 
-          {:ok,
-            Utils.zip_file(
-              name <> querry.ext,
-              blob
-            )
-          }
+          Utils.zip_file(
+            name <> querry.ext,
+            blob
+          )
 
         error ->
           error

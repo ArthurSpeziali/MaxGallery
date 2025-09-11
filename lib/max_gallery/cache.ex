@@ -41,7 +41,7 @@ defmodule MaxGallery.Cache do
   - Supports both memory and disk-based access patterns
   """
 
-  alias MaxGallery.Storage
+  alias MaxGallery.StorageAdapter, as: Storage
   alias MaxGallery.Utils
   alias MaxGallery.Encrypter
   alias MaxGallery.Phantom

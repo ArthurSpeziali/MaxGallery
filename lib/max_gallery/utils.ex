@@ -3,7 +3,7 @@ defmodule MaxGallery.Utils do
   alias MaxGallery.Core.Group.Api, as: GroupApi
   alias MaxGallery.Encrypter
   alias MaxGallery.Phantom
-  alias MaxGallery.Storage
+  alias MaxGallery.StorageAdapter, as: Storage
   alias MaxGallery.Variables
   alias MaxGallery.Validate
   @type tree :: [map()]

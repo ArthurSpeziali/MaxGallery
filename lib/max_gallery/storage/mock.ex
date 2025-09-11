@@ -33,7 +33,25 @@ defmodule MaxGallery.Storage.Mock do
       Map.put(state, key, blob)
     end)
 
-    {:ok, key}
+    :ok
+  end
+
+  @impl true
+  def put_stream(user, id, stream, _part? \\ nil) do
+    ensure_started()
+    key = generate_key(user, id)
+
+    # Convert stream to binary for storage
+    blob = 
+      stream
+      |> Enum.to_list()
+      |> IO.iodata_to_binary()
+
+    Agent.update(__MODULE__, fn state ->
+      Map.put(state, key, blob)
+    end)
+
+    :ok
   end
 
   @impl true
@@ -44,6 +62,40 @@ defmodule MaxGallery.Storage.Mock do
     case Agent.get(__MODULE__, fn state -> Map.get(state, key) end) do
       nil -> {:error, "File not found"}
       blob -> {:ok, blob}
+    end
+  end
+
+  @impl true
+  def get_stream(user, id) do
+    ensure_started()
+    key = generate_key(user, id)
+
+    case Agent.get(__MODULE__, fn state -> Map.get(state, key) end) do
+      nil -> 
+        {:error, "File not found"}
+      blob -> 
+        # Convert binary to stream for consistency with S3 behavior
+        chunk_size = 8192  # 8KB chunks
+        stream = Stream.unfold(blob, fn
+          <<>> -> nil
+          <<chunk::binary-size(chunk_size), rest::binary>> -> {chunk, rest}
+          remaining -> {remaining, <<>>}
+        end)
+        {:ok, stream}
+    end
+  end
+
+  @impl true
+  def get_stream(user, id, dest) do
+    case get_stream(user, id) do
+      {:ok, stream} ->
+        File.open(dest, [:write], fn output ->
+          Enum.each(stream, fn chunk ->
+            IO.binwrite(output, chunk)
+          end)
+        end)
+        :ok
+      error -> error
     end
   end
 
@@ -64,17 +116,14 @@ defmodule MaxGallery.Storage.Mock do
     ensure_started()
     prefix = "encrypted_files/#{user}/"
 
-    deleted_count =
-      Agent.get_and_update(__MODULE__, fn state ->
-        {to_delete, to_keep} =
-          Enum.split_with(state, fn {key, _blob} ->
-            String.starts_with?(key, prefix)
-          end)
-
-        {length(to_delete), Map.new(to_keep)}
+    Agent.update(__MODULE__, fn state ->
+      Enum.reject(state, fn {key, _blob} ->
+        String.starts_with?(key, prefix)
       end)
+      |> Map.new()
+    end)
 
-    {:ok, deleted_count}
+    :ok
   end
 
   @impl true
