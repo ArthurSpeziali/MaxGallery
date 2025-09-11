@@ -51,6 +51,7 @@ defmodule MaxGallery.Utils do
       {:error, "storage_limit_exceeded"}
     end
   end
+
   @doc """
   Retrieves the parent group ID for a given item ID.
 
@@ -67,7 +68,7 @@ defmodule MaxGallery.Utils do
   - Does not validate the existence of the returned parent group
   - Primarily used for navigation within group hierarchies
   """
-  @spec get_back(id :: integer()) :: binary()
+  @spec get_back(id :: integer() | nil) :: integer() | nil
   def get_back(id) do
     case id do
       nil ->
@@ -253,9 +254,9 @@ defmodule MaxGallery.Utils do
     else
       Enum.map(contents, fn item ->
         if Map.get(item, :ext) do
-          {:ok, name} =
+          name =
             Encrypter.decrypt(
-              item.name, 
+              item.name,
               item.name_iv,
               key
             )
@@ -271,11 +272,11 @@ defmodule MaxGallery.Utils do
               }
             }
           else
-            {:ok, enc_blob} = Storage.get(user, item.id)
+            {:ok, stream} = Storage.get_stream(user, item.id)
 
-            {:ok, blob} =
-              Encrypter.decrypt(
-                enc_blob, 
+            stream =
+              Encrypter.decrypt_stream(
+                stream,
                 item.blob_iv,
                 key
               )
@@ -284,7 +285,7 @@ defmodule MaxGallery.Utils do
               data: %{
                 id: item.id,
                 name: name,
-                blob: blob,
+                blob: exec(stream, :read, {}),
                 ext: item.ext,
                 group: item.group_id,
                 user: item.user_id
@@ -292,9 +293,9 @@ defmodule MaxGallery.Utils do
             }
           end
         else
-          {:ok, name} =
+          name =
             Encrypter.decrypt(
-              item.name, 
+              item.name,
               item.name_iv,
               key
             )
@@ -358,8 +359,12 @@ defmodule MaxGallery.Utils do
           # Handle lazy mode where blob might not be present
           {blob_iv, length} =
             if Map.has_key?(data, :blob) do
-              {:ok, {blob_iv, blob}} = Encrypter.encrypt(data.blob, key)
-              {blob_iv, byte_size(blob)}
+              {stream, blob_iv} = Encrypter.encrypt_stream(data.blob, key)
+              size = stream.enum.path
+                     |> File.stat!()
+                     |> Map.fetch!(:size)
+
+              {blob_iv, size}
             else
               # For lazy mode, we need to get the original blob_iv and length
               # This requires getting the original file data
@@ -600,8 +605,7 @@ defmodule MaxGallery.Utils do
 
   def binary_chunk(bin, _range), do: [bin]
 
-  @spec create_folder(user :: binary(), folder :: Path.t(), key :: binary(), opts :: Keyword.t()) ::
-          :ok
+  @spec create_folder(user :: binary(), folder :: Path.t(), key :: String.t(), opts :: Keyword.t()) :: :ok
   def create_folder(user, folder, key, opts \\ []) do
     group = Keyword.get(opts, :group)
     agent = Keyword.get(opts, :agent)
@@ -671,8 +675,6 @@ defmodule MaxGallery.Utils do
   end
 
   defp recursive_path([head | []], lock, _persists, _agent, user, group, key) do
-    file = File.read!(lock)
-
     {name_iv, name} =
       Encrypter.encrypt(
         Path.basename(head, Path.extname(head)),
@@ -685,9 +687,9 @@ defmodule MaxGallery.Utils do
         key
       )
 
-    {:ok, {blob_iv, blob}} =
-      Encrypter.encrypt(
-        file,
+    {stream, blob_iv} =
+      Encrypter.encrypt_stream(
+        lock,
         key
       )
 
@@ -700,6 +702,10 @@ defmodule MaxGallery.Utils do
         ext
       end
 
+    size =
+      File.stat!(lock)
+      |> Map.fetch!(:size)
+
     {:ok, %{id: id}} =
       CypherApi.insert(%{
         user_id: user,
@@ -709,12 +715,11 @@ defmodule MaxGallery.Utils do
         msg: msg,
         msg_iv: msg_iv,
         ext: ext,
-        length: byte_size(file),
+        length: size,
         group_id: group
       })
 
-    # Store encrypted blob directly in S3 instead of chunks
-    Storage.put(user, id, blob)
+    Storage.put_stream(user, id, stream)
   end
 
   defp recursive_path([head | tail], lock, persists, agent, user, group, key) do
@@ -798,7 +803,7 @@ defmodule MaxGallery.Utils do
 
     token = "#{now}::#{string}"
 
-    {:ok, {iv, enc}} = Encrypter.encrypt(token, System.get_env("ENCRIPT_KEY"))
+    {iv, enc} = Encrypter.encrypt(token, System.get_env("ENCRIPT_KEY"))
     Base.url_encode64(iv <> enc)
   end
 
@@ -833,7 +838,7 @@ defmodule MaxGallery.Utils do
 
       if byte_size(ivenc) > 16 do
         <<iv::binary-size(16), enc::binary>> = ivenc
-        {:ok, token} = Encrypter.decrypt({iv, enc}, System.get_env("ENCRIPT_KEY"))
+        token = Encrypter.decrypt(enc, iv, System.get_env("ENCRIPT_KEY"))
 
         if byte_size(token) > 12 && String.contains?(token, "::") do
           <<unix_time::binary-size(10), "::", string::binary>> = token
@@ -859,15 +864,19 @@ defmodule MaxGallery.Utils do
     end
   end
 
-
-
   @spec exec(stream :: struct(), atom(), tuple()) :: any()
   def exec(stream, :write, {path}) do
-    File.open(path, [:write], fn output -> 
-      Stream.each(stream, fn chunk -> 
+    File.open(path, [:write], fn output ->
+      Stream.each(stream, fn chunk ->
         IO.binwrite(output, chunk)
       end)
       |> Stream.run()
     end)
-  end 
+  end
+
+  def exec(stream, :read, {}) do
+    Enum.reduce(stream, <<>>, fn chunk, acc ->
+      acc <> chunk
+    end)
+  end
 end

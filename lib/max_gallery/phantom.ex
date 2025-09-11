@@ -1,6 +1,11 @@
 defmodule MaxGallery.Phantom do
   alias MaxGallery.Encrypter
   alias MaxGallery.Core.Cypher.Api
+  alias MaxGallery.Core.Cypher
+  alias MaxGallery.Core.Group
+  @type querry :: [%Cypher{} | %Group{} | map()] 
+  @type unique :: %Cypher{} | %Group{} | map()
+
 
   @moduledoc """
   Provides validation and integrity checking for encrypted data in MaxGallery.
@@ -105,7 +110,7 @@ defmodule MaxGallery.Phantom do
   - Maintains data structure integrity
   - Safe to use on already-validated content
   """
-  @spec encode_bin(contents :: Context.querry()) :: Context.querry()
+  @spec encode_bin(contents :: querry() | unique()) :: querry()
   def encode_bin(contents) when is_list(contents) do
     Enum.map(contents, fn item ->
       Map.update!(item, :name, &validate_bin/1)

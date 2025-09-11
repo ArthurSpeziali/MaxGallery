@@ -5,8 +5,12 @@ defmodule MaxGalleryWeb.RenderController do
   alias MaxGallery.Extension
   alias MaxGallery.Variables
 
+  @type plug :: %Plug.Conn{}
+
+
   ## Decrypt the file and shows instantly.
-  defp content_render(conn, id) do
+  @spec content_render(conn :: plug(), id :: integer()) :: plug()
+  def content_render(conn, id) do
     key = get_session(conn, :auth_key)
     user = get_session(conn, "user_auth")
     {:ok, querry} = Context.decrypt_one(user, id, key)
@@ -28,11 +32,13 @@ defmodule MaxGalleryWeb.RenderController do
     end
   end
 
+  @spec images(conn :: plug(), map()) :: plug()
   def images(conn, %{"id" => id}) do
     content_render(conn, id)
   end
 
   ## Load the file, and chunk it. It ensures the videos load faster.
+  @spec videos(conn :: plug(), map()) :: plug()
   def videos(conn, %{"id" => id}) do
     key = get_session(conn, :auth_key)
     user = get_session(conn, "user_auth")
@@ -48,7 +54,7 @@ defmodule MaxGalleryWeb.RenderController do
         |> put_resp_header("accept-ranges", "bytes")
         |> send_chunked(200)
 
-      File.stream!(cypher.path, Variables.chunk_size(), [:read])
+      File.stream!(cypher.path, Variables.chunk_size())
       |> Enum.reduce_while(conn, fn blob_chunk, conn ->
         case chunk(conn, blob_chunk) do
           {:ok, conn} -> {:cont, conn}
@@ -60,6 +66,7 @@ defmodule MaxGalleryWeb.RenderController do
     end
   end
 
+  @spec audios(conn :: plug(), map()) :: plug()
   def audios(conn, %{"id" => id}) do
     content_render(conn, id)
   end

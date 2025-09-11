@@ -79,7 +79,7 @@ defmodule MaxGallery.Cache do
   - Returns boolean flag indicating whether download occurred
   - Automatically creates cache directory if needed
   """
-  @spec consume_cache(user :: binary(), binary(), binary(), String.t()) :: {Path.t(), boolean()}
+  @spec consume_cache(user :: binary(), id :: integer(), blob_iv :: binary(), key :: String.t()) :: {Path.t(), boolean()}
   def consume_cache(user, id, blob_iv, key) do
     path = get_path(user, id)
 
@@ -116,7 +116,7 @@ defmodule MaxGallery.Cache do
   - Creates parent directories automatically
   - Uses binary write mode for efficiency
   """
-  @spec write_chunk(user :: binary(), binary(), binary(), String.t()) :: Path.t()
+  @spec write_chunk(user :: binary(), id :: integer(), blob_iv :: binary(), key :: String.t()) :: Path.t()
   def write_chunk(user, id, blob_iv, key) do
     file_path = get_path(user, id)
     File.mkdir_p!(tmp_path())
@@ -126,7 +126,7 @@ defmodule MaxGallery.Cache do
 
     Utils.exec(out_stream, :write, {file_path})
     file_path
-  end 
+  end
 
   @doc """
   Gets decrypted content directly in memory from S3.
@@ -152,12 +152,11 @@ defmodule MaxGallery.Cache do
   - May trigger download if not cached
   - More memory intensive than streaming approaches
   """
-  @spec get_content(user :: binary(), binary(), binary(), String.t()) :: binary()
+  @spec get_content(user :: binary(), id :: integer(), blob_iv :: binary(), key :: String.t()) :: binary()
   def get_content(user, id, blob_iv, key) do
     {path, _created} = consume_cache(user, id, blob_iv, key)
-    File.read(path)
+    File.read!(path)
   end
-
 
   @doc """
   Removes a file from cache.
@@ -174,7 +173,7 @@ defmodule MaxGallery.Cache do
   - Only removes from local cache, not from storage
   - Useful for cache invalidation after updates
   """
-  @spec remove_cache(binary(), binary()) :: :ok
+  @spec remove_cache(user :: binary(), id :: integer()) :: :ok
   def remove_cache(user, id) do
     path = get_path(user, id)
 
@@ -201,7 +200,7 @@ defmodule MaxGallery.Cache do
   - Useful for cache hit/miss analysis
   - Does not validate file integrity
   """
-  @spec cached?(user :: binary(), binary()) :: boolean()
+  @spec cached?(user :: binary(), id :: integer()) :: boolean()
   def cached?(user, id) do
     path = get_path(user, id)
     File.exists?(path)
@@ -222,7 +221,7 @@ defmodule MaxGallery.Cache do
   - Includes environment in path for isolation
   - Does not check if file actually exists
   """
-  @spec get_path(user :: binary(), binary()) :: Path.t()
+  @spec get_path(user :: binary(), id :: integer()) :: Path.t()
   def get_path(user, id) do
     tmp_path() <> "#{user}_#{Mix.env()}_#{id}"
   end
@@ -243,7 +242,7 @@ defmodule MaxGallery.Cache do
   - Returns raw binary content
   - Fails if file not cached
   """
-  @spec get_cache(user :: binary(), binary()) :: binary() | :error
+  @spec get_cache(user :: binary(), id :: integer()) :: binary() | :error
   def get_cache(user, id) do
     path = get_path(user, id)
 

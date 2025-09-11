@@ -27,20 +27,16 @@ defmodule MaxGallery.Core.Group.Api do
       |> where(user_id: ^user)
       |> Repo.all()
 
-    case querry do
-      _group when is_list(querry) -> {:ok, querry}
-      error -> error
-    end
+    {:ok, querry}
   end
 
   def all(user) do
-    from(Group)
-    |> where(user_id: ^user)
-    |> Repo.all(Group)
-    |> case do
-      group when is_list(group) -> {:ok, group}
-      error -> error
-    end
+    querry = 
+      from(Group)
+      |> where(user_id: ^user)
+      |> Repo.all()
+
+    {:ok, querry}
   end
 
   def insert(params) do

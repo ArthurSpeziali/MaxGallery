@@ -116,9 +116,8 @@ defmodule MaxGallery.Context do
              msg_iv: msg_iv,
              length: size,
              group_id: group
-           }), 
+           }),
          :ok <- Storage.put_stream(user, querry.id, stream, true) do
-
       {:ok, querry.id}
     else
       false ->
@@ -130,8 +129,9 @@ defmodule MaxGallery.Context do
   end
 
   ## Private recursive function to return the already encrypted data of each date/group to be stored in the database.
+  @spec send_package(item :: map(), user :: binary(), lazy? :: boolean(), memory? :: boolean(), key :: String.t()) :: querry()
   defp send_package(%{ext: _ext} = item, user, lazy?, memory?, key) do
-    {:ok, name} = Encrypter.decrypt(item.name, item.iv, key)
+    name = Encrypter.decrypt(item.name, item.iv, key)
 
     if lazy? do
       %{
@@ -143,7 +143,7 @@ defmodule MaxGallery.Context do
     else
       if memory? do
         # Return blob in memory using new cache system
-        {:ok, blob} = Cache.get_content(user, item.id, item.blob_iv, key)
+        blob = Cache.get_content(user, item.id, item.blob_iv, key)
 
         %{
           name: name,
@@ -169,7 +169,7 @@ defmodule MaxGallery.Context do
   end
 
   defp send_package(item, _user, _lazy, _memory, key) do
-    {:ok, name} = Encrypter.decrypt(item.name, item.name_iv, key)
+    name = Encrypter.decrypt(item.name, item.name_iv, key)
     %{name: name, id: item.id, group: item.group_id} |> Phantom.encode_bin()
   end
 
@@ -279,7 +279,7 @@ defmodule MaxGallery.Context do
     - `{:ok, map}`: A map containing the decrypted fields of the requested item.
     - `{:error, reason}`: If any decryption or retrieval fails.
   """
-  @spec decrypt_one(id :: integer(), key :: String.t(), opts :: Keyword.t()) :: response()
+  @spec decrypt_one(user :: binary(), id :: integer(), key :: String.t(), opts :: Keyword.t()) :: {:ok, map()}
   def decrypt_one(user, id, key, opts \\ []) do
     lazy? = Keyword.get(opts, :lazy)
     group? = Keyword.get(opts, :group)
@@ -291,7 +291,7 @@ defmodule MaxGallery.Context do
         CypherApi.get(id)
       end
 
-    {:ok, name} = Encrypter.decrypt(querry.name, querry.name_iv, key)
+    name = Encrypter.decrypt(querry.name, querry.name_iv, key)
 
     case {lazy?, group?} do
       {true, nil} ->
@@ -849,11 +849,13 @@ defmodule MaxGallery.Context do
         if id do
           {:ok, querry} = GroupApi.get(id)
 
-          Encrypter.decrypt(
-            querry.name,
-            querry.name_iv,
-            key
-          )
+          {:ok,
+            Encrypter.decrypt(
+              querry.name,
+              querry.name_iv,
+              key
+            )
+          }
         else
           {:ok, "Main"}
         end
@@ -863,7 +865,7 @@ defmodule MaxGallery.Context do
     else
       case CypherApi.get(id) do
         {:ok, querry} ->
-          {:ok, name} =
+          name =
             Encrypter.decrypt(
               querry.name,
               querry.name_iv,
@@ -871,11 +873,13 @@ defmodule MaxGallery.Context do
             )
 
           blob = Cache.get_content(user, querry.id, querry.blob_iv, key)
-          
-          Utils.zip_file(
-            name <> querry.ext,
-            blob
-          )
+
+          {:ok,
+            Utils.zip_file(
+              name <> querry.ext,
+              blob
+            )
+          }
 
         error ->
           error
@@ -917,7 +921,6 @@ defmodule MaxGallery.Context do
     end
   end
 
-
   @spec unzip_content(path :: Path.t(), user :: binary(), key :: binary(), opts :: Keyword.t()) ::
           pos_integer()
   def unzip_content(path, user, key, opts \\ []) do
@@ -944,8 +947,7 @@ defmodule MaxGallery.Context do
       count =
         for item <- path_string do
           Utils.create_folder(user, item, key, agent: agent, group: group)
-        end
-        |> Enum.count()
+        end |> Enum.count()
 
       exclude_path =
         Path.relative_to(
@@ -970,7 +972,7 @@ defmodule MaxGallery.Context do
         {:error, "email alredy been taken"}
 
       {:error, _reason} ->
-        salt = Encrypter.gen_nonce(16)
+        salt = Encrypter.random()
         passhash = salt <> Encrypter.hash(password)
 
         {:ok, querry} =

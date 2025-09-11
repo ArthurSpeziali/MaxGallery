@@ -77,9 +77,10 @@ defmodule MaxGallery.Storage do
     end
   end
 
-  @spec put_stream(user :: binary(), id :: integer(), Path.t() | struct()) :: :ok | {:error, String.t()}
+  @spec put_stream(user :: binary(), id :: integer(), Path.t() | Enum.t()) ::
+          :ok | {:error, String.t()}
   def put_stream(user, id, path) when is_binary(path) do
-    stream = File.stream!(path, Variables.chunk_size() * 5, [:read])
+    stream = File.stream!(path, Variables.chunk_size())
 
     key = generate(user, id)
     req = S3.upload(stream, @bucket, key)
@@ -96,16 +97,16 @@ defmodule MaxGallery.Storage do
   def put_stream(user, id, stream, part? \\ nil) when is_struct(stream) do
     key = generate(user, id)
 
-    stream = 
-      if part? do 
+    stream =
+      if part? do
         Stream.flat_map(
-          stream, 
-          & Utils.binary_chunk(&1, Variables.chunk_size * 5)
+          stream,
+          &Utils.binary_chunk(&1, Variables.chunk_size())
         )
       else
         stream
       end
-  
+
     req = S3.upload(stream, @bucket, key)
 
     case ExAws.request(req) do
@@ -116,6 +117,7 @@ defmodule MaxGallery.Storage do
         {:error, xml_parser(xml)}
     end
   end
+
   @doc """
   Retrieves an encrypted file blob from cloud storage.
 
@@ -146,49 +148,48 @@ defmodule MaxGallery.Storage do
     end
   end
 
-  @spec get_stream(user :: binary(), id :: integer(), dest :: Path.t()) :: :ok | {:error, String.t()}
+  @spec get_stream(user :: binary(), id :: integer(), dest :: Path.t()) ::
+          :ok | {:error, String.t()}
   def get_stream(user, id, dest) when is_binary(dest) do
     key = generate(user, id)
 
-    {ok, res} = 
-      try do 
+    {ok, res} =
+      try do
         S3.download_file(@bucket, key, :memory)
         |> ExAws.stream!()
-      rescue 
+      rescue
         error ->
           {false, Exception.message(error)}
-      else 
+      else
         value ->
           {true, value}
       end
 
     if ok do
-      File.open(dest, [:write], fn output -> 
-        Enum.each(res, fn chunk -> 
+      File.open(dest, [:write], fn output ->
+        Enum.each(res, fn chunk ->
           IO.binwrite(output, chunk)
         end)
       end)
 
       :ok
     else
-      {:error, 
-        String.split(res, "\n") |> List.first()
-      }
+      {:error, String.split(res, "\n") |> List.first()}
     end
   end
 
-  @spec get_stream(user :: binary(), id :: integer()) :: {:ok, struct()} | {:error, String.t()}
+  @spec get_stream(user :: binary(), id :: integer()) :: {:ok, Enum.t()} | {:error, String.t()}
   def get_stream(user, id) do
     key = generate(user, id)
 
-    {ok, res} = 
-      try do 
+    {ok, res} =
+      try do
         S3.download_file(@bucket, key, :memory)
         |> ExAws.stream!()
-      rescue 
+      rescue
         error ->
           {false, Exception.message(error)}
-      else 
+      else
         value ->
           {true, value}
       end
@@ -196,12 +197,9 @@ defmodule MaxGallery.Storage do
     if ok do
       {:ok, res}
     else
-      {:error, 
-        String.split(res, "\n") |> List.first()
-      }
+      {:error, String.split(res, "\n") |> List.first()}
     end
   end
-
 
   @doc """
   Deletes a single encrypted file from cloud storage.

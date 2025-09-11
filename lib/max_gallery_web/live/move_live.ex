@@ -88,8 +88,8 @@ defmodule MaxGalleryWeb.Live.MoveLive do
     id = socket.assigns[:id]
 
     back_id =
-      socket.assigns[:page_id]
-      |> Utils.get_back() || "main"
+      (socket.assigns[:page_id] |> Utils.get_back())
+      || "main"
 
     ## This is only time that `Utils.get_back/1` is called. Should i delete this function?
 
