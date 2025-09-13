@@ -776,4 +776,5 @@ defmodule MaxGallery.Storage.Request do
         {:error, "Network error listing files: #{inspect(reason)}"}
     end
   end
+
 end

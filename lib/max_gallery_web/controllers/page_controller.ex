@@ -6,6 +6,7 @@ defmodule MaxGalleryWeb.PageController do
   alias MaxGallery.Utils
   alias MaxGallery.Mail.Template
   alias MaxGallery.Mail
+  alias MaxGallery.Server.LiveServer
   alias MaxGallery.Cache
 
   ## Remove assings, cookies, files, etc...
@@ -41,10 +42,14 @@ defmodule MaxGalleryWeb.PageController do
     id = conn.cookies["auth_user"]
 
     if id do
-      {:ok, user} = Context.user_get(id)
+      case Context.user_get(id) do
+        {:error, _reason} ->
+          redirect(conn, to: "/login?action=login")
 
-      put_session(conn, "user_auth", id)
-      |> render(:home, layout: false, name: user.name)
+        {:ok, user} ->
+          put_session(conn, "user_auth", id)
+          |> render(:home, layout: false, name: user.name)
+      end
     else
       redirect(conn, to: "/login?action=login")
     end
@@ -61,12 +66,43 @@ defmodule MaxGalleryWeb.PageController do
 
   def verify(conn, _params) do
     user = get_session(conn, :user_validation)
+    user_request = LiveServer.get(:timestamp_requests)[user.email]
+
+    remain_send =
+        if user_request do
+          remain =
+            DateTime.diff(
+              DateTime.utc_now(),
+              user_request,
+              :second
+            )
+
+          if remain >= Variables.email_resend() do
+            nil
+          else
+            Variables.email_resend() - remain
+          end
+        else
+          nil
+        end
 
     if user do
-      Template.email_verify(user.email, user.code)
-      |> Mail.send()
+      if remain_send do
+        render(conn, :verify,
+          layout: false,
+          hide_header: true,
+          email: user.email,
+          err_code: nil,
+          remain: remain_send
+        )
+      else
+        Template.email_verify(user.email, user.code)
+        |> Mail.send()
 
-      render(conn, :verify, layout: false, hide_header: true, email: user.email, err_code: nil)
+        LiveServer.add(:timestamp_requests, %{user.email => DateTime.utc_now()})
+
+        render(conn, :verify, layout: false, hide_header: true, email: user.email, err_code: nil, remain: nil)
+      end
     else
       redirect(conn, to: "/")
     end
@@ -95,7 +131,8 @@ defmodule MaxGalleryWeb.PageController do
           layout: false,
           hide_header: true,
           email: user.email,
-          err_code: "Invalid code. Try again."
+          err_code: "Invalid code. Try again.",
+          remail: nil
         )
       end
     else
@@ -135,7 +172,7 @@ defmodule MaxGalleryWeb.PageController do
         expired? =
           DateTime.after?(
             DateTime.utc_now(),
-            DateTime.add(timestamp, Variables.reset_time(), :minute)
+            DateTime.add(timestamp, Variables.wait_time(), :minute)
           )
 
         if expired? do
@@ -147,9 +184,7 @@ defmodule MaxGalleryWeb.PageController do
   end
 
   def reset(conn, _params) do
-    email = "noone@nohost.no"
-    render(conn, :reset, layout: false, hide_header: true, email: email, err: nil)
-    # redirect(conn, to: "/user")
+    redirect(conn, to: "/user")
   end
 
   def reset_process(conn, %{"email" => email, "new_passwd" => password}) do

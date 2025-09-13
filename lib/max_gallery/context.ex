@@ -132,13 +132,15 @@ defmodule MaxGallery.Context do
   @spec send_package(item :: map(), user :: binary(), lazy? :: boolean(), memory? :: boolean(), key :: String.t()) :: querry()
   defp send_package(%{ext: _ext} = item, user, lazy?, memory?, key) do
     name = Encrypter.decrypt(item.name, item.name_iv, key)
+    # Use the group field if available (from swap_id), otherwise use group_id
+    group_ref = Map.get(item, :group, item.group_id)
 
     if lazy? do
       %{
         name: name,
         ext: item.ext,
         id: item.id,
-        group: item.group_id
+        group: group_ref
       }
     else
       if memory? do
@@ -150,7 +152,7 @@ defmodule MaxGallery.Context do
           blob: blob,
           ext: item.ext,
           id: item.id,
-          group: item.group_id
+          group: group_ref
         }
       else
         # Return file path using cache system
@@ -161,7 +163,7 @@ defmodule MaxGallery.Context do
           path: path,
           ext: item.ext,
           id: item.id,
-          group: item.group_id
+          group: group_ref
         }
       end
     end
@@ -170,7 +172,9 @@ defmodule MaxGallery.Context do
 
   defp send_package(item, _user, _lazy, _memory, key) do
     name = Encrypter.decrypt(item.name, item.name_iv, key)
-    %{name: name, id: item.id, group: item.group_id} |> Phantom.encode_bin()
+    # Use the group field if available (from swap_id), otherwise use group_id
+    group_ref = Map.get(item, :group, item.group_id)
+    %{name: name, id: item.id, group: group_ref} |> Phantom.encode_bin()
   end
 
   @doc """
@@ -277,50 +281,59 @@ defmodule MaxGallery.Context do
     - `{:ok, map}`: A map containing the decrypted fields of the requested item.
     - `{:error, reason}`: If any decryption or retrieval fails.
   """
-  @spec decrypt_one(user :: binary(), id :: integer(), key :: String.t(), opts :: Keyword.t()) :: {:ok, map()}
+  @spec decrypt_one(user :: binary(), id :: integer(), key :: String.t(), opts :: Keyword.t()) :: {:ok, map()} | {:error, String.t()}
   def decrypt_one(user, id, key, opts \\ []) do
     lazy? = Keyword.get(opts, :lazy)
     group? = Keyword.get(opts, :group)
 
-    {:ok, querry} =
-      if group? do
-        GroupApi.get(user, id)
-      else
-        CypherApi.get(user, id)
-      end
+    result = if group? do
+      GroupApi.get(user, id)
+    else
+      CypherApi.get(user, id)
+    end
+    
+    case result do
+      {:ok, querry} ->
+        case Encrypter.decrypt(querry.name, querry.name_iv, key) do
+          {:error, _} -> {:error, "invalid key"}
+          name ->
+            # Use the group field if available (from swap_id), otherwise use group_id
+            group_ref = Map.get(querry, :group, querry.group_id)
 
-    name = Encrypter.decrypt(querry.name, querry.name_iv, key)
+            case {lazy?, group?} do
+              {true, nil} ->
+                {:ok,
+                 %{
+                   id: id,
+                   name: name,
+                   ext: querry.ext,
+                   group: group_ref
+                 }}
 
-    case {lazy?, group?} do
-      {true, nil} ->
-        {:ok,
-         %{
-           id: id,
-           name: name,
-           ext: querry.ext,
-           group: querry.group_id
-         }}
+              {nil, nil} ->
+                # Full file: download and decrypt using cache system
+                {path, _created} = Cache.consume_cache(user, querry.id, querry.blob_iv, key)
+                
+                {:ok,
+                 %{
+                   id: id,
+                   name: name,
+                   path: path,
+                   ext: querry.ext,
+                   group: group_ref
+                 }}
 
-      {nil, nil} ->
-        # Full file: download and decrypt using cache system
-        {path, _created} = Cache.consume_cache(user, querry.id, querry.blob_iv, key)
-
-        {:ok,
-         %{
-           id: id,
-           name: name,
-           path: path,
-           ext: querry.ext,
-           group: querry.group_id
-         }}
-
-      {_boolean, true} ->
-        {:ok,
-         %{
-           id: id,
-           name: name,
-           group: querry.group_id
-         }}
+              {_boolean, true} ->
+                {:ok,
+                 %{
+                   id: id,
+                   name: name,
+                   group: group_ref
+                 }}
+            end
+        end
+      
+      error -> error
     end
   end
 
@@ -460,6 +473,8 @@ defmodule MaxGallery.Context do
         })
 
       {:ok, querry.id}
+    else
+      {:error, "invalid key/user"}
     end
   end
 
@@ -637,61 +652,54 @@ defmodule MaxGallery.Context do
   @spec cypher_duplicate(user :: binary(), id :: integer(), params :: map(), key :: String.t()) ::
           response()
   def cypher_duplicate(user, id, params, key) do
-    {:ok, querry} = CypherApi.get(user, id)
+    case CypherApi.get(user, id) do
+      {:ok, querry} ->
+        original =
+          Map.drop(querry, [
+            :__struct__,
+            :__meta__,
+            :id,
+            :group,
+            :user,
+            :inserted_at,
+            :updated_at
+          ])
 
-    original =
-      Map.drop(querry, [
-        :__struct__,
-        :__meta__,
-        :id,
-        :group,
-        :user,
-        :inserted_at,
-        :updated_at
-      ])
+        duplicate = Map.merge(original, params)
 
-    duplicate = Map.merge(original, params)
+        ## This process is necessary about the unique name constraint.
+        case Encrypter.decrypt(duplicate.name, duplicate.name_iv, key) do
+          {:error, _} -> {:error, "invalid key"}
+          dec_name ->
+            {name_iv, name} = Encrypter.encrypt(dec_name, key)
+            {msg_iv, msg} = Phantom.get_text() |> Encrypter.encrypt(key)
 
-    ## This process is necessary about the unique name constraint.
-    dec_name =
-      Encrypter.decrypt(
-        duplicate.name,
-        duplicate.name_iv,
-        key
-      )
+            duplicate =
+              Map.merge(
+                duplicate,
+                %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
+              )
 
-    {name_iv, name} =
-      Encrypter.encrypt(
-        dec_name,
-        key
-      )
+            Repo.transaction(fn ->
+              case Storage.get_stream(user, querry.id) do
+                {:ok, stream} ->
+                  with true <- Phantom.insert_line?(user, key),
+                       {:ok, new_querry} <- CypherApi.insert(user, duplicate),
+                       :ok <- Storage.put_stream(user, new_querry.id, stream) do
+                    new_querry.id
+                  else
+                    false -> Repo.rollback("invalid key")
+                    error -> Repo.rollback(error)
+                  end
 
-    {msg_iv, msg} =
-      Phantom.get_text()
-      |> Encrypter.encrypt(key)
-
-    duplicate =
-      Map.merge(
-        duplicate,
-        %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
-      )
-
-    Repo.transaction(fn ->
-      case Storage.get_stream(user, querry.id) do
-        {:ok, stream} ->
-          with true <- Phantom.insert_line?(user, key),
-               {:ok, querry} <- CypherApi.insert(user, duplicate),
-               :ok <- Storage.put_stream(user, querry.id, stream) do
-            querry.id
-          else
-            false -> {:error, "invalid key"}
-            error -> error
-          end
-
-        {:error, reason} ->
-          Repo.rollback(reason)
-      end
-    end)
+                {:error, reason} ->
+                  Repo.rollback(reason)
+              end
+            end)
+        end
+      
+      error -> error
+    end
   end
 
   @doc """
@@ -720,73 +728,66 @@ defmodule MaxGallery.Context do
   @spec group_duplicate(user :: binary(), id :: integer(), params :: map(), key :: String.t()) ::
           response()
   def group_duplicate(user, id, params, key) do
-    {:ok, querry} = GroupApi.get(user, id)
+    case GroupApi.get(user, id) do
+      {:ok, querry} ->
+        original =
+          Map.drop(querry, [
+            :__struct__,
+            :__meta,
+            :id,
+            :group,
+            :cypher,
+            :user,
+            :subgroup,
+            :inserted_at,
+            :updated_at
+          ])
 
-    original =
-      Map.drop(querry, [
-        :__struct__,
-        :__meta,
-        :id,
-        :group,
-        :cypher,
-        :user,
-        :subgroup,
-        :inserted_at,
-        :updated_at
-      ])
+        duplicate = Map.merge(original, params)
 
-    duplicate = Map.merge(original, params)
+        case Encrypter.decrypt(duplicate.name, duplicate.name_iv, key) do
+          {:error, _} -> {:error, "invalid key/user"}
+          dec_name ->
+            {name_iv, name} = Encrypter.encrypt(dec_name, key)
+            {msg_iv, msg} = Phantom.get_text() |> Encrypter.encrypt(key)
 
-    dec_name =
-      Encrypter.decrypt(
-        duplicate.name,
-        duplicate.name_iv,
-        key
-      )
+            duplicate =
+              Map.merge(
+                duplicate,
+                %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
+              )
 
-    {name_iv, name} =
-      Encrypter.encrypt(
-        dec_name,
-        key
-      )
+            with true <- Phantom.insert_line?(user, key) do
+              {:ok, dup_querry} = GroupApi.insert(user, duplicate)
 
-    {msg_iv, msg} =
-      Phantom.get_text()
-      |> Encrypter.encrypt(key)
+              duplicate_content = fn
+                content, :data ->
+                  {:ok, new_cypher} = CypherApi.insert(user, content)
+                  # Copy the encrypted blob from the original file to the new file
+                  {:ok, stream} = Storage.get_stream(user, content.original_id)
+                  Storage.put_stream(user, new_cypher.id, stream)
+                  new_cypher
 
-    duplicate =
-      Map.merge(
-        duplicate,
-        %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
-      )
+                content, :group ->
+                  {:ok, subquerry} = GroupApi.insert(user, content)
+                  # Preserve all params and update group_id for child items
+                  Map.put(content, :group_id, subquerry.id)
+              end
 
-    with true <- Phantom.insert_line?(user, key) do
-      {:ok, dup_querry} = GroupApi.insert(user, duplicate)
+              Utils.get_tree(user, querry.id, key, lazy: true)
+              |> Utils.mount_tree(
+                %{group_id: dup_querry.id, user_id: user},
+                duplicate_content,
+                key
+              )
 
-      duplicate_content = fn
-        content, :data ->
-          {:ok, new_cypher} = CypherApi.insert(user, content)
-          # Copy the encrypted blob from the original file to the new file
-          {:ok, stream} = Storage.get_stream(user, content.original_id)
-          Storage.put_stream(user, new_cypher.id, stream)
-          new_cypher
-
-        content, :group ->
-          {:ok, subquerry} = GroupApi.insert(user, content)
-          # Preserve all params and update group_id for child items
-          Map.put(content, :group_id, subquerry.id)
-      end
-
-      Utils.get_tree(user, querry.id, key, lazy: true)
-      |> Utils.mount_tree(
-        %{group_id: dup_querry.id, user_id: user},
-        duplicate_content,
-        key
-      )
-
-      {:ok, dup_querry.id}
-    else
-      false -> {:error, "invalid key/user"}
+              {:ok, dup_querry.id}
+            else
+              false -> {:error, "invalid key/user"}
+              error -> error
+            end
+        end
+      
       error -> error
     end
   end
@@ -901,6 +902,7 @@ defmodule MaxGallery.Context do
          :ok <- Storage.del_all(user) do
       {:ok, count_group + count_data}
     else
+      false -> {:error, "invalid key/user"}
       error -> error
     end
   end

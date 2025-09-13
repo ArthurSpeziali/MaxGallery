@@ -101,4 +101,5 @@ defmodule MaxGalleryWeb.RequestController do
 
     redirect(conn, to: "/forget?send=true")
   end
+
 end

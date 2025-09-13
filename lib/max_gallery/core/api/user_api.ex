@@ -4,16 +4,31 @@ defmodule MaxGallery.Core.User.Api do
   alias MaxGallery.Repo
 
   def serial(user) do
-    from(User)
-    |> where(id: ^user)
-    |> select([u], u.last_file)
-    
-    |> Repo.one()
+    # Use a database transaction to ensure atomicity
+    Repo.transaction(fn ->
+      # Lock the user row for update to prevent race conditions
+      query = from(u in User,
+        where: u.id == ^user,
+        lock: "FOR UPDATE"
+      )
+      
+      case Repo.one(query) do
+        nil -> 
+          Repo.rollback("not found")
+        user_record -> 
+          current_serial = user_record.last_file
+          
+          # Update the last_file atomically
+          changeset = User.changeset(user_record, %{last_file: current_serial + 1})
+          case Repo.update(changeset) do
+            {:ok, _updated} -> current_serial
+            {:error, reason} -> Repo.rollback(reason)
+          end
+      end
+    end)
     |> case do
-      nil -> {:error, "not found"}
-      serial -> 
-        update(user, %{last_file: serial + 1})
-        {:ok, serial}
+      {:ok, serial} -> {:ok, serial}
+      {:error, reason} -> {:error, reason}
     end
   end
 

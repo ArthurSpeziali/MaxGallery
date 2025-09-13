@@ -1,7 +1,6 @@
 defmodule MaxGallery.TestHelpers do
-  alias MaxGallery.Variables
   alias MaxGallery.Context
-  @tmp_path Variables.tmp_dir() <> "test/"
+  # @tmp_path Variables.tmp_dir() <> "test/"  # Commented out as it's not used
 
   @moduledoc """
   Helper functions for tests to create test data quickly without external dependencies.
@@ -69,9 +68,9 @@ defmodule MaxGallery.TestHelpers do
   """
   def create_temp_file(content \\ nil) do
     content = content || create_test_content()
-    path = @tmp_path <> "#{System.unique_integer([:positive])}"
-    File.mkdir_p!(@tmp_path)
-    File.write!(path, content, [:write])
+    # Use System.tmp_dir() instead of custom path to avoid conflicts
+    path = System.tmp_dir!() <> "/max_gallery_test_#{System.unique_integer([:positive])}.txt"
+    File.write!(path, content)
     path
   end
 
@@ -90,6 +89,16 @@ defmodule MaxGallery.TestHelpers do
   Cleanup temporary test files.
   """
   def cleanup_temp_files do
-    File.rm_rf!(@tmp_path)
+    # Clean up individual files instead of entire directory
+    case File.ls(System.tmp_dir!()) do
+      {:ok, files} ->
+        files
+        |> Enum.filter(&String.starts_with?(&1, "max_gallery_test_"))
+        |> Enum.each(fn file ->
+          path = Path.join(System.tmp_dir!(), file)
+          File.rm(path)
+        end)
+      _ -> :ok
+    end
   end
 end

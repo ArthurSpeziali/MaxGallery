@@ -76,7 +76,15 @@ defmodule MaxGallery.Utils do
 
       _id ->
         {:ok, querry} = GroupApi.get(user, id)
-        Map.fetch!(querry, :group_id)
+        case Map.fetch!(querry, :group_id) do
+          nil -> nil
+          internal_group_id ->
+            # Convert internal group_id to public ID
+            case GroupApi.get_by_internal_id(user, internal_group_id) do
+              {:ok, parent_group} -> parent_group.id
+              {:error, _} -> nil
+            end
+        end
     end
   end
 
@@ -118,6 +126,12 @@ defmodule MaxGallery.Utils do
         CypherApi.all_group(user, id)
 
       :groups ->
+        GroupApi.all_group(user, id)
+        
+      [:files] ->
+        CypherApi.all_group(user, id)
+        
+      [:groups] ->
         GroupApi.all_group(user, id)
     end
   end
@@ -368,7 +382,7 @@ defmodule MaxGallery.Utils do
             else
               # For lazy mode, we need to get the original blob_iv and length
               # This requires getting the original file data
-              {:ok, original} = CypherApi.get(data.user_id, data.id)
+              {:ok, original} = CypherApi.get(data.user, data.id)
               {original.blob_iv, original.length}
             end
 
@@ -777,6 +791,12 @@ defmodule MaxGallery.Utils do
         true
 
       {:error, :einval} ->
+        false
+        
+      {:error, :enoent} ->
+        false
+        
+      {:error, _} ->
         false
     end
   end

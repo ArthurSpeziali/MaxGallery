@@ -9,8 +9,8 @@ defmodule MaxGallery.Variables do
   ## 90 Days! (In seconds)
   @cookie_time 90 * 24 * 60 * 60
   @code_digits 6
-  # In minutes (3 Hours)
-  @reset_time 3 * 60
+  # In Seconds (3 minutes)
+  @wait_time 3 * 60
   # In seconds (2 minutes)
   @email_resend 2 * 60
   # 12 hours (in miliseconds)
@@ -28,7 +28,7 @@ defmodule MaxGallery.Variables do
   def file_limit, do: @file_limit
   def cookie_time, do: @cookie_time
   def code_digits, do: @code_digits
-  def reset_time, do: @reset_time
+  def wait_time, do: @wait_time
   def email_resend, do: @email_resend
   def delete_reqs, do: @delete_reqs
   def bucket_name, do: @bucket_name

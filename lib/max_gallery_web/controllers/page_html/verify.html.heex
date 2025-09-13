@@ -12,7 +12,7 @@
           for={%{}}
           method="post"
           action="/email-verify"
-          class="flex flex-col h-full w-full items-center justify-end mb-12"
+          class="flex flex-col h-[50%] w-full items-center justify-end mb-2"
         >
           <p class="text-sm text-gray-400">Email sended to: {@email}</p>
           <input
@@ -31,6 +31,51 @@
           </button>
           <p class="text-sm text-red-600 text-center">{@err_code}</p>
         </.form>
+
+
+        <.form
+          for={%{}}
+          method="get"
+          action="/email-verify"
+          class="flex flex-col items-center justify-end w-full"
+        >
+          <button type="submit" class="px-6 py-2 w-[50%] text-blue-600 bg-transparent rounded-lg">
+            Resend Code
+          </button>
+        </.form>
+
+        <%= if @remain do %>
+          <div id="resend-container">
+            <%= if @remain do %>
+              <span id="countdown" data-remain={@remain}></span>
+            <% else %>
+              <span class="text-green-600 font-bold">You can resend the email</span>
+            <% end %>
+          </div>
+
+
+          <script>
+            document.addEventListener("DOMContentLoaded", () => {
+              const countdownEl = document.getElementById("countdown");
+
+              if (countdownEl) {
+                let remain = parseInt(countdownEl.dataset.remain, 10);
+
+                const interval = setInterval(() => {
+                  if (remain > 0) {
+                    countdownEl.textContent = `Please wait ${remain} seconds...`;
+                    remain--;
+                  } else {
+                    clearInterval(interval);
+                    countdownEl.className = "text-green-600 font-bold";
+                    countdownEl.textContent = "You can resend the email";
+                  }
+                }, 1000);
+              }
+            });
+          </script>
+        <% end %>
+
       </div>
     </div>
   </body>
