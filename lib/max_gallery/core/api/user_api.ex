@@ -1,13 +1,29 @@
 defmodule MaxGallery.Core.User.Api do
-  import Ecto.Query
+  import Ecto.Query, except: [update: 2]
   alias MaxGallery.Core.User
   alias MaxGallery.Repo
 
-  def exists(id) do
-    case Ecto.UUID.cast(id) do
-      {:ok, _id} ->
+  def serial(user) do
+    from(User)
+    |> where(id: ^user)
+    |> select([u], u.last_file)
+    
+    |> Repo.one()
+    |> case do
+      nil -> {:error, "not found"}
+      serial -> 
+        update(user, %{last_file: serial + 1})
+        {:ok, serial}
+    end
+  end
+
+
+
+  def exists(user) do
+    case Ecto.UUID.cast(user) do
+      {:ok, _user} ->
         from(User)
-        |> where(id: ^id)
+        |> where(id: ^user)
         |> Repo.one()
         |> case do
           nil -> {:error, "not found"}
@@ -41,23 +57,23 @@ defmodule MaxGallery.Core.User.Api do
     |> Repo.insert()
   end
 
-  def get(id) do
-    Repo.get(User, id)
+  def get(user) do
+    Repo.get(User, user)
     |> case do
       nil -> {:error, "not found"}
       querry -> {:ok, querry}
     end
   end
 
-  def delete(id) do
-    case get(id) do
+  def delete(user) do
+    case get(user) do
       {:ok, querry} -> Repo.delete(querry)
       error -> error
     end
   end
 
-  def update(id, params) do
-    with {:ok, querry} <- get(id),
+  def update(user, params) do
+    with {:ok, querry} <- get(user),
          changeset <- User.changeset(querry, params),
          {:ok, new_querry} <- Repo.update(changeset) do
       {:ok, new_querry}

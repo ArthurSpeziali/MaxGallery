@@ -130,9 +130,12 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("back", _params, socket) do
-    back_id =
+    user = socket.assigns[:user]
+
+    back_id = Utils.get_back(
+      user, 
       socket.assigns[:page_id]
-      |> Utils.get_back()
+    )
 
     {:noreply, push_navigate(socket, to: "/user/data/#{back_id}")}
   end
@@ -204,7 +207,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
       end
 
     ## Adjusts the NaiveDateTime to be displayed on the web.
-    %{inserted_at: inserted_at, updated_at: updated_at} = Utils.get_timestamps(id, group: group?)
+    %{inserted_at: inserted_at, updated_at: updated_at} = Utils.get_timestamps(user, id, group: group?)
 
     timestamps = %{
       inserted_at: NaiveDateTime.to_string(inserted_at),

@@ -5,6 +5,7 @@ defmodule MaxGallery.Repo.Migrations.CreateGroups do
     create table("groups") do
       add :group_id, references("groups", type: :integer, on_delete: :delete_all)
       add :user_id, references("users", type: :uuid, on_delete: :delete_all), null: false
+      add :file, :integer, default: 0
       add :name, :binary, null: false
       add :name_iv, :binary, null: false
       add :msg, :binary, null: false

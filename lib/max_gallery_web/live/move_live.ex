@@ -83,12 +83,13 @@ defmodule MaxGalleryWeb.Live.MoveLive do
   end
 
   def handle_event("back", _params, socket) do
+    user = socket.assigns[:user]
     action = socket.assigns[:action]
     type = socket.assigns[:type]
     id = socket.assigns[:id]
 
     back_id =
-      (socket.assigns[:page_id] |> Utils.get_back())
+      Utils.get_back(user, socket.assigns[:page_id])
       || "main"
 
     ## This is only time that `Utils.get_back/1` is called. Should i delete this function?

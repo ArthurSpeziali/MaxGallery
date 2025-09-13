@@ -1,7 +1,22 @@
 defmodule MaxGallery.Core.Cypher.Api do
   import Ecto.Query
   alias MaxGallery.Core.Cypher
+  alias MaxGallery.Core.User.Api, as: UserApi
   alias MaxGallery.Repo
+
+
+  defp swap_id({:ok, querry}) do
+    {:ok, swap_id(querry)}
+  end
+
+  defp swap_id(querry) do
+    {value, new_querry} =
+      Map.delete(querry, :id)
+      |> Map.pop(:file)
+
+
+    Map.put(new_querry, :id, value)
+  end
 
   def all_size(user) do
     from(Cypher)
@@ -13,20 +28,21 @@ defmodule MaxGallery.Core.Cypher.Api do
     end
   end
 
-  def get_own(id) do
-    from(Cypher)
-    |> where(id: ^id)
-    |> select([c], c.user_id)
-    |> Repo.one()
-    |> case do
-      nil -> {:error, "not found"}
-      querry -> {:ok, querry}
-    end
-  end
+  # def get_own(id) do
+  #   from(Cypher)
+  #   |> where(file: ^id)
+  #   |> select([c], c.user_id)
+  #   |> Repo.one()
+  #   |> case do
+  #     nil -> {:error, "not found"}
+  #     querry -> {:ok, swap_id(querry)}
+  #   end
+  # end
 
-  def get_length(id) do
+  def get_length(user, id) do
     from(Cypher)
-    |> where(id: ^id)
+    |> where(user_id: ^user)
+    |> where(file: ^id)
     |> select([c], c.length)
     |> Repo.one()
     |> case do
@@ -48,10 +64,7 @@ defmodule MaxGallery.Core.Cypher.Api do
       |> where(user_id: ^user)
       |> Repo.all()
 
-    case querry do
-      _datas when is_list(querry) -> {:ok, querry}
-      error -> error
-    end
+    {:ok, swap_id(querry)}
   end
 
   def all(user) do
@@ -59,8 +72,7 @@ defmodule MaxGallery.Core.Cypher.Api do
     |> where(user_id: ^user)
     |> Repo.all()
     |> case do
-      data when is_list(data) -> {:ok, data}
-      error -> error
+      querry -> {:ok, swap_id(querry)}
     end
   end
 
@@ -73,46 +85,59 @@ defmodule MaxGallery.Core.Cypher.Api do
     |> Repo.one()
     |> case do
       nil -> {:error, "not found"}
-      querry -> {:ok, querry}
+      querry -> {:ok, swap_id(querry)}
     end
   end
 
-  def insert(params) do
+  def insert(user, params) do
+    {:ok, serial} = UserApi.serial(user)
+    params = Map.put(params, :file, serial)
+
     struct(%Cypher{}, params)
     |> Repo.insert()
+    |> swap_id()
   end
 
-  def get(id) do
-    Repo.get(Cypher, id)
+  def get(user, id) do
+    from(Cypher)
+    |> where(file: ^id)
+    |> where(user_id: ^user)
+    |> Repo.one()
+
     |> case do
       nil -> {:error, "not found"}
-      querry -> {:ok, querry}
+      querry -> {:ok, swap_id(querry)}
     end
   end
 
-  def delete(id) do
-    case get(id) do
-      {:ok, querry} -> Repo.delete(querry)
+  def delete(user, id) do
+    case get(user, id) do
+      {:ok, querry} -> Repo.delete(querry) |> swap_id()
       error -> error
     end
   end
 
-  def update(id, params) do
-    with {:ok, querry} <- get(id),
+  def update(user, id, params) do
+    with {:ok, querry} <- get(user, id),
          changeset <- Cypher.changeset(querry, params),
          {:ok, new_querry} <- Repo.update(changeset) do
-      {:ok, new_querry}
+
+      {:ok, swap_id(new_querry)}
     else
       error -> error
     end
   end
 
-  def get_timestamps(id) do
-    from(d in Cypher, select: map(d, [:inserted_at, :updated_at]), where: d.id == ^id)
+  def get_timestamps(user, id) do
+    from(Cypher)
+    |> where(user_id: ^user)
+    |> where(file: ^id)
+    |> select([c], map(c, [:inserted_at, :updated_at]))
+
     |> Repo.one()
     |> case do
       nil -> {:error, "not found"}
-      querry -> {:ok, querry}
+      querry -> {:ok, querry} # Doesn't  need  swap_id/1
     end
   end
 

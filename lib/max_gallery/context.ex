@@ -106,7 +106,7 @@ defmodule MaxGallery.Context do
          {msg_iv, msg} <- Encrypter.encrypt(Phantom.get_text(), key),
          {:ok, _querry} <- UserApi.exists(user),
          {:ok, querry} <-
-           CypherApi.insert(%{
+           CypherApi.insert(user, %{
              user_id: user,
              name_iv: name_iv,
              name: name,
@@ -237,11 +237,9 @@ defmodule MaxGallery.Context do
   @spec cypher_delete(user :: binary(), id :: integer(), key :: String.t()) :: response()
   def cypher_delete(user, id, key) do
     Repo.transaction(fn ->
-      with {:ok, querry} <- CypherApi.get(id),
-           {:ok, get_user} <- CypherApi.get_own(id),
-           true <- get_user == user,
+      with {:ok, querry} <- CypherApi.get(user, id),
            true <- Phantom.valid?(querry, key),
-           {:ok, _querry} <- CypherApi.delete(id),
+           {:ok, _querry} <- CypherApi.delete(user, id),
            :ok <- Storage.del(user, id) do
         querry
       else
@@ -286,9 +284,9 @@ defmodule MaxGallery.Context do
 
     {:ok, querry} =
       if group? do
-        GroupApi.get(id)
+        GroupApi.get(user, id)
       else
-        CypherApi.get(id)
+        CypherApi.get(user, id)
       end
 
     name = Encrypter.decrypt(querry.name, querry.name_iv, key)
@@ -367,7 +365,7 @@ defmodule MaxGallery.Context do
     {name_iv, name} = Encrypter.encrypt(new_name, key)
     {blob_iv, blob} = Encrypter.encrypt(new_blob, key)
 
-    {:ok, querry} = CypherApi.get(id)
+    {:ok, querry} = CypherApi.get(user, id)
 
     Repo.transaction(fn ->
       if Phantom.valid?(querry, key) do
@@ -376,7 +374,7 @@ defmodule MaxGallery.Context do
         case Storage.put(user, id, blob) do
           :ok ->
             Cache.remove_cache(user, id)
-            CypherApi.update(id, params)
+            CypherApi.update(user, id, params)
 
           {:error, reason} ->
             Repo.rollback(reason)
@@ -394,12 +392,10 @@ defmodule MaxGallery.Context do
     {name_iv, name} = Encrypter.encrypt(new_name, key)
 
     params = %{name_iv: name_iv, name: name, ext: ext}
-    {:ok, querry} = CypherApi.get(id)
+    {:ok, querry} = CypherApi.get(user, id)
 
-    with {:ok, owner} <- CypherApi.get_own(id),
-         true <- owner == user,
-         true <- Phantom.valid?(querry, key) do
-      CypherApi.update(id, params)
+    with true <- Phantom.valid?(querry, key) do
+      CypherApi.update(user, id, params)
     else
       false -> {:error, "invalid key/user"}
       error -> error
@@ -407,12 +403,10 @@ defmodule MaxGallery.Context do
   end
 
   def cypher_update(user, id, %{group_id: new_group}, key) do
-    {:ok, querry} = CypherApi.get(id)
+    {:ok, querry} = CypherApi.get(user, id)
 
-    with {:ok, owner} <- CypherApi.get_own(id),
-         true <- owner == user,
-         true <- Phantom.valid?(querry, key) do
-      CypherApi.update(id, %{group_id: new_group})
+    with true <- Phantom.valid?(querry, key) do
+      CypherApi.update(user, id, %{group_id: new_group})
     else
       false -> {:error, "invalid key/user"}
       error -> error
@@ -456,7 +450,7 @@ defmodule MaxGallery.Context do
       {msg_iv, msg} = Phantom.get_text() |> Encrypter.encrypt(key)
 
       {:ok, querry} =
-        GroupApi.insert(%{
+        GroupApi.insert(user, %{
           user_id: user,
           name_iv: name_iv,
           name: name,
@@ -496,13 +490,11 @@ defmodule MaxGallery.Context do
   """
   @spec group_update(user :: binary(), id :: integer(), map(), key :: String.t()) :: response()
   def group_update(user, id, %{name: new_name}, key) do
-    {:ok, querry} = GroupApi.get(id)
+    {:ok, querry} = GroupApi.get(user, id)
     {name_iv, name} = Encrypter.encrypt(new_name, key)
 
-    with {:ok, owner} <- GroupApi.get_own(id),
-         true <- owner == user,
-         true <- Phantom.valid?(querry, key) do
-      GroupApi.update(id, %{name: name, name_iv: name_iv})
+    with true <- Phantom.valid?(querry, key) do
+      GroupApi.update(user, id, %{name: name, name_iv: name_iv})
     else
       false -> {:error, "invalid key/user"}
       error -> error
@@ -510,12 +502,10 @@ defmodule MaxGallery.Context do
   end
 
   def group_update(user, id, %{group_id: group_id}, key) do
-    {:ok, querry} = GroupApi.get(id)
+    {:ok, querry} = GroupApi.get(user, id)
 
-    with {:ok, owner} <- GroupApi.get_own(id),
-         true <- owner == user,
-         true <- Phantom.valid?(querry, key) do
-      GroupApi.update(id, %{group_id: group_id})
+    with true <- Phantom.valid?(querry, key) do
+      GroupApi.update(user, id, %{group_id: group_id})
     else
       false -> {:error, "invalid key/user"}
       error -> error
@@ -553,7 +543,7 @@ defmodule MaxGallery.Context do
   """
   @spec group_delete(user :: binary(), id :: integer(), key :: String.t()) :: response()
   def group_delete(user, id, key) do
-    with {:ok, querry} <- GroupApi.get(id),
+    with {:ok, querry} <- GroupApi.get(user, id),
          true <- Phantom.valid?(querry, key),
          {:ok, _boolean} <- delete_cascade(user, id, key) do
       ## Calls the private function `delete_cascade/2` to recursively delete all content within a group.
@@ -581,20 +571,18 @@ defmodule MaxGallery.Context do
       end)
     end
 
-    GroupApi.delete(group_id)
+    GroupApi.delete(user, group_id)
   end
 
   defp delete_cascade(user, group_id, key) do
-    with {:ok, querry} <- GroupApi.get(group_id),
-         {:ok, get_user} <- GroupApi.get_own(group_id),
-         true <- get_user == user,
+    with {:ok, querry} <- GroupApi.get(user, group_id),
          true <- Phantom.valid?(querry, key),
          {:ok, groups} <- GroupApi.all_group(user, group_id),
          {:ok, datas} <- CypherApi.all_group(user, group_id) do
       contents = groups ++ datas
 
       if contents == [] do
-        GroupApi.delete(group_id)
+        GroupApi.delete(user, group_id)
         {:ok, false}
       else
         repeat_cascate(user, group_id, key)
@@ -649,7 +637,7 @@ defmodule MaxGallery.Context do
   @spec cypher_duplicate(user :: binary(), id :: integer(), params :: map(), key :: String.t()) ::
           response()
   def cypher_duplicate(user, id, params, key) do
-    {:ok, querry} = CypherApi.get(id)
+    {:ok, querry} = CypherApi.get(user, id)
 
     original =
       Map.drop(querry, [
@@ -692,7 +680,7 @@ defmodule MaxGallery.Context do
       case Storage.get_stream(user, querry.id) do
         {:ok, stream} ->
           with true <- Phantom.insert_line?(user, key),
-               {:ok, querry} <- CypherApi.insert(duplicate),
+               {:ok, querry} <- CypherApi.insert(user, duplicate),
                :ok <- Storage.put_stream(user, querry.id, stream) do
             querry.id
           else
@@ -732,7 +720,7 @@ defmodule MaxGallery.Context do
   @spec group_duplicate(user :: binary(), id :: integer(), params :: map(), key :: String.t()) ::
           response()
   def group_duplicate(user, id, params, key) do
-    {:ok, querry} = GroupApi.get(id)
+    {:ok, querry} = GroupApi.get(user, id)
 
     original =
       Map.drop(querry, [
@@ -772,21 +760,19 @@ defmodule MaxGallery.Context do
         %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
       )
 
-    with true <- Phantom.insert_line?(user, key),
-         {:ok, owner} <- GroupApi.get_own(id),
-         true <- owner == user do
-      {:ok, dup_querry} = GroupApi.insert(duplicate)
+    with true <- Phantom.insert_line?(user, key) do
+      {:ok, dup_querry} = GroupApi.insert(user, duplicate)
 
       duplicate_content = fn
         content, :data ->
-          {:ok, new_cypher} = CypherApi.insert(content)
+          {:ok, new_cypher} = CypherApi.insert(user, content)
           # Copy the encrypted blob from the original file to the new file
           {:ok, stream} = Storage.get_stream(user, content.original_id)
           Storage.put_stream(user, new_cypher.id, stream)
           new_cypher
 
         content, :group ->
-          {:ok, subquerry} = GroupApi.insert(content)
+          {:ok, subquerry} = GroupApi.insert(user, content)
           # Preserve all params and update group_id for child items
           Map.put(content, :group_id, subquerry.id)
       end
@@ -847,7 +833,7 @@ defmodule MaxGallery.Context do
     if group? do
       {:ok, name} =
         if id do
-          {:ok, querry} = GroupApi.get(id)
+          {:ok, querry} = GroupApi.get(user, id)
 
           {:ok,
             Encrypter.decrypt(
@@ -863,7 +849,7 @@ defmodule MaxGallery.Context do
       tree = Utils.get_tree(user, id, key)
       Utils.zip_folder(tree, name)
     else
-      case CypherApi.get(id) do
+      case CypherApi.get(user, id) do
         {:ok, querry} ->
           name =
             Encrypter.decrypt(

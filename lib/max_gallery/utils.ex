@@ -68,14 +68,14 @@ defmodule MaxGallery.Utils do
   - Does not validate the existence of the returned parent group
   - Primarily used for navigation within group hierarchies
   """
-  @spec get_back(id :: integer() | nil) :: integer() | nil
-  def get_back(id) do
+  @spec get_back(user :: binary(), id :: integer() | nil) :: integer() | nil
+  def get_back(user, id) do
     case id do
       nil ->
         nil
 
       _id ->
-        {:ok, querry} = GroupApi.get(id)
+        {:ok, querry} = GroupApi.get(user, id)
         Map.fetch!(querry, :group_id)
     end
   end
@@ -167,7 +167,7 @@ defmodule MaxGallery.Utils do
         |> Enum.sum()
       end
     else
-      {:ok, length} = CypherApi.get_length(id)
+      {:ok, length} = CypherApi.get_length(user, id)
       length
     end
   end
@@ -195,14 +195,14 @@ defmodule MaxGallery.Utils do
   - Will raise if the item doesn't exist or lacks timestamp fields
   """
   @spec get_timestamps(id :: integer(), Keyword.t()) :: map()
-  def get_timestamps(id, opts \\ []) do
+  def get_timestamps(user, id, opts \\ []) do
     group? = Keyword.get(opts, :group)
 
     {:ok, timestamps} =
       if group? do
-        GroupApi.get_timestamps(id)
+        GroupApi.get_timestamps(user, id)
       else
-        CypherApi.get_timestamps(id)
+        CypherApi.get_timestamps(user, id)
       end
 
     local = NaiveDateTime.local_now()
@@ -368,7 +368,7 @@ defmodule MaxGallery.Utils do
             else
               # For lazy mode, we need to get the original blob_iv and length
               # This requires getting the original file data
-              {:ok, original} = CypherApi.get(data.id)
+              {:ok, original} = CypherApi.get(data.user_id, data.id)
               {original.blob_iv, original.length}
             end
 
@@ -707,7 +707,7 @@ defmodule MaxGallery.Utils do
       |> Map.fetch!(:size)
 
     {:ok, %{id: id}} =
-      CypherApi.insert(%{
+      CypherApi.insert(user, %{
         user_id: user,
         name: name,
         name_iv: name_iv,
@@ -736,7 +736,7 @@ defmodule MaxGallery.Utils do
       )
 
     {:ok, %{id: id}} =
-      GroupApi.insert(%{
+      GroupApi.insert(user, %{
         user_id: user,
         name: name,
         name_iv: name_iv,

@@ -5,6 +5,7 @@ defmodule MaxGallery.Core.Cypher do
 
   @foreign_key_type :binary_id
   schema "cyphers" do
+    field :file, :integer, default: 0
     field :name, :binary
     field :name_iv, :binary
     field :blob_iv, :binary
@@ -21,6 +22,7 @@ defmodule MaxGallery.Core.Cypher do
 
   def changeset(model, params) do
     Ecto.Changeset.cast(model, params, [
+      :file,
       :name,
       :name_iv,
       :blob_iv,
