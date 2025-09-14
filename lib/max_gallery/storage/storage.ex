@@ -115,7 +115,7 @@ defmodule MaxGallery.Storage do
 
       {:error, {_, _, %{body: xml}}} ->
         {:error, xml_parser(xml)}
-    end
+    end 
   end
 
   @doc """
@@ -180,7 +180,7 @@ defmodule MaxGallery.Storage do
 
   @spec get_stream(user :: binary(), id :: integer()) :: {:ok, Enum.t()} | {:error, String.t()}
   def get_stream(user, id) do
-    key = generate(user, id) |> IO.inspect
+    key = generate(user, id)
 
     {ok, res} =
       try do
@@ -320,7 +320,7 @@ defmodule MaxGallery.Storage do
   # Private function to generate storage keys based on user and file ID
   # Follows the pattern: {cloud_prefix}/{user_id}/{file_id}
   # If no file ID provided, returns user-level path
-  defp generate(user, id) do
+  def generate(user, id) do
     if id do
       "#{Variables.gen_clound()}/#{user}/#{id}"
     else

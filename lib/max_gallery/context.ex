@@ -102,7 +102,6 @@ defmodule MaxGallery.Context do
     with true <- Phantom.insert_line?(user, key),
          size <- File.stat!(path) |> Map.fetch!(:size),
          Utils.check_limit(user, size),
-         {stream, blob_iv} <- Encrypter.encrypt_stream(path, key),
          {msg_iv, msg} <- Encrypter.encrypt(Phantom.get_text(), key),
          {:ok, _querry} <- UserApi.exists(user),
          {:ok, querry} <-
@@ -110,14 +109,14 @@ defmodule MaxGallery.Context do
              user_id: user,
              name_iv: name_iv,
              name: name,
-             blob_iv: blob_iv,
+             blob_iv: nil,  # Will be set after encryption
              ext: ext,
              msg: msg,
              msg_iv: msg_iv,
              length: size,
              group_id: group
            }),
-         :ok <- Storage.put_stream(user, querry.id, stream, true) do
+         :ok <- upload_file_content(user, querry.id, path, key, size) do
       {:ok, querry.id}
     else
       false ->
@@ -125,6 +124,47 @@ defmodule MaxGallery.Context do
 
       error ->
         error
+    end
+  end
+
+  # Private function to upload file content using optimal method based on size
+  defp upload_file_content(user, file_id, path, key, size) do
+    if Variables.use_stream() <= size do
+      # Use streaming for large files
+      {stream, blob_iv} = Encrypter.encrypt_stream(path, key)
+      
+      with :ok <- Storage.put_stream(user, file_id, stream, true),
+           {:ok, _} <- CypherApi.update(user, file_id, %{blob_iv: blob_iv}) do
+        :ok
+      end
+    else
+      # Use normal encryption for small files
+      blob = File.read!(path)
+      {blob_iv, encrypted_blob} = Encrypter.encrypt(blob, key)
+      
+      with :ok <- Storage.put(user, file_id, encrypted_blob),
+           {:ok, _} <- CypherApi.update(user, file_id, %{blob_iv: blob_iv}) do
+        :ok
+      end
+    end
+  end
+
+  # Private function to copy file content using optimal method based on size
+  defp copy_file_content(user, source_id, dest_id, size) do
+    if Variables.use_stream() <= size do
+      # Use streaming for large files
+      case Storage.get_stream(user, source_id) do
+        {:ok, stream} ->
+          Storage.put_stream(user, dest_id, stream)
+        error -> error
+      end
+    else
+      # Use normal get/put for small files
+      case Storage.get(user, source_id) do
+        {:ok, blob} ->
+          Storage.put(user, dest_id, blob)
+        error -> error
+      end
     end
   end
 
@@ -145,7 +185,7 @@ defmodule MaxGallery.Context do
     else
       if memory? do
         # Return blob in memory using new cache system
-        blob = Cache.get_content(user, item.id, item.blob_iv, key)
+        blob = Cache.get_content(user, item.id, item.blob_iv, key, item.length)
 
         %{
           name: name,
@@ -156,7 +196,7 @@ defmodule MaxGallery.Context do
         }
       else
         # Return file path using cache system
-        {path, _downloaded} = Cache.consume_cache(user, item.id, item.blob_iv, key)
+        {path, _downloaded} = Cache.consume_cache(user, item.id, item.blob_iv, key, item.length)
 
         %{
           name: name,
@@ -312,7 +352,7 @@ defmodule MaxGallery.Context do
 
               {nil, nil} ->
                 # Full file: download and decrypt using cache system
-                {path, _created} = Cache.consume_cache(user, querry.id, querry.blob_iv, key)
+                {path, _created} = Cache.consume_cache(user, querry.id, querry.blob_iv, key, querry.length)
                 
                 {:ok,
                  %{
@@ -679,17 +719,12 @@ defmodule MaxGallery.Context do
                 %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
               )
 
-            case Storage.get_stream(user, querry.id) do
-              {:ok, stream} ->
-                    with true <- Phantom.insert_line?(user, key),
-                         {:ok, new_querry} <- CypherApi.insert(user, duplicate),
-                         :ok <- Storage.put_stream(user, new_querry.id, stream) do
-                      {:ok, new_querry.id}
-                    else
-                      false -> {:error, "invalid key"}
-                      error -> error
-                    end
-              
+            with true <- Phantom.insert_line?(user, key),
+                 {:ok, new_querry} <- CypherApi.insert(user, duplicate),
+                 :ok <- copy_file_content(user, querry.id, new_querry.id, querry.length) do
+              {:ok, new_querry.id}
+            else
+              false -> {:error, "invalid key"}
               error -> error
             end
         end
@@ -760,8 +795,7 @@ defmodule MaxGallery.Context do
                 content, :data ->
                   {:ok, new_cypher} = CypherApi.insert(user, content)
                   # Copy the encrypted blob from the original file to the new file
-                  {:ok, stream} = Storage.get_stream(user, content.original_id)
-                  Storage.put_stream(user, new_cypher.id, stream)
+                  copy_file_content(user, content.original_id, new_cypher.id, content.length)
                   new_cypher
 
                 content, :group ->
@@ -855,7 +889,7 @@ defmodule MaxGallery.Context do
               key
             )
 
-          blob = Cache.get_content(user, querry.id, querry.blob_iv, key)
+          blob = Cache.get_content(user, querry.id, querry.blob_iv, key, querry.length)
 
           Utils.zip_file(
             name <> querry.ext,

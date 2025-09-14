@@ -79,16 +79,22 @@ defmodule MaxGallery.Cache do
   - Returns boolean flag indicating whether download occurred
   - Automatically creates cache directory if needed
   """
-  @spec consume_cache(user :: binary(), id :: integer(), blob_iv :: binary(), key :: String.t()) :: {Path.t(), boolean()}
-  def consume_cache(user, id, blob_iv, key) do
+  @spec consume_cache(user :: binary(), id :: integer(), blob_iv :: binary(), key :: String.t(), length :: integer()) :: {Path.t(), boolean()}
+  def consume_cache(user, id, blob_iv, key, length) do
     path = get_path(user, id)
 
     if File.exists?(path) && Phantom.insert_line?(user, key) do
       {path, false}
     else
-      write_chunk(user, id, blob_iv, key)
+      write_chunk(user, id, blob_iv, key, length)
       {path, true}
     end
+  end
+
+  # Backward compatibility function
+  def consume_cache(user, id, blob_iv, key) do
+    # Default to using stream for backward compatibility
+    consume_cache(user, id, blob_iv, key, Variables.chunk_size() * 2)
   end
 
   @doc """
@@ -116,16 +122,30 @@ defmodule MaxGallery.Cache do
   - Creates parent directories automatically
   - Uses binary write mode for efficiency
   """
-  @spec write_chunk(user :: binary(), id :: integer(), blob_iv :: binary(), key :: String.t()) :: Path.t()
-  def write_chunk(user, id, blob_iv, key) do
+  @spec write_chunk(user :: binary(), id :: integer(), blob_iv :: binary(), key :: String.t(), length :: integer()) :: Path.t()
+  def write_chunk(user, id, blob_iv, key, length) do
     file_path = get_path(user, id)
     File.mkdir_p!(tmp_path())
 
-    {:ok, stream} = Storage.get_stream(user, id)
-    out_stream = Encrypter.decrypt_stream(stream, blob_iv, key)
-
-    Utils.exec(out_stream, :write, {file_path})
+    if Variables.use_stream() <= length do
+      # Use streaming for large files
+      {:ok, stream} = Storage.get_stream(user, id)
+      out_stream = Encrypter.decrypt_stream(stream, blob_iv, key)
+      Utils.exec(out_stream, :write, {file_path})
+    else
+      # Use normal get/decrypt for small files
+      {:ok, encrypted_blob} = Storage.get(user, id)
+      decrypted_blob = Encrypter.decrypt(encrypted_blob, blob_iv, key)
+      File.write!(file_path, decrypted_blob)
+    end
+    
     file_path
+  end
+
+  # Backward compatibility function
+  def write_chunk(user, id, blob_iv, key) do
+    # Default to using stream for backward compatibility
+    write_chunk(user, id, blob_iv, key, Variables.chunk_size() * 2)
   end
 
   @doc """
@@ -152,10 +172,23 @@ defmodule MaxGallery.Cache do
   - May trigger download if not cached
   - More memory intensive than streaming approaches
   """
-  @spec get_content(user :: binary(), id :: integer(), blob_iv :: binary(), key :: String.t()) :: binary()
+  @spec get_content(user :: binary(), id :: integer(), blob_iv :: binary(), key :: String.t(), length :: integer()) :: binary()
+  def get_content(user, id, blob_iv, key, length) do
+    if Variables.use_stream() <= length do
+      # Use cache for large files
+      {path, _created} = consume_cache(user, id, blob_iv, key, length)
+      File.read!(path)
+    else
+      # Direct decrypt for small files (no cache needed)
+      {:ok, encrypted_blob} = Storage.get(user, id)
+      Encrypter.decrypt(encrypted_blob, blob_iv, key)
+    end
+  end
+
+  # Backward compatibility function
   def get_content(user, id, blob_iv, key) do
-    {path, _created} = consume_cache(user, id, blob_iv, key)
-    File.read!(path)
+    # Default to using stream for backward compatibility
+    get_content(user, id, blob_iv, key, Variables.chunk_size() * 2)
   end
 
   @doc """

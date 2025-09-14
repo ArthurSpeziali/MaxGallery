@@ -35,4 +35,6 @@ defmodule MaxGallery.Variables do
   def gen_clound, do: @gen_clound
   def max_objects, do: @max_objects
   def max_size_user, do: @max_size_user
+  def use_stream, do: 2 * @chunk_size
+
 end
