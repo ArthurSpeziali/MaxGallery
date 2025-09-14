@@ -180,7 +180,7 @@ defmodule MaxGallery.Storage do
 
   @spec get_stream(user :: binary(), id :: integer()) :: {:ok, Enum.t()} | {:error, String.t()}
   def get_stream(user, id) do
-    key = generate(user, id)
+    key = generate(user, id) |> IO.inspect
 
     {ok, res} =
       try do

@@ -669,7 +669,6 @@ defmodule MaxGallery.Context do
 
         ## This process is necessary about the unique name constraint.
         case Encrypter.decrypt(duplicate.name, duplicate.name_iv, key) do
-          {:error, _} -> {:error, "invalid key"}
           dec_name ->
             {name_iv, name} = Encrypter.encrypt(dec_name, key)
             {msg_iv, msg} = Phantom.get_text() |> Encrypter.encrypt(key)
@@ -680,22 +679,19 @@ defmodule MaxGallery.Context do
                 %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
               )
 
-            Repo.transaction(fn ->
-              case Storage.get_stream(user, querry.id) do
-                {:ok, stream} ->
-                  with true <- Phantom.insert_line?(user, key),
-                       {:ok, new_querry} <- CypherApi.insert(user, duplicate),
-                       :ok <- Storage.put_stream(user, new_querry.id, stream) do
-                    new_querry.id
-                  else
-                    false -> Repo.rollback("invalid key")
-                    error -> Repo.rollback(error)
-                  end
-
-                {:error, reason} ->
-                  Repo.rollback(reason)
-              end
-            end)
+            case Storage.get_stream(user, querry.id) do
+              {:ok, stream} ->
+                    with true <- Phantom.insert_line?(user, key),
+                         {:ok, new_querry} <- CypherApi.insert(user, duplicate),
+                         :ok <- Storage.put_stream(user, new_querry.id, stream) do
+                      {:ok, new_querry.id}
+                    else
+                      false -> {:error, "invalid key"}
+                      error -> error
+                    end
+              
+              error -> error
+            end
         end
       
       error -> error

@@ -21,6 +21,16 @@ if System.get_env("PHX_SERVER") do
   config :max_gallery, MaxGalleryWeb.Endpoint, server: true
 end
 
+config :swoosh,
+  api_client: Swoosh.ApiClient.Finch,
+  finch_name: MaxGallery.Finch
+
+config :max_gallery, MaxGallery.Mail.Mailer,
+  adapter: Swoosh.Adapters.Sendgrid,
+  user: System.get_env("EMAIL_ADDRESS", "maxgallery@support.com"),
+  api_key: System.get_env("SENDGRID_API"),
+  compress: true
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

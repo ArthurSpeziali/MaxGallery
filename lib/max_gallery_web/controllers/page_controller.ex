@@ -66,9 +66,11 @@ defmodule MaxGalleryWeb.PageController do
 
   def verify(conn, _params) do
     user = get_session(conn, :user_validation)
-    user_request = LiveServer.get(:timestamp_requests)[user.email]
 
-    remain_send =
+    if user do
+      user_request = LiveServer.get(:timestamp_requests)[user.email]
+
+      remain_send =
         if user_request do
           remain =
             DateTime.diff(
@@ -86,7 +88,6 @@ defmodule MaxGalleryWeb.PageController do
           nil
         end
 
-    if user do
       if remain_send do
         render(conn, :verify,
           layout: false,
@@ -96,12 +97,20 @@ defmodule MaxGalleryWeb.PageController do
           remain: remain_send
         )
       else
+        # Send email verification code
         Template.email_verify(user.email, user.code)
         |> Mail.send()
 
+        # Update timestamp for rate limiting
         LiveServer.add(:timestamp_requests, %{user.email => DateTime.utc_now()})
 
-        render(conn, :verify, layout: false, hide_header: true, email: user.email, err_code: nil, remain: nil)
+        render(conn, :verify, 
+          layout: false, 
+          hide_header: true, 
+          email: user.email, 
+          err_code: nil, 
+          remain: nil
+        )
       end
     else
       redirect(conn, to: "/")
@@ -132,7 +141,7 @@ defmodule MaxGalleryWeb.PageController do
           hide_header: true,
           email: user.email,
           err_code: "Invalid code. Try again.",
-          remail: nil
+          remain: nil
         )
       end
     else

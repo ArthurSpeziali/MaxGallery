@@ -39,42 +39,62 @@
           action="/email-verify"
           class="flex flex-col items-center justify-end w-full"
         >
-          <button type="submit" class="px-6 py-2 w-[50%] text-blue-600 bg-transparent rounded-lg">
+          <button 
+            type="submit" 
+            id="resend-button"
+            class="px-6 py-2 w-[50%] text-blue-600 bg-transparent rounded-lg transition-colors hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={@remain}
+          >
             Resend Code
           </button>
         </.form>
 
-        <%= if @remain do %>
-          <div id="resend-container">
-            <%= if @remain do %>
-              <span id="countdown" data-remain={@remain}></span>
-            <% else %>
-              <span class="text-green-600 font-bold">You can resend the email</span>
-            <% end %>
-          </div>
+        <div id="resend-container" class="mt-2">
+          <%= if @remain do %>
+            <p class="text-sm text-yellow-600 text-center">
+              You can resend the email in (seconds):
+            </p>
+            <p class="text-sm text-yellow-800 text-center font-bold" id="countdown">
+              {@remain}
+            </p>
+          <% else %>
+            <p class="text-sm text-green-600 text-center font-bold">
+              You can resend the email now
+            </p>
+          <% end %>
+        </div>
 
+        <script>
+          document.addEventListener("DOMContentLoaded", () => {
+            const countdownEl = document.getElementById("countdown");
+            const resendButton = document.getElementById("resend-button");
+            const resendContainer = document.getElementById("resend-container");
 
-          <script>
-            document.addEventListener("DOMContentLoaded", () => {
-              const countdownEl = document.getElementById("countdown");
-
-              if (countdownEl) {
-                let remain = parseInt(countdownEl.dataset.remain, 10);
-
+            if (countdownEl && countdownEl.textContent.trim()) {
+              let time = parseInt(countdownEl.textContent.trim());
+              
+              if (time > 0) {
                 const interval = setInterval(() => {
-                  if (remain > 0) {
-                    countdownEl.textContent = `Please wait ${remain} seconds...`;
-                    remain--;
-                  } else {
+                  time--;
+                  countdownEl.textContent = time;
+
+                  if (time <= 0) {
                     clearInterval(interval);
-                    countdownEl.className = "text-green-600 font-bold";
-                    countdownEl.textContent = "You can resend the email";
+                    
+                    // Update the container to show success message
+                    resendContainer.innerHTML = '<p class="text-sm text-green-600 text-center font-bold">You can resend the email now</p>';
+                    
+                    // Enable the resend button
+                    if (resendButton) {
+                      resendButton.disabled = false;
+                      resendButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
                   }
                 }, 1000);
               }
-            });
-          </script>
-        <% end %>
+            }
+          });
+        </script>
 
       </div>
     </div>
