@@ -33,19 +33,19 @@ defmodule MaxGallery.SecurityTest do
 
     test "user cannot insert cypher with group_id from another user", %{user2: user2, group1: group1} do
       # Try to insert a cypher for user2 using user1's group
-      result = CypherApi.insert(user2, %{
-        user_id: user2,
-        name: "test_file",
-        name_iv: "iv",
-        blob_iv: "blob_iv",
-        ext: ".txt",
-        msg: "msg",
-        msg_iv: "msg_iv",
-        length: 100,
-        group_id: group1.id  # This should fail - using user1's group public ID
-      })
-
-      assert {:error, "unauthorized group access"} = result
+      assert_raise Postgrex.Error, ~r/Cypher can only reference groups from the same user/, fn ->
+        CypherApi.insert(user2, %{
+          user_id: user2,
+          name: "test_file",
+          name_iv: "iv",
+          blob_iv: "blob_iv",
+          ext: ".txt",
+          msg: "msg",
+          msg_iv: "msg_iv",
+          length: 100,
+          group_id: group1.id  # This should fail - using user1's group public ID
+        })
+      end
     end
 
     test "user cannot update cypher to move it to another user's group", %{user2: user2, group1: group1} do
@@ -62,32 +62,33 @@ defmodule MaxGallery.SecurityTest do
       })
 
       # Try to move it to user1's group
-      result = CypherApi.update(user2, cypher2.id, %{
-        group_id: group1.id  # This should fail
-      })
-
-      assert {:error, "unauthorized group access"} = result
+      assert_raise Postgrex.Error, ~r/Cypher can only reference groups from the same user/, fn ->
+        CypherApi.update(user2, cypher2.id, %{
+          group_id: group1.id  # This should fail
+        })
+      end
     end
 
     test "user cannot create subgroup under another user's group", %{user2: user2, group1: group1} do
       # Try to create a subgroup for user2 under user1's group
-      result = GroupApi.insert(user2, %{
-        user_id: user2,
-        name: "subgroup",
-        name_iv: "iv",
-        msg: "msg", 
-        msg_iv: "msg_iv",
-        group_id: group1.id  # This should fail
-      })
-
-      assert {:error, "unauthorized group access"} = result
+      assert_raise Postgrex.Error, ~r/Group can only reference parent groups from the same user/, fn ->
+        GroupApi.insert(user2, %{
+          user_id: user2,
+          name: "subgroup",
+          name_iv: "iv",
+          msg: "msg", 
+          msg_iv: "msg_iv",
+          group_id: group1.id  # This should fail
+        })
+      end
     end
 
     test "user cannot list contents of another user's group", %{user2: user2, group1: group1} do
       # Try to list contents of user1's group as user2
-      result = CypherApi.all_group(user2, group1.id)
+      # This should return empty list since user2 can't see user1's groups
+      {:ok, result} = CypherApi.all_group(user2, group1.id)
       
-      assert {:error, "unauthorized group access"} = result
+      assert result == []
     end
 
     test "user can perform valid operations on their own groups", %{user1: user1, group1: group1} do

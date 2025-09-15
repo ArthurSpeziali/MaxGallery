@@ -116,7 +116,7 @@ defmodule MaxGallery.Context do
              length: size,
              group_id: group
            }),
-         :ok <- upload_file_content(user, querry.id, path, key, size) do
+         :ok <- upload_content(user, querry.id, path, key, size) do
       {:ok, querry.id}
     else
       false ->
@@ -128,12 +128,12 @@ defmodule MaxGallery.Context do
   end
 
   # Private function to upload file content using optimal method based on size
-  defp upload_file_content(user, file_id, path, key, size) do
+  defp upload_content(user, file_id, path, key, size) do
     if Variables.use_stream() <= size do
       # Use streaming for large files
       {stream, blob_iv} = Encrypter.encrypt_stream(path, key)
       
-      with :ok <- Storage.put_stream(user, file_id, stream, true),
+      with :ok <- Storage.put_stream(user, file_id, stream),
            {:ok, _} <- CypherApi.update(user, file_id, %{blob_iv: blob_iv}) do
         :ok
       end

@@ -13,7 +13,7 @@ defmodule MaxGallery.StorageAdapter do
 
   def put(user, id, blob), do: impl().put(user, id, blob)
   def put_stream(user, id, stream), do: impl().put_stream(user, id, stream)
-  def put_stream(user, id, stream, part?), do: impl().put_stream(user, id, stream, part?)
+  def put_stream(user, id, stream), do: impl().put_stream(user, id, stream)
   def get(user, id), do: impl().get(user, id)
   def get_stream(user, id), do: impl().get_stream(user, id)
   def get_stream(user, id, dest), do: impl().get_stream(user, id, dest)

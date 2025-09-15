@@ -41,7 +41,6 @@ defmodule MaxGallery.Storage do
 
   alias ExAws.S3
   alias MaxGallery.Variables
-  alias MaxGallery.Utils
   import SweetXml, only: [sigil_x: 2]
   @bucket Variables.bucket_name()
 
@@ -94,19 +93,8 @@ defmodule MaxGallery.Storage do
     end
   end
 
-  def put_stream(user, id, stream, part? \\ nil) when is_struct(stream) do
+  def put_stream(user, id, stream) when is_struct(stream) do
     key = generate(user, id)
-
-    stream =
-      if part? do
-        Stream.flat_map(
-          stream,
-          &Utils.binary_chunk(&1, Variables.chunk_size())
-        )
-      else
-        stream
-      end
-
     req = S3.upload(stream, @bucket, key)
 
     case ExAws.request(req) do
@@ -155,7 +143,7 @@ defmodule MaxGallery.Storage do
 
     {ok, res} =
       try do
-        S3.download_file(@bucket, key, :memory)
+        S3.download_file(@bucket, key, :memory, chunk_size: Variables.chunk_size())
         |> ExAws.stream!()
       rescue
         error ->
@@ -184,7 +172,7 @@ defmodule MaxGallery.Storage do
 
     {ok, res} =
       try do
-        S3.download_file(@bucket, key, :memory)
+        S3.download_file(@bucket, key, :memory, chunk_size: Variables.chunk_size())
         |> ExAws.stream!()
       rescue
         error ->

@@ -899,4 +899,22 @@ defmodule MaxGallery.Utils do
       acc <> chunk
     end)
   end
+
+
+  @spec rest_cache(stream :: Enum.t()) :: Enumt.t()
+  def rest_cache(stream) do
+    list = Enum.to_list(stream)
+
+    {value, list} = List.pop_at(
+      list,
+      length(list) - 1
+    )
+
+    List.update_at(
+      list,
+      length(list) - 1,
+      fn x -> x <> value end
+    ) |> Stream.map(& &1)
+  end
+
 end

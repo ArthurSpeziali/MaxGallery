@@ -37,7 +37,7 @@ defmodule MaxGallery.Storage.Mock do
   end
 
   @impl true
-  def put_stream(user, id, stream, _part? \\ nil) do
+  def put_stream(user, id, stream) do
     ensure_started()
     key = generate_key(user, id)
 

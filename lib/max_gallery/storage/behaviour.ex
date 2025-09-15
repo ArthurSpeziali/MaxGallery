@@ -8,7 +8,7 @@ defmodule MaxGallery.Storage.Behaviour do
               :ok | {:error, String.t()}
   @callback put_stream(user :: binary(), id :: integer(), stream :: Enum.t()) ::
               :ok | {:error, String.t()}
-  @callback put_stream(user :: binary(), id :: integer(), stream :: Enum.t(), part? :: boolean()) ::
+  @callback put_stream(user :: binary(), id :: integer(), stream :: Enum.t()) ::
               :ok | {:error, String.t()}
   @callback get(user :: binary(), id :: integer()) :: {:ok, binary()} | {:error, String.t()}
   @callback get_stream(user :: binary(), id :: integer()) :: {:ok, Enum.t()} | {:error, String.t()}
