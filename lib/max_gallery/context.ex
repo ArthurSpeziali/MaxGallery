@@ -1176,7 +1176,7 @@ defmodule MaxGallery.Context do
   - Returns full user struct with all fields
   """
   @spec user_get(user :: binary(), opts :: Keyword.t()) :: {:ok, map()} | {:error, String.t()}
-  def user_get(user, opts \\ []) when is_binary(user) and is_list(opts) do
+  def user_get(user, opts \\ []) when (is_binary(user) or is_nil(user)) and is_list(opts) do
     email = Keyword.get(opts, :email)
 
     if email do
