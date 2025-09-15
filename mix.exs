@@ -4,7 +4,7 @@ defmodule MaxGallery.MixProject do
   def project do
     [
       app: :max_gallery,
-      version: "1.0.2",
+      version: "1.1.0",
       elixir: "~> 1.17",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -63,12 +63,14 @@ defmodule MaxGallery.MixProject do
       {:dotenv, "~> 3.1"},
       {:httpoison, "~> 2.2"},
       {:email_checker, "~> 0.2.4"},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       # S3/BlackBlaze B2 dependencies
       {:ex_aws, "~> 2.5"},
       {:ex_aws_s3, "~> 2.5"},
       {:hackney, "~> 1.20"},
-      {:sweet_xml, "~> 0.7"}
+      {:sweet_xml, "~> 0.7"},
+
+      {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
+      {:credo, "~> 1.7", only: [:dev], runtime: false},
     ]
   end
 

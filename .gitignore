@@ -1,5 +1,7 @@
 mix.lock
 
+.formatter.exs
+
 .credo.exs
 
 qodo.md

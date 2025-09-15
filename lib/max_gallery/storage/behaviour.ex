@@ -4,11 +4,18 @@ defmodule MaxGallery.Storage.Behaviour do
   This allows us to swap between real S3 storage and mock storage for testing.
   """
 
-  @callback put(user :: binary(), id :: binary(), blob :: binary()) ::
-              {:ok, String.t()} | {:error, String.t()}
-  @callback get(user :: binary(), id :: binary()) :: {:ok, binary()} | {:error, String.t()}
-  @callback del(user :: binary(), id :: binary()) :: :ok | {:error, String.t()}
-  @callback del_all(user :: binary()) :: {:ok, integer()} | {:error, String.t()}
-  @callback exists?(user :: binary(), id :: binary()) :: boolean()
+  @callback put(user :: binary(), id :: integer(), blob :: binary()) ::
+              :ok | {:error, String.t()}
+  @callback put_stream(user :: binary(), id :: integer(), stream :: Enum.t()) ::
+              :ok | {:error, String.t()}
+  @callback put_stream(user :: binary(), id :: integer(), stream :: Enum.t()) ::
+              :ok | {:error, String.t()}
+  @callback get(user :: binary(), id :: integer()) :: {:ok, binary()} | {:error, String.t()}
+  @callback get_stream(user :: binary(), id :: integer()) :: {:ok, Enum.t()} | {:error, String.t()}
+  @callback get_stream(user :: binary(), id :: integer(), dest :: Path.t()) ::
+              :ok | {:error, String.t()}
+  @callback del(user :: binary(), id :: integer()) :: :ok | {:error, String.t()}
+  @callback del_all(user :: binary()) :: :ok | {:error, String.t()}
+  @callback exists?(user :: binary(), id :: integer()) :: boolean()
   @callback list(user :: binary()) :: {:ok, list(map())} | {:error, String.t()}
 end

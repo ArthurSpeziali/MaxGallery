@@ -3,7 +3,7 @@ defmodule MaxGallery.Utils do
   alias MaxGallery.Core.Group.Api, as: GroupApi
   alias MaxGallery.Encrypter
   alias MaxGallery.Phantom
-  alias MaxGallery.Storage
+  alias MaxGallery.StorageAdapter, as: Storage
   alias MaxGallery.Variables
   alias MaxGallery.Validate
   @type tree :: [map()]
@@ -40,6 +40,36 @@ defmodule MaxGallery.Utils do
   """
 
   @doc """
+  Checks if adding a file would exceed the user's storage limit.
+
+  ## Parameters
+  - `user` - Binary user ID to check storage for
+  - `size` - Size in bytes of the file to be added
+
+  ## Returns
+  - `:ok` - If the file can be added without exceeding limits
+  - `{:error, "storage_limit_exceeded"}` - If adding would exceed the limit
+
+  ## Notes
+  - Calculates current usage plus new file size
+  - Converts bytes to GB for comparison with user limit
+  - Uses `Variables.max_size_user/0` for the limit check
+  """
+  @spec check_limit(user :: binary(), size :: non_neg_integer()) :: :ok | {:error, String.t()}
+  def check_limit(user, size) when is_binary(user) and is_integer(size) and size >= 0 do
+    ## In GigaBytes
+    current = user_size(user)
+    size = size / (1024 * 1024 * 1024)
+    total = current + size
+
+    if total <= Variables.max_size_user() do
+      :ok
+    else
+      {:error, "storage_limit_exceeded"}
+    end
+  end
+
+  @doc """
   Retrieves the parent group ID for a given item ID.
 
   ## Parameters
@@ -55,15 +85,23 @@ defmodule MaxGallery.Utils do
   - Does not validate the existence of the returned parent group
   - Primarily used for navigation within group hierarchies
   """
-  @spec get_back(id :: binary()) :: binary()
-  def get_back(id) do
+  @spec get_back(user :: binary(), id :: integer() | nil) :: integer() | nil
+  def get_back(user, id) when is_binary(user) do
     case id do
       nil ->
         nil
 
       _id ->
-        {:ok, querry} = GroupApi.get(id)
-        Map.fetch!(querry, :group_id)
+        {:ok, querry} = GroupApi.get(user, id)
+        case Map.fetch!(querry, :group_id) do
+          nil -> nil
+          internal_group_id ->
+            # Convert internal group_id to public ID
+            case GroupApi.get_by_internal_id(user, internal_group_id) do
+              {:ok, parent_group} -> parent_group.id
+              {:error, _} -> nil
+            end
+        end
     end
   end
 
@@ -89,9 +127,9 @@ defmodule MaxGallery.Utils do
   - Returns empty list if the group contains no items
   - Does not recursively fetch items from nested subgroups
   """
-  @spec get_group(user :: binary(), id :: binary(), opts :: Keyword.t()) ::
+  @spec get_group(user :: binary(), id :: integer(), opts :: Keyword.t()) ::
           {:ok, MaxGallery.Context.querry()}
-  def get_group(user, id, opts \\ []) do
+  def get_group(user, id, opts \\ []) when is_binary(user) and is_list(opts) do
     only = Keyword.get(opts, :only)
 
     case only do
@@ -105,6 +143,12 @@ defmodule MaxGallery.Utils do
         CypherApi.all_group(user, id)
 
       :groups ->
+        GroupApi.all_group(user, id)
+        
+      [:files] ->
+        CypherApi.all_group(user, id)
+        
+      [:groups] ->
         GroupApi.all_group(user, id)
     end
   end
@@ -131,8 +175,8 @@ defmodule MaxGallery.Utils do
   - Returns raw size values without unit conversion
   - May raise exceptions if the item doesn't exist or lacks required fields
   """
-  @spec get_size(user :: binary(), id :: binary(), opts :: Keyword.t()) :: non_neg_integer()
-  def get_size(user, id, opts \\ []) do
+  @spec get_size(user :: binary(), id :: integer(), opts :: Keyword.t()) :: non_neg_integer()
+  def get_size(user, id, opts \\ []) when is_binary(user) and is_integer(id) and is_list(opts) do
     group? = Keyword.get(opts, :group)
 
     if group? do
@@ -154,7 +198,7 @@ defmodule MaxGallery.Utils do
         |> Enum.sum()
       end
     else
-      {:ok, length} = CypherApi.get_length(id)
+      {:ok, length} = CypherApi.get_length(user, id)
       length
     end
   end
@@ -181,15 +225,15 @@ defmodule MaxGallery.Utils do
   - Preserves the original timestamp structure from the database
   - Will raise if the item doesn't exist or lacks timestamp fields
   """
-  @spec get_timestamps(id :: binary(), Keyword.t()) :: map()
-  def get_timestamps(id, opts \\ []) do
+  @spec get_timestamps(user :: binary(), id :: integer(), opts :: Keyword.t()) :: map()
+  def get_timestamps(user, id, opts \\ []) when is_binary(user) and is_integer(id) and is_list(opts) do
     group? = Keyword.get(opts, :group)
 
     {:ok, timestamps} =
       if group? do
-        GroupApi.get_timestamps(id)
+        GroupApi.get_timestamps(user, id)
       else
-        CypherApi.get_timestamps(id)
+        CypherApi.get_timestamps(user, id)
       end
 
     local = NaiveDateTime.local_now()
@@ -231,8 +275,8 @@ defmodule MaxGallery.Utils do
   - Maintains original hierarchy and relationships
   - Performance scales with group size and depth when not lazy
   """
-  @spec get_tree(user :: binary(), id :: binary(), Keyword.t()) :: MaxGallery.Context.querry()
-  def get_tree(user, id, key, opts \\ []) do
+  @spec get_tree(user :: binary(), id :: integer(), key :: String.t(), opts :: Keyword.t()) :: MaxGallery.Context.querry()
+  def get_tree(user, id, key, opts \\ []) when is_binary(user) and is_binary(key) and is_list(opts) do
     lazy? = Keyword.get(opts, :lazy)
     {:ok, contents} = get_group(user, id)
 
@@ -241,9 +285,10 @@ defmodule MaxGallery.Utils do
     else
       Enum.map(contents, fn item ->
         if Map.get(item, :ext) do
-          {:ok, name} =
+          name =
             Encrypter.decrypt(
-              {item.name_iv, item.name},
+              item.name,
+              item.name_iv,
               key
             )
 
@@ -258,11 +303,12 @@ defmodule MaxGallery.Utils do
               }
             }
           else
-            {:ok, enc_blob} = Storage.get(user, item.id)
+            {:ok, stream} = Storage.get_stream(user, item.id)
 
-            {:ok, blob} =
-              Encrypter.decrypt(
-                {item.blob_iv, enc_blob},
+            stream =
+              Encrypter.decrypt_stream(
+                stream,
+                item.blob_iv,
                 key
               )
 
@@ -270,7 +316,7 @@ defmodule MaxGallery.Utils do
               data: %{
                 id: item.id,
                 name: name,
-                blob: blob,
+                blob: exec(stream, :read, {}),
                 ext: item.ext,
                 group: item.group_id,
                 user: item.user_id
@@ -278,9 +324,10 @@ defmodule MaxGallery.Utils do
             }
           end
         else
-          {:ok, name} =
+          name =
             Encrypter.decrypt(
-              {item.name_iv, item.name},
+              item.name,
+              item.name_iv,
               key
             )
 
@@ -338,21 +385,25 @@ defmodule MaxGallery.Utils do
     Enum.each(tree, fn item ->
       case item do
         %{data: data} ->
-          {:ok, {name_iv, name}} = Encrypter.encrypt(data.name, key)
+          {name_iv, name} = Encrypter.encrypt(data.name, key)
 
           # Handle lazy mode where blob might not be present
           {blob_iv, length} =
             if Map.has_key?(data, :blob) do
-              {:ok, {blob_iv, blob}} = Encrypter.encrypt(data.blob, key)
-              {blob_iv, byte_size(blob)}
+              {stream, blob_iv} = Encrypter.encrypt_stream(data.blob, key)
+              size = stream.enum.path
+                     |> File.stat!()
+                     |> Map.fetch!(:size)
+
+              {blob_iv, size}
             else
               # For lazy mode, we need to get the original blob_iv and length
               # This requires getting the original file data
-              {:ok, original} = CypherApi.get(data.id)
+              {:ok, original} = CypherApi.get(data.user, data.id)
               {original.blob_iv, original.length}
             end
 
-          {:ok, {msg_iv, msg}} =
+          {msg_iv, msg} =
             Phantom.get_text()
             |> Encrypter.encrypt(key)
 
@@ -373,9 +424,9 @@ defmodule MaxGallery.Utils do
 
         %{group: {group, subitems}} ->
           # Always generate fresh encryption for group names to avoid constraint violations
-          {:ok, {name_iv, name}} = Encrypter.encrypt(group.name, key)
+          {name_iv, name} = Encrypter.encrypt(group.name, key)
 
-          {:ok, {msg_iv, msg}} =
+          {msg_iv, msg} =
             Phantom.get_text()
             |> Encrypter.encrypt(key)
 
@@ -541,7 +592,7 @@ defmodule MaxGallery.Utils do
   """
   @spec get_like(querry :: MaxGallery.Context.querry(), like :: String.t()) ::
           MaxGallery.Context.querry()
-  def get_like(querry, like) do
+  def get_like(querry, like) when is_list(querry) and is_binary(like) do
     Enum.filter(querry, fn item ->
       String.downcase(
         item.name
@@ -572,7 +623,7 @@ defmodule MaxGallery.Utils do
   - Uses Erlang's `binary_part/3` and `binary_slice/2`
   """
   @spec binary_chunk(bin :: binary(), range :: pos_integer()) :: [binary()]
-  def binary_chunk(bin, range) when byte_size(bin) >= range do
+  def binary_chunk(bin, range) when byte_size(bin) > range do
     ## In my mind, this function is O(log n), but my supervisor insists it’s O(n).
     [
       binary_part(bin, 0, range)
@@ -585,9 +636,8 @@ defmodule MaxGallery.Utils do
 
   def binary_chunk(bin, _range), do: [bin]
 
-  @spec create_folder(user :: binary(), folder :: Path.t(), key :: binary(), opts :: Keyword.t()) ::
-          :ok
-  def create_folder(user, folder, key, opts \\ []) do
+  @spec create_folder(user :: binary(), folder :: Path.t(), key :: String.t(), opts :: Keyword.t()) :: :ok
+  def create_folder(user, folder, key, opts \\ []) when is_binary(user) and is_binary(folder) and is_binary(key) and is_list(opts) do
     group = Keyword.get(opts, :group)
     agent = Keyword.get(opts, :agent)
 
@@ -608,10 +658,10 @@ defmodule MaxGallery.Utils do
     response = find_group(exists_path, agent, exists_path, nil)
 
     if response do
-      {new_group, new_path, persists} = response
+      {new_group, dest, persists} = response
 
       recursive_path(
-        new_path ++ [Path.basename(fpath)],
+        dest ++ [Path.basename(fpath)],
         folder,
         persists,
         agent,
@@ -656,23 +706,21 @@ defmodule MaxGallery.Utils do
   end
 
   defp recursive_path([head | []], lock, _persists, _agent, user, group, key) do
-    file = File.read!(lock)
-
-    {:ok, {name_iv, name}} =
+    {name_iv, name} =
       Encrypter.encrypt(
         Path.basename(head, Path.extname(head)),
         key
       )
 
-    {:ok, {msg_iv, msg}} =
+    {msg_iv, msg} =
       Encrypter.encrypt(
         Phantom.get_text(),
         key
       )
 
-    {:ok, {blob_iv, blob}} =
-      Encrypter.encrypt(
-        file,
+    {stream, blob_iv} =
+      Encrypter.encrypt_stream(
+        lock,
         key
       )
 
@@ -685,8 +733,12 @@ defmodule MaxGallery.Utils do
         ext
       end
 
+    size =
+      File.stat!(lock)
+      |> Map.fetch!(:size)
+
     {:ok, %{id: id}} =
-      CypherApi.insert(%{
+      CypherApi.insert(user, %{
         user_id: user,
         name: name,
         name_iv: name_iv,
@@ -694,29 +746,28 @@ defmodule MaxGallery.Utils do
         msg: msg,
         msg_iv: msg_iv,
         ext: ext,
-        length: byte_size(file),
+        length: size,
         group_id: group
       })
 
-    # Store encrypted blob directly in S3 instead of chunks
-    Storage.put(user, id, blob)
+    Storage.put_stream(user, id, stream)
   end
 
   defp recursive_path([head | tail], lock, persists, agent, user, group, key) do
-    {:ok, {name_iv, name}} =
+    {name_iv, name} =
       Encrypter.encrypt(
         head,
         key
       )
 
-    {:ok, {msg_iv, msg}} =
+    {msg_iv, msg} =
       Encrypter.encrypt(
         Phantom.get_text(),
         key
       )
 
     {:ok, %{id: id}} =
-      GroupApi.insert(%{
+      GroupApi.insert(user, %{
         user_id: user,
         name: name,
         name_iv: name_iv,
@@ -725,30 +776,45 @@ defmodule MaxGallery.Utils do
         group_id: group
       })
 
-    new_path =
+    dest =
       Path.join(persists, head)
       |> Path.split()
       |> Path.join()
 
     exists? =
       Agent.get(agent, & &1)
-      |> Map.get(new_path)
+      |> Map.get(dest)
 
     if !exists? do
       Agent.update(agent, fn value ->
         Map.put(
           value,
-          new_path,
+          dest,
           id
         )
       end)
     end
 
-    recursive_path(tail, lock, new_path, agent, user, id, key)
+    recursive_path(tail, lock, dest, agent, user, id, key)
   end
 
+  @doc """
+  Validates if a file is a valid ZIP archive.
+
+  ## Parameters
+  - `path` - File path to validate
+
+  ## Returns
+  - `true` - If the file is a valid ZIP archive
+  - `false` - If the file is invalid, corrupted, or doesn't exist
+
+  ## Notes
+  - Uses Erlang's `:zip` module for validation
+  - Safely handles various error conditions
+  - Automatically closes ZIP handle after validation
+  """
   @spec zip_valid?(path :: Path.t()) :: boolean()
-  def zip_valid?(path) do
+  def zip_valid?(path) when is_binary(path) do
     String.to_charlist(path)
     |> :zip.zip_open()
     |> case do
@@ -758,9 +824,29 @@ defmodule MaxGallery.Utils do
 
       {:error, :einval} ->
         false
+        
+      {:error, :enoent} ->
+        false
+        
+      {:error, _} ->
+        false
     end
   end
 
+  @doc """
+  Generates a random numeric code with a specified number of digits.
+
+  ## Parameters
+  - `digits` - Number of digits for the generated code (must be positive)
+
+  ## Returns
+  - String containing the random numeric code
+
+  ## Notes
+  - Pads with trailing zeros if needed to maintain exact digit count
+  - Uses Elixir's `Enum.random/1` for randomization
+  - Useful for generating verification codes or temporary tokens
+  """
   @spec gen_code(digits :: pos_integer()) :: String.t()
   def gen_code(digits) when digits > 0 do
     final =
@@ -774,8 +860,23 @@ defmodule MaxGallery.Utils do
     |> String.pad_trailing(digits, "0")
   end
 
+  @doc """
+  Encrypts a string with a timestamp for secure token generation.
+
+  ## Parameters
+  - `string` - The string to encrypt with timestamp
+
+  ## Returns
+  - Base64-encoded encrypted token containing timestamp and string
+
+  ## Notes
+  - Combines current Unix timestamp with the provided string
+  - Uses system encryption key from environment variable
+  - Returns URL-safe Base64 encoding
+  - Useful for time-sensitive tokens and verification links
+  """
   @spec enc_timestamp(string :: String.t()) :: String.t()
-  def enc_timestamp(string) do
+  def enc_timestamp(string) when is_binary(string) do
     now =
       DateTime.utc_now()
       |> DateTime.to_unix()
@@ -783,7 +884,7 @@ defmodule MaxGallery.Utils do
 
     token = "#{now}::#{string}"
 
-    {:ok, {iv, enc}} = Encrypter.encrypt(token, System.get_env("ENCRIPT_KEY"))
+    {iv, enc} = Encrypter.encrypt(token, System.get_env("ENCRIPT_KEY"))
     Base.url_encode64(iv <> enc)
   end
 
@@ -802,15 +903,31 @@ defmodule MaxGallery.Utils do
   - Returns 0.0 if user has no files
   """
   @spec user_size(user :: binary()) :: float()
-  def user_size(user) do
+  def user_size(user) when is_binary(user) do
     {:ok, sizes} = CypherApi.all_size(user)
 
     # Convert bytes to GB (1 GB = 1024^3 bytes)
     Enum.sum(sizes) / (1024 * 1024 * 1024)
   end
 
+  @doc """
+  Decrypts a timestamp-encrypted token back to its original components.
+
+  ## Parameters
+  - `base` - Base64-encoded encrypted token (from `enc_timestamp/1`)
+
+  ## Returns
+  - `{datetime, string}` - Tuple with the original DateTime and string
+  - `{:error, reason}` - Error if decryption fails or token is invalid
+
+  ## Notes
+  - Validates Base64 encoding, binary size, and token format
+  - Extracts Unix timestamp and converts to DateTime
+  - Returns original string that was encrypted
+  - Useful for validating time-sensitive tokens
+  """
   @spec dec_timestamp(base :: String.t()) :: {DateTime.t(), String.t()} | {:error, String.t()}
-  def dec_timestamp(base) do
+  def dec_timestamp(base) when is_binary(base) do
     ivenc = Base.url_decode64(base)
 
     if ivenc != :error do
@@ -818,7 +935,7 @@ defmodule MaxGallery.Utils do
 
       if byte_size(ivenc) > 16 do
         <<iv::binary-size(16), enc::binary>> = ivenc
-        {:ok, token} = Encrypter.decrypt({iv, enc}, System.get_env("ENCRIPT_KEY"))
+        token = Encrypter.decrypt(enc, iv, System.get_env("ENCRIPT_KEY"))
 
         if byte_size(token) > 12 && String.contains?(token, "::") do
           <<unix_time::binary-size(10), "::", string::binary>> = token
@@ -843,4 +960,41 @@ defmodule MaxGallery.Utils do
       {:error, "invalid base64"}
     end
   end
+
+  @doc """
+  Executes stream operations for reading or writing data.
+
+  ## Parameters
+  - `stream` - The stream to process
+  - `operation` - Either `:write` or `:read`
+  - `args` - Tuple with operation-specific arguments
+
+  ## Returns
+  - For `:write` - Writes stream to file path
+  - For `:read` - Returns concatenated binary data
+
+  ## Notes
+  - `:write` operation requires `{path}` tuple with file path
+  - `:read` operation requires empty tuple `{}`
+  - Used internally for handling encrypted file streams
+  """
+  @spec exec(stream :: struct(), operation :: atom(), args :: tuple()) :: any()
+  def exec(stream, :write, {path}) do
+    File.open(path, [:write], fn output ->
+      Stream.each(stream, fn chunk ->
+        IO.binwrite(output, chunk)
+      end)
+      |> Stream.run()
+    end)
+  end
+
+  def exec(stream, :read, {}) do
+    Enum.reduce(stream, <<>>, fn chunk, acc ->
+      acc <> chunk
+    end)
+  end
+
+
+
+
 end

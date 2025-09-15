@@ -3,15 +3,15 @@ defmodule MaxGallery.Core.Group do
   alias MaxGallery.Core.Cypher
   alias MaxGallery.Core.User
 
-  @foreign_key_type :binary_id
   schema "groups" do
+    field :file, :integer, default: 0
     field :name_iv, :binary
     field :name, :binary
     field :msg_iv, :binary
     field :msg, :binary
 
-    belongs_to :user, User
-    belongs_to :group, __MODULE__, type: :integer
+    belongs_to :user, User, type: :binary_id
+    belongs_to :group, __MODULE__
 
     ## `group_id` can be inserted in both structs (Cyphers and Groups). that represents your parent folder.
     has_many :cypher, Cypher
@@ -21,7 +21,7 @@ defmodule MaxGallery.Core.Group do
   end
 
   def changeset(model, params) do
-    Ecto.Changeset.cast(model, params, [:name, :name_iv, :group_id, :msg, :msg_iv, :user_id])
+    Ecto.Changeset.cast(model, params, [:file, :name, :name_iv, :group_id, :msg, :msg_iv, :user_id])
   end
 
   def fields() do

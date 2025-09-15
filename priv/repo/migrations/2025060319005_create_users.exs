@@ -9,6 +9,7 @@ defmodule MaxGallery.Repo.Migrations.CreateUsers do
       add :name, :string, size: 32, null: false
       add :passhash, :binary, null: false
       add :email, :string, size: 128, null: false
+      add :last_file, :integer, default: 0
 
       timestamps()
     end

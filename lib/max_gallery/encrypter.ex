@@ -1,5 +1,9 @@
 defmodule MaxGallery.Encrypter do
   @type cypher :: {iv :: binary(), ciphertext :: binary()}
+  @type stream :: %Stream{}
+
+  alias MaxGallery.Variables
+
   @moduledoc """
   Provides cryptographic operations for the MaxGallery system.
 
@@ -33,79 +37,6 @@ defmodule MaxGallery.Encrypter do
   """
 
   @doc """
-  Encrypts a file's contents using AES-256 CTR mode.
-
-  ## Parameters
-  - `:encrypt` - Operation mode identifier
-  - `path` - Path to the file to be encrypted
-  - `key` - Raw encryption key (will be automatically hashed)
-
-  ## Returns
-  - `{:ok, {iv, cyphertext}}` on success:
-    - `iv` - 16-byte initialization vector
-    - `cyphertext` - Encrypted file contents
-  - Error tuple if any step fails
-
-  ## Behavior
-  1. Reads the file contents
-  2. Generates a secure random IV
-  3. Encrypts the contents using AES-256-CTR
-  4. Returns IV and cyphertext pair
-
-  ## Notes
-  - Original file remains unmodified
-  - Uses cryptographically secure random IV
-  - Automatically hashes the provided key
-  """
-  @spec file(:encrypt, path :: Path.t(), key :: String.t()) :: {:ok, cypher()}
-  def file(:encrypt, path, key) do
-    with {:ok, content} <- File.read(path),
-         {:ok, {iv, cypher}} <- encrypt(content, key) do
-      {:ok, {iv, cypher}}
-    else
-      error -> error
-    end
-  end
-
-  @doc """
-  Decrypts file contents and writes to specified path.
-
-  ## Parameters
-  - `:decrypt` - Operation mode identifier
-  - `{iv, cyphertext}` - Encryption components from original encryption
-  - `path` - Destination path for decrypted file
-  - `key` - Original encryption key
-
-  ## Returns
-  - `{:ok, decrypted_binary}` on success
-  - Error tuple if any step fails
-
-  ## Behavior
-  1. Decrypts the cyphertext using provided IV and key
-  2. Writes decrypted data to target path
-  3. Returns the decrypted binary data
-
-  ## Notes
-  - Will overwrite existing files at destination
-  - Key must match original encryption key
-  - Returns decrypted data even if file write fails
-  - Maintains atomic operation (fails if any step fails)
-  """
-  @spec file(:decrypt, cypher(), path :: Path.t(), key :: String.t()) ::
-          {:ok, cypher()} | {:error, atom()}
-  def file(:decrypt, {iv, cypher}, path, key) do
-    Path.dirname(path)
-    |> File.mkdir_p()
-
-    with {:ok, data} <- {iv, cypher} |> decrypt(key),
-         :ok <- File.write(path, data, [:write]) do
-      {:ok, data}
-    else
-      error -> error
-    end
-  end
-
-  @doc """
   Encrypts binary data using AES-256 in CTR mode.
 
   ## Parameters
@@ -130,13 +61,13 @@ defmodule MaxGallery.Encrypter do
   - CTR mode doesn't require padding
   - Uses Erlang's :crypto module for core operations
   """
-  @spec encrypt(data :: binary(), key :: String.t()) :: {:ok, cypher()}
+  @spec encrypt(data :: binary(), key :: String.t()) :: cypher()
   def encrypt(data, key) do
     iv = :crypto.strong_rand_bytes(16)
     hash_key = hash(key)
 
     cypher = :crypto.crypto_one_time(:aes_256_ctr, hash_key, iv, data, true)
-    {:ok, {iv, cypher}}
+    {iv, cypher}
   end
 
   @doc """
@@ -167,18 +98,113 @@ defmodule MaxGallery.Encrypter do
     - Key is incorrect
     - Cyphertext was modified
   """
-  @spec decrypt(cypher(), key :: String.t()) :: {:ok, binary()}
-  def decrypt({iv, cypher}, key) do
+  @spec decrypt(cypher :: binary(), iv :: binary(), key :: String.t()) :: binary()
+  def decrypt(cypher, iv, key) do
     hash_key = hash(key)
 
-    {:ok, :crypto.crypto_one_time(:aes_256_ctr, hash_key, iv, cypher, false)}
+    :crypto.crypto_one_time(:aes_256_ctr, hash_key, iv, cypher, false)
   end
 
+  @doc """
+  Encrypts a file using streaming for large files.
+
+  ## Parameters
+  - `path` - File path to encrypt
+  - `key` - Raw encryption key (will be hashed)
+
+  ## Returns
+  - `{stream, iv}` - Tuple containing:
+    - `stream` - Stream of encrypted chunks
+    - `iv` - Initialization vector used for encryption
+
+  ## Notes
+  - Uses AES-256-CTR mode for streaming encryption
+  - Processes file in chunks for memory efficiency
+  - Suitable for large files that don't fit in memory
+  - IV must be stored for later decryption
+  """
+  @spec encrypt_stream(path :: Path.t(), key :: String.t()) :: {stream(), binary()}
+  def encrypt_stream(path, key) when is_binary(path) and is_binary(key) do
+    iv = random()
+    key = hash(key)
+    ref = :crypto.crypto_init(:aes_ctr, key, iv, true)
+
+    stream =
+      File.stream!(path, Variables.chunk_size())
+      |> Stream.map(fn chunk ->
+        :crypto.crypto_update(ref, chunk)
+      end)
+
+    :crypto.crypto_final(ref)
+    {stream, iv}
+  end
+
+  @doc """
+  Decrypts a stream of encrypted data.
+
+  ## Parameters
+  - `stream` - Stream of encrypted chunks
+  - `iv` - Initialization vector used during encryption
+  - `key` - Raw encryption key (will be hashed)
+
+  ## Returns
+  - Stream of decrypted chunks
+
+  ## Notes
+  - Uses AES-256-CTR mode for streaming decryption
+  - Processes chunks in streaming fashion for memory efficiency
+  - Must use the same IV that was used for encryption
+  - Suitable for large encrypted files
+  """
+  @spec decrypt_stream(stream :: stream(), iv :: binary(), key :: String.t()) :: stream()
+  def decrypt_stream(stream, iv, key) when is_binary(iv) and is_binary(key) do
+    key = hash(key)
+    ref = :crypto.crypto_init(:aes_ctr, key, iv, false)
+
+    stream =
+      Stream.map(stream, fn chunk ->
+        :crypto.crypto_update(ref, chunk)
+      end)
+
+    :crypto.crypto_final(ref)
+    stream
+  end
+
+  @doc """
+  Hashes a key using SHA-256 for cryptographic operations.
+
+  ## Parameters
+  - `key` - Raw key string to hash
+
+  ## Returns
+  - 32-byte SHA-256 hash of the input key
+
+  ## Notes
+  - Used internally to derive encryption keys
+  - Provides consistent key derivation
+  - SHA-256 produces 256-bit (32-byte) output
+  - Essential for AES-256 key requirements
+  """
   @spec hash(key :: String.t()) :: binary()
-  def hash(key) do
+  def hash(key) when is_binary(key) do
     :crypto.hash(:sha256, key)
   end
 
+  @doc """
+  Generates cryptographically strong random bytes.
+
+  ## Parameters
+  - `bytes` - Number of random bytes to generate (default: 16)
+
+  ## Returns
+  - Binary containing the specified number of random bytes
+
+  ## Notes
+  - Uses `:crypto.strong_rand_bytes/1` for cryptographic strength
+  - Default 16 bytes is suitable for AES initialization vectors
+  - Essential for generating unique IVs for each encryption
+  - Should not be used for key generation (use proper key derivation)
+  """
   @spec random(bytes :: pos_integer()) :: binary()
   def random(bytes \\ 16) when bytes > 0 do
     :crypto.strong_rand_bytes(bytes)

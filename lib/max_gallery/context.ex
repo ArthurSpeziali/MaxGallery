@@ -39,20 +39,6 @@ defmodule MaxGallery.Context do
   All operations require a valid encryption key to ensure security and integrity.
   """
 
-  # Private function to check if adding a file would exceed user storage limit
-  defp check_limit(user, new_file) do
-    ## In GigaBytes
-    current = Utils.user_size(user)
-    new_file = new_file / (1024 * 1024 * 1024)
-    total = current + new_file
-
-    if total <= Variables.max_size_user() do
-      :ok
-    else
-      {:error, "storage_limit_exceeded"}
-    end
-  end
-
   @doc """
   Encrypts and inserts a file into the system, storing both its encrypted contents and metadata.
 
@@ -84,7 +70,7 @@ defmodule MaxGallery.Context do
   """
   @spec cypher_insert(path :: Path.t(), user :: binary(), key :: String.t(), opts :: Keyword.t()) ::
           response()
-  def cypher_insert(path, user, key, opts \\ []) do
+  def cypher_insert(path, user, key, opts \\ []) when is_binary(path) and is_binary(user) and is_binary(key) and is_list(opts) do
     name = Keyword.get(opts, :name)
 
     group =
@@ -104,7 +90,7 @@ defmodule MaxGallery.Context do
         ext
       end
 
-    {:ok, {name_iv, name}} =
+    {name_iv, name} =
       if name do
         Path.basename(name, ext)
         |> Encrypter.encrypt(key)
@@ -114,83 +100,121 @@ defmodule MaxGallery.Context do
       end
 
     with true <- Phantom.insert_line?(user, key),
-         {:ok, {blob_iv, blob}} <- Encrypter.file(:encrypt, path, key),
-         {:ok, {msg_iv, msg}} <- Encrypter.encrypt(Phantom.get_text(), key),
+         size <- File.stat!(path) |> Map.fetch!(:size),
+         Utils.check_limit(user, size),
+         {msg_iv, msg} <- Encrypter.encrypt(Phantom.get_text(), key),
          {:ok, _querry} <- UserApi.exists(user),
-         :ok <- check_limit(user, byte_size(blob)),
          {:ok, querry} <-
-           CypherApi.insert(%{
+           CypherApi.insert(user, %{
              user_id: user,
              name_iv: name_iv,
              name: name,
-             blob_iv: blob_iv,
+             blob_iv: nil,  # Will be set after encryption
              ext: ext,
              msg: msg,
              msg_iv: msg_iv,
-             length: byte_size(blob),
+             length: size,
              group_id: group
            }),
-         {:ok, _storage_key} <- Storage.put(user, querry.id, blob) do
+         :ok <- upload_content(user, querry.id, path, key, size) do
       {:ok, querry.id}
     else
       false ->
         {:error, "invalid key/user"}
-
-      {:error, "storage_limit_exceeded"} ->
-        {:error, "storage_limit_exceeded"}
 
       error ->
         error
     end
   end
 
+  # Private function to upload file content using optimal method based on size
+  defp upload_content(user, file_id, path, key, size) do
+    if Variables.use_stream() <= size do
+      # Use streaming for large files
+      {stream, blob_iv} = Encrypter.encrypt_stream(path, key)
+      
+      with :ok <- Storage.put_stream(user, file_id, stream),
+           {:ok, _} <- CypherApi.update(user, file_id, %{blob_iv: blob_iv}) do
+        :ok
+      end
+    else
+      # Use normal encryption for small files
+      blob = File.read!(path)
+      {blob_iv, encrypted_blob} = Encrypter.encrypt(blob, key)
+      
+      with :ok <- Storage.put(user, file_id, encrypted_blob),
+           {:ok, _} <- CypherApi.update(user, file_id, %{blob_iv: blob_iv}) do
+        :ok
+      end
+    end
+  end
+
+  # Private function to copy file content using optimal method based on size
+  defp copy_file_content(user, source_id, dest_id, size) do
+    if Variables.use_stream() <= size do
+      # Use streaming for large files
+      case Storage.get_stream(user, source_id) do
+        {:ok, stream} ->
+          Storage.put_stream(user, dest_id, stream)
+        error -> error
+      end
+    else
+      # Use normal get/put for small files
+      case Storage.get(user, source_id) do
+        {:ok, blob} ->
+          Storage.put(user, dest_id, blob)
+        error -> error
+      end
+    end
+  end
+
   ## Private recursive function to return the already encrypted data of each date/group to be stored in the database.
+  @spec send_package(item :: map(), user :: binary(), lazy? :: boolean(), memory? :: boolean(), key :: String.t()) :: querry()
   defp send_package(%{ext: _ext} = item, user, lazy?, memory?, key) do
-    {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
+    name = Encrypter.decrypt(item.name, item.name_iv, key)
+    # Use the group field if available (from swap_id), otherwise use group_id
+    group_ref = Map.get(item, :group, item.group_id)
 
     if lazy? do
       %{
         name: name,
         ext: item.ext,
         id: item.id,
-        group: item.group_id
+        group: group_ref
       }
     else
       if memory? do
         # Return blob in memory using new cache system
-        {:ok, blob} = Cache.get_content(user, item.id, item.blob_iv, key)
+        blob = Cache.get_content(user, item.id, item.blob_iv, key, item.length)
 
         %{
           name: name,
           blob: blob,
           ext: item.ext,
           id: item.id,
-          group: item.group_id
+          group: group_ref
         }
       else
         # Return file path using cache system
-        {path, _downloaded} = Cache.consume_cache(user, item.id, item.blob_iv, key)
+        {path, _downloaded} = Cache.consume_cache(user, item.id, item.blob_iv, key, item.length)
 
         %{
           name: name,
           path: path,
           ext: item.ext,
           id: item.id,
-          group: item.group_id
+          group: group_ref
         }
       end
     end
-    |> Map.update!(:name, fn item -> 
-      Phantom.validate_bin(item) 
-    end)
+    |> Phantom.encode_bin()
   end
 
   defp send_package(item, _user, _lazy, _memory, key) do
-    {:ok, name} = {item.name_iv, item.name} |> Encrypter.decrypt(key)
-    %{name: name, id: item.id, group: item.group_id} 
-    |> Map.update!(:name, fn item -> 
-      Phantom.validate_bin(item) 
-    end)
+    name = Encrypter.decrypt(item.name, item.name_iv, key)
+    # Use the group field if available (from swap_id), otherwise use group_id
+    group_ref = Map.get(item, :group, item.group_id)
+    %{name: name, id: item.id, group: group_ref} |> Phantom.encode_bin()
   end
 
   @doc """
@@ -216,10 +240,10 @@ defmodule MaxGallery.Context do
     - `{:ok, binary}`: A binary-encoded list of decrypted items.
   """
   @spec decrypt_all(user :: binary(), key :: String.t(), opts :: Keyword.t()) :: {:ok, querry()}
-  def decrypt_all(user, key, opts \\ []) do
+  def decrypt_all(user, key, opts \\ []) when is_binary(user) and is_binary(key) and is_list(opts) do
     lazy? = Keyword.get(opts, :lazy)
     only = Keyword.get(opts, :only)
-    memory? = !Keyword.get(opts, :disk)
+    memory? = Keyword.get(opts, :memory)
     group_id = Keyword.get(opts, :group)
 
     {:ok, contents} = Utils.get_group(user, group_id, only: only)
@@ -254,14 +278,12 @@ defmodule MaxGallery.Context do
     - `{:error, "invalid key"}`: If the key is not authorized to delete the file.
     - `{:error, reason}`: If any operation (get, delete, etc.) fails.
   """
-  @spec cypher_delete(user :: binary(), id :: binary(), key :: String.t()) :: response()
-  def cypher_delete(user, id, key) do
+  @spec cypher_delete(user :: binary(), id :: integer(), key :: String.t()) :: response()
+  def cypher_delete(user, id, key) when is_binary(user) and is_integer(id) and is_binary(key) do
     Repo.transaction(fn ->
-      with {:ok, querry} <- CypherApi.get(id),
-           {:ok, get_user} <- CypherApi.get_own(id),
-           true <- get_user == user,
+      with {:ok, querry} <- CypherApi.get(user, id),
            true <- Phantom.valid?(querry, key),
-           {:ok, _querry} <- CypherApi.delete(id),
+           {:ok, _querry} <- CypherApi.delete(user, id),
            :ok <- Storage.del(user, id) do
         querry
       else
@@ -299,52 +321,58 @@ defmodule MaxGallery.Context do
     - `{:ok, map}`: A map containing the decrypted fields of the requested item.
     - `{:error, reason}`: If any decryption or retrieval fails.
   """
-  @spec decrypt_one(id :: binary(), key :: String.t(), opts :: Keyword.t()) :: response()
-  def decrypt_one(user, id, key, opts \\ []) do
+  @spec decrypt_one(user :: binary(), id :: integer(), key :: String.t(), opts :: Keyword.t()) :: {:ok, map()} | {:error, String.t()}
+  def decrypt_one(user, id, key, opts \\ []) when is_binary(user) and is_integer(id) and is_binary(key) and is_list(opts) do
     lazy? = Keyword.get(opts, :lazy)
     group? = Keyword.get(opts, :group)
 
-    {:ok, querry} =
-      if group? do
-        GroupApi.get(id)
-      else
-        CypherApi.get(id)
-      end
+    result = if group? do
+      GroupApi.get(user, id)
+    else
+      CypherApi.get(user, id)
+    end
+    
+    case result do
+      {:ok, querry} ->
+        case Encrypter.decrypt(querry.name, querry.name_iv, key) do
+          name ->
+            # Use the group field if available (from swap_id), otherwise use group_id
+            group_ref = Map.get(querry, :group, querry.group_id)
 
-    {:ok, name} = Encrypter.decrypt({querry.name_iv, querry.name}, key)
+            case {lazy?, group?} do
+              {true, nil} ->
+                {:ok,
+                 %{
+                   id: id,
+                   name: name,
+                   ext: querry.ext,
+                   group: group_ref
+                 }}
 
-    case {lazy?, group?} do
-      {true, nil} ->
-        # Lazy: apenas metadados
-        {:ok,
-         %{
-           id: id,
-           name: name,
-           ext: querry.ext,
-           group: querry.group_id
-         }}
+              {nil, nil} ->
+                # Full file: download and decrypt using cache system
+                {path, _created} = Cache.consume_cache(user, querry.id, querry.blob_iv, key, querry.length)
+                
+                {:ok,
+                 %{
+                   id: id,
+                   name: name,
+                   path: path,
+                   ext: querry.ext,
+                   group: group_ref
+                 }}
 
-      {nil, nil} ->
-        # Full file: download and decrypt using cache system
-        {:ok, blob} = Cache.get_content(user, querry.id, querry.blob_iv, key)
-
-        {:ok,
-         %{
-           id: id,
-           name: name,
-           blob: blob,
-           ext: querry.ext,
-           group: querry.group_id
-         }}
-
-      {_boolean, true} ->
-        # Grupo: apenas metadados
-        {:ok,
-         %{
-           id: id,
-           name: name,
-           group: querry.group_id
-         }}
+              {_boolean, true} ->
+                {:ok,
+                 %{
+                   id: id,
+                   name: name,
+                   group: group_ref
+                 }}
+            end
+        end
+      
+      error -> error
     end
   end
 
@@ -381,24 +409,24 @@ defmodule MaxGallery.Context do
     - `{:ok, updated}`: On success, returns the updated file struct.
     - `{:error, "invalid key"}`: If the provided encryption key is not valid for this file.
   """
-  @spec cypher_update(user :: binary(), id :: binary(), map(), key :: String.t()) :: response()
-  def cypher_update(user, id, %{name: new_name, blob: new_blob}, key) do
+  @spec cypher_update(user :: binary(), id :: integer(), map(), key :: String.t()) :: response()
+  def cypher_update(user, id, %{name: new_name, blob: new_blob}, key) when is_binary(user) and is_integer(id) and is_binary(new_name) and is_binary(new_blob) and is_binary(key) do
     ext = Path.extname(new_name)
     new_name = Path.basename(new_name, ext)
 
-    {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
-    {:ok, {blob_iv, blob}} = Encrypter.encrypt(new_blob, key)
+    {name_iv, name} = Encrypter.encrypt(new_name, key)
+    {blob_iv, blob} = Encrypter.encrypt(new_blob, key)
 
-    {:ok, querry} = CypherApi.get(id)
+    {:ok, querry} = CypherApi.get(user, id)
 
     Repo.transaction(fn ->
       if Phantom.valid?(querry, key) do
         params = %{name_iv: name_iv, name: name, blob_iv: blob_iv, ext: ext}
 
         case Storage.put(user, id, blob) do
-          {:ok, _} ->
+          :ok ->
             Cache.remove_cache(user, id)
-            CypherApi.update(id, params)
+            CypherApi.update(user, id, params)
 
           {:error, reason} ->
             Repo.rollback(reason)
@@ -409,32 +437,28 @@ defmodule MaxGallery.Context do
     end)
   end
 
-  def cypher_update(user, id, %{name: new_name}, key) do
+  def cypher_update(user, id, %{name: new_name}, key) when is_binary(user) and is_integer(id) and is_binary(new_name) and is_binary(key) do
     ext = Path.extname(new_name)
     new_name = Path.basename(new_name, ext)
 
-    {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
+    {name_iv, name} = Encrypter.encrypt(new_name, key)
 
     params = %{name_iv: name_iv, name: name, ext: ext}
-    {:ok, querry} = CypherApi.get(id)
+    {:ok, querry} = CypherApi.get(user, id)
 
-    with {:ok, owner} <- CypherApi.get_own(id),
-         true <- owner == user,
-         true <- Phantom.valid?(querry, key) do
-      CypherApi.update(id, params)
+    with true <- Phantom.valid?(querry, key) do
+      CypherApi.update(user, id, params)
     else
       false -> {:error, "invalid key/user"}
       error -> error
     end
   end
 
-  def cypher_update(user, id, %{group_id: new_group}, key) do
-    {:ok, querry} = CypherApi.get(id)
+  def cypher_update(user, id, %{group_id: new_group}, key) when is_binary(user) and is_integer(id) and is_binary(key) do
+    {:ok, querry} = CypherApi.get(user, id)
 
-    with {:ok, owner} <- CypherApi.get_own(id),
-         true <- owner == user,
-         true <- Phantom.valid?(querry, key) do
-      CypherApi.update(id, %{group_id: new_group})
+    with true <- Phantom.valid?(querry, key) do
+      CypherApi.update(user, id, %{group_id: new_group})
     else
       false -> {:error, "invalid key/user"}
       error -> error
@@ -470,15 +494,15 @@ defmodule MaxGallery.Context do
           opts :: Keyword.t()
         ) ::
           response()
-  def group_insert(group_name, user, key, opts \\ []) do
+  def group_insert(group_name, user, key, opts \\ []) when is_binary(group_name) and is_binary(user) and is_binary(key) and is_list(opts) do
     group = Keyword.get(opts, :group)
 
     if Phantom.insert_line?(user, key) do
-      {:ok, {name_iv, name}} = Encrypter.encrypt(group_name, key)
-      {:ok, {msg_iv, msg}} = Phantom.get_text() |> Encrypter.encrypt(key)
+      {name_iv, name} = Encrypter.encrypt(group_name, key)
+      {msg_iv, msg} = Phantom.get_text() |> Encrypter.encrypt(key)
 
       {:ok, querry} =
-        GroupApi.insert(%{
+        GroupApi.insert(user, %{
           user_id: user,
           name_iv: name_iv,
           name: name,
@@ -488,6 +512,8 @@ defmodule MaxGallery.Context do
         })
 
       {:ok, querry.id}
+    else
+      {:error, "invalid key/user"}
     end
   end
 
@@ -516,28 +542,24 @@ defmodule MaxGallery.Context do
     - `{:ok, updated}`: On successful update.
     - `{:error, "invalid key"}`: If the encryption key is invalid for the group.
   """
-  @spec group_update(user :: binary(), id :: binary(), map(), key :: String.t()) :: response()
-  def group_update(user, id, %{name: new_name}, key) do
-    {:ok, querry} = GroupApi.get(id)
-    {:ok, {name_iv, name}} = Encrypter.encrypt(new_name, key)
+  @spec group_update(user :: binary(), id :: integer(), map(), key :: String.t()) :: response()
+  def group_update(user, id, %{name: new_name}, key) when is_binary(user) and is_integer(id) and is_binary(new_name) and is_binary(key) do
+    {:ok, querry} = GroupApi.get(user, id)
+    {name_iv, name} = Encrypter.encrypt(new_name, key)
 
-    with {:ok, owner} <- GroupApi.get_own(id),
-         true <- owner == user,
-         true <- Phantom.valid?(querry, key) do
-      GroupApi.update(id, %{name: name, name_iv: name_iv})
+    with true <- Phantom.valid?(querry, key) do
+      GroupApi.update(user, id, %{name: name, name_iv: name_iv})
     else
       false -> {:error, "invalid key/user"}
       error -> error
     end
   end
 
-  def group_update(user, id, %{group_id: group_id}, key) do
-    {:ok, querry} = GroupApi.get(id)
+  def group_update(user, id, %{group_id: group_id}, key) when is_binary(user) and is_integer(id) and is_binary(key) do
+    {:ok, querry} = GroupApi.get(user, id)
 
-    with {:ok, owner} <- GroupApi.get_own(id),
-         true <- owner == user,
-         true <- Phantom.valid?(querry, key) do
-      GroupApi.update(id, %{group_id: group_id})
+    with true <- Phantom.valid?(querry, key) do
+      GroupApi.update(user, id, %{group_id: group_id})
     else
       false -> {:error, "invalid key/user"}
       error -> error
@@ -573,9 +595,9 @@ defmodule MaxGallery.Context do
   Requires a valid encryption key that matches the group's encryption scheme.
   The operation is irreversible and will permanently remove all nested content.
   """
-  @spec group_delete(user :: binary(), id :: binary(), key :: String.t()) :: response()
-  def group_delete(user, id, key) do
-    with {:ok, querry} <- GroupApi.get(id),
+  @spec group_delete(user :: binary(), id :: integer(), key :: String.t()) :: response()
+  def group_delete(user, id, key) when is_binary(user) and is_integer(id) and is_binary(key) do
+    with {:ok, querry} <- GroupApi.get(user, id),
          true <- Phantom.valid?(querry, key),
          {:ok, _boolean} <- delete_cascade(user, id, key) do
       ## Calls the private function `delete_cascade/2` to recursively delete all content within a group.
@@ -603,20 +625,18 @@ defmodule MaxGallery.Context do
       end)
     end
 
-    GroupApi.delete(group_id)
+    GroupApi.delete(user, group_id)
   end
 
   defp delete_cascade(user, group_id, key) do
-    with {:ok, querry} <- GroupApi.get(group_id),
-         {:ok, get_user} <- GroupApi.get_own(group_id),
-         true <- get_user == user,
+    with {:ok, querry} <- GroupApi.get(user, group_id),
          true <- Phantom.valid?(querry, key),
          {:ok, groups} <- GroupApi.all_group(user, group_id),
          {:ok, datas} <- CypherApi.all_group(user, group_id) do
       contents = groups ++ datas
 
       if contents == [] do
-        GroupApi.delete(group_id)
+        GroupApi.delete(user, group_id)
         {:ok, false}
       else
         repeat_cascate(user, group_id, key)
@@ -668,63 +688,48 @@ defmodule MaxGallery.Context do
   - Preserves no direct references to the original's encrypted data
   - Requires valid encryption key for both read and write operations
   """
-  @spec cypher_duplicate(user :: binary(), id :: binary(), params :: map(), key :: String.t()) ::
+  @spec cypher_duplicate(user :: binary(), id :: integer(), params :: map(), key :: String.t()) ::
           response()
-  def cypher_duplicate(user, id, params, key) do
-    {:ok, querry} = CypherApi.get(id)
+  def cypher_duplicate(user, id, params, key) when is_binary(user) and is_integer(id) and is_map(params) and is_binary(key) do
+    case CypherApi.get(user, id) do
+      {:ok, querry} ->
+        original =
+          Map.drop(querry, [
+            :__struct__,
+            :__meta__,
+            :id,
+            :group,
+            :user,
+            :inserted_at,
+            :updated_at
+          ])
 
-    original =
-      Map.drop(querry, [
-        :__struct__,
-        :__meta__,
-        :id,
-        :group,
-        :user,
-        :inserted_at,
-        :updated_at
-      ])
+        duplicate = Map.merge(original, params)
 
-    duplicate = Map.merge(original, params)
+        ## This process is necessary about the unique name constraint.
+        case Encrypter.decrypt(duplicate.name, duplicate.name_iv, key) do
+          dec_name ->
+            {name_iv, name} = Encrypter.encrypt(dec_name, key)
+            {msg_iv, msg} = Phantom.get_text() |> Encrypter.encrypt(key)
 
-    ## This process is necessary about the unique name constraint.
-    {:ok, dec_name} =
-      Encrypter.decrypt(
-        {duplicate.name_iv, duplicate.name},
-        key
-      )
+            duplicate =
+              Map.merge(
+                duplicate,
+                %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
+              )
 
-    {:ok, {name_iv, name}} =
-      Encrypter.encrypt(
-        dec_name,
-        key
-      )
-
-    {:ok, {msg_iv, msg}} =
-      Phantom.get_text()
-      |> Encrypter.encrypt(key)
-
-    duplicate =
-      Map.merge(
-        duplicate,
-        %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
-      )
-
-    Repo.transaction(fn ->
-      case Storage.get(user, querry.id) do
-        {:ok, enc_blob} ->
-          with true <- Phantom.insert_line?(user, key),
-               {:ok, querry} <- CypherApi.insert(duplicate),
-               {:ok, _storage_key} <- Storage.put(user, querry.id, enc_blob) do
-            querry.id
-          else
-            false -> {:error, "invalid key"}
-            error -> error
-          end
-
-        {:error, reason} ->
-          Repo.rollback(reason)
-      end
-    end)
+            with true <- Phantom.insert_line?(user, key),
+                 {:ok, new_querry} <- CypherApi.insert(user, duplicate),
+                 :ok <- copy_file_content(user, querry.id, new_querry.id, querry.length) do
+              {:ok, new_querry.id}
+            else
+              false -> {:error, "invalid key"}
+              error -> error
+            end
+        end
+      
+      error -> error
+    end
   end
 
   @doc """
@@ -750,77 +755,68 @@ defmodule MaxGallery.Context do
     - `{:ok, new_id}`: ID of the new group root
     - `{:error, "invalid key"}`: If key validation fails
   """
-  @spec group_duplicate(user :: binary(), id :: binary(), params :: map(), key :: String.t()) ::
+  @spec group_duplicate(user :: binary(), id :: integer(), params :: map(), key :: String.t()) ::
           response()
-  def group_duplicate(user, id, params, key) do
-    {:ok, querry} = GroupApi.get(id)
+  def group_duplicate(user, id, params, key) when is_binary(user) and is_integer(id) and is_map(params) and is_binary(key) do
+    case GroupApi.get(user, id) do
+      {:ok, querry} ->
+        original =
+          Map.drop(querry, [
+            :__struct__,
+            :__meta,
+            :id,
+            :group,
+            :cypher,
+            :user,
+            :subgroup,
+            :inserted_at,
+            :updated_at
+          ])
 
-    original =
-      Map.drop(querry, [
-        :__struct__,
-        :__meta,
-        :id,
-        :group,
-        :cypher,
-        :user,
-        :subgroup,
-        :inserted_at,
-        :updated_at
-      ])
+        duplicate = Map.merge(original, params)
 
-    duplicate = Map.merge(original, params)
+        case Encrypter.decrypt(duplicate.name, duplicate.name_iv, key) do
+          {:error, _} -> {:error, "invalid key/user"}
+          dec_name ->
+            {name_iv, name} = Encrypter.encrypt(dec_name, key)
+            {msg_iv, msg} = Phantom.get_text() |> Encrypter.encrypt(key)
 
-    {:ok, dec_name} =
-      Encrypter.decrypt(
-        {duplicate.name_iv, duplicate.name},
-        key
-      )
+            duplicate =
+              Map.merge(
+                duplicate,
+                %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
+              )
 
-    {:ok, {name_iv, name}} =
-      Encrypter.encrypt(
-        dec_name,
-        key
-      )
+            with true <- Phantom.insert_line?(user, key) do
+              {:ok, dup_querry} = GroupApi.insert(user, duplicate)
 
-    {:ok, {msg_iv, msg}} =
-      Phantom.get_text()
-      |> Encrypter.encrypt(key)
+              duplicate_content = fn
+                content, :data ->
+                  {:ok, new_cypher} = CypherApi.insert(user, content)
+                  # Copy the encrypted blob from the original file to the new file
+                  copy_file_content(user, content.original_id, new_cypher.id, content.length)
+                  new_cypher
 
-    duplicate =
-      Map.merge(
-        duplicate,
-        %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
-      )
+                content, :group ->
+                  {:ok, subquerry} = GroupApi.insert(user, content)
+                  # Preserve all params and update group_id for child items
+                  Map.put(content, :group_id, subquerry.id)
+              end
 
-    with true <- Phantom.insert_line?(user, key),
-         {:ok, owner} <- GroupApi.get_own(id),
-         true <- owner == user do
-      {:ok, dup_querry} = GroupApi.insert(duplicate)
+              Utils.get_tree(user, querry.id, key, lazy: true)
+              |> Utils.mount_tree(
+                %{group_id: dup_querry.id, user_id: user},
+                duplicate_content,
+                key
+              )
 
-      duplicate_content = fn
-        content, :data ->
-          {:ok, new_cypher} = CypherApi.insert(content)
-          # Copy the encrypted blob from the original file to the new file
-          {:ok, enc_blob} = Storage.get(user, content.original_id)
-          Storage.put(user, new_cypher.id, enc_blob)
-          new_cypher
-
-        content, :group ->
-          {:ok, subquerry} = GroupApi.insert(content)
-          # Preserve all params and update group_id for child items
-          Map.put(content, :group_id, subquerry.id)
-      end
-
-      Utils.get_tree(user, querry.id, key, lazy: true)
-      |> Utils.mount_tree(
-        %{group_id: dup_querry.id, user_id: user},
-        duplicate_content,
-        key
-      )
-
-      {:ok, dup_querry.id}
-    else
-      false -> {:error, "invalid key/user"}
+              {:ok, dup_querry.id}
+            else
+              false -> {:error, "invalid key/user"}
+              error -> error
+            end
+        end
+      
       error -> error
     end
   end
@@ -851,9 +847,9 @@ defmodule MaxGallery.Context do
     - ZIP binary data on success
     - Original error tuples on failure
   """
-  @spec zip_content(user :: binary(), id :: binary(), key :: String.t(), opts :: Keyword.t()) ::
+  @spec zip_content(user :: binary(), id :: integer(), key :: String.t(), opts :: Keyword.t()) ::
           {:ok, Path.t()} | {:error, String.t()}
-  def zip_content(user, id, key, opts \\ []) do
+  def zip_content(user, id, key, opts \\ []) when is_binary(user) and is_binary(key) and is_list(opts) do
     group? = Keyword.get(opts, :group)
 
     ## Since `nil` can’t be passed as a valid value in a .heex (only strings), this conversion is necessary.
@@ -867,12 +863,15 @@ defmodule MaxGallery.Context do
     if group? do
       {:ok, name} =
         if id do
-          {:ok, querry} = GroupApi.get(id)
+          {:ok, querry} = GroupApi.get(user, id)
 
-          Encrypter.decrypt(
-            {querry.name_iv, querry.name},
-            key
-          )
+          {:ok,
+            Encrypter.decrypt(
+              querry.name,
+              querry.name_iv,
+              key
+            )
+          }
         else
           {:ok, "Main"}
         end
@@ -880,21 +879,16 @@ defmodule MaxGallery.Context do
       tree = Utils.get_tree(user, id, key)
       Utils.zip_folder(tree, name)
     else
-      case CypherApi.get(id) do
+      case CypherApi.get(user, id) do
         {:ok, querry} ->
-          {:ok, name} =
+          name =
             Encrypter.decrypt(
-              {querry.name_iv, querry.name},
+              querry.name,
+              querry.name_iv,
               key
             )
 
-          {:ok, enc_blob} = Storage.get(user, querry.id)
-
-          {:ok, blob} =
-            Encrypter.decrypt(
-              {querry.blob_iv, enc_blob},
-              key
-            )
+          blob = Cache.get_content(user, querry.id, querry.blob_iv, key, querry.length)
 
           Utils.zip_file(
             name <> querry.ext,
@@ -930,138 +924,49 @@ defmodule MaxGallery.Context do
   """
   @spec delete_all(user :: binary(), key :: String.t()) ::
           {:ok, non_neg_integer()} | {:error, String.t()}
-  def delete_all(user, key) do
+  def delete_all(user, key) when is_binary(user) and is_binary(key) do
     with true <- Phantom.insert_line?(user, key),
          {count_group, nil} <- GroupApi.delete_all(user),
          {count_data, nil} <- CypherApi.delete_all(user),
-         _ <- Storage.del_all(user) do
+         :ok <- Storage.del_all(user) do
       {:ok, count_group + count_data}
     else
+      false -> {:error, "invalid key/user"}
       error -> error
     end
   end
 
   @doc """
-  Performs a system-wide encryption key rotation for all groups and files.
+  Extracts and imports a ZIP archive into the encrypted file system.
 
   ## Parameters
-    - `key` (binary/string): Current valid admin encryption key
-    - `new_key` (binary/string): New encryption key to apply system-wide
-
-  ## Process
-  1. Validates current admin key via `Phantom.insert_line?/1`
-  2. For all groups:
-     - Decrypts names with old key
-     - Re-encrypts names and metadata with new key
-  3. For all files:
-     - Decrypts names and content with old key
-     - Re-encrypts with new key
-     - Updates storage with new encrypted blobs
-  4. Maintains all data relationships and structure
+  - `path` - Path to the ZIP file to extract
+  - `user` - Binary user ID for file ownership
+  - `key` - Encryption key for securing imported files
+  - `opts` - Optional keyword list:
+    - `:group` - Parent group ID for imported files
 
   ## Returns
-    - `{:ok, count}`: Total number of updated records
-    - `{:error, "invalid key"}`: If current key validation fails
+  - Integer count of successfully imported files
+  - `{:error, "invalid key"}` - If key validation fails
 
-  ## Security Notes
-  - Requires uninterrupted execution (consider transaction wrapping)
-  - Old key must remain valid during migration
-  - Generates fresh IVs for all encrypted fields
-  - Does NOT maintain ability to decrypt with old key
+  ## Process
+  1. Validates encryption key
+  2. Extracts ZIP to temporary directory
+  3. Recursively processes all files and folders
+  4. Encrypts and stores each file in the system
+  5. Creates group hierarchy matching ZIP structure
+  6. Cleans up temporary files
+
+  ## Notes
+  - Preserves original folder structure
+  - All files are encrypted before storage
+  - Uses Agent for tracking group creation during import
+  - Automatically cleans up extracted files after processing
   """
-
-  # @spec update_all(key :: String.t(), new_key :: String.t()) ::
-  #         {:ok, non_neg_integer()} | {:error, String.t()}
-  # def update_all(key, new_key) do
-  #   ## This function is poor, if the user cancel the operation in the process, the entire database will be corrupted.
-  #   ## Should i refactor that?
-  #   if Phantom.insert_line?(key) do
-  #     Repo.transaction(fn ->
-  #       try do
-  #         {:ok, group_list} = GroupApi.all()
-
-  #         Enum.each(group_list, fn group ->
-  #           {:ok, old_name} =
-  #             Encrypter.decrypt(
-  #               {group.name_iv, group.name},
-  #               key
-  #             )
-
-  #           {:ok, {name_iv, name}} =
-  #             Encrypter.encrypt(
-  #               old_name,
-  #               new_key
-  #             )
-
-  #           {:ok, {msg_iv, msg}} =
-  #             Encrypter.encrypt(
-  #               Phantom.get_text(),
-  #               new_key
-  #             )
-
-  #           GroupApi.update(
-  #             group.id,
-  #             %{name_iv: name_iv, name: name, msg_iv: msg_iv, msg: msg}
-  #           )
-  #         end)
-
-  #         {:ok, data_list} = CypherApi.all()
-
-  #         Enum.each(data_list, fn data ->
-  #           {:ok, old_name} =
-  #             Encrypter.decrypt(
-  #               {data.name_iv, data.name},
-  #               key
-  #             )
-
-  #           {:ok, {name_iv, name}} =
-  #             Encrypter.encrypt(
-  #               old_name,
-  #               new_key
-  #             )
-
-  #           {:ok, enc_blob} = Storage.get(data.id)
-
-  #           {:ok, old_blob} =
-  #             Encrypter.decrypt(
-  #               {data.blob_iv, enc_blob},
-  #               key
-  #             )
-
-  #           {:ok, {blob_iv, blob}} =
-  #             Encrypter.encrypt(
-  #               old_blob,
-  #               new_key
-  #             )
-
-  #           {:ok, {msg_iv, msg}} =
-  #             Encrypter.encrypt(
-  #               Phantom.get_text(),
-  #               new_key
-  #             )
-
-  #           Storage.put(data.id, blob)
-
-  #           CypherApi.update(
-  #             data.id,
-  #             %{name_iv: name_iv, name: name, blob_iv: blob_iv, msg_iv: msg_iv, msg: msg}
-  #           )
-  #         end)
-
-  #         Enum.count(group_list) + Enum.count(data_list)
-  #       rescue
-  #         _error ->
-  #           Repo.rollback("error in transaction")
-  #       end
-  #     end)
-  #   else
-  #     {:error, "invalid key"}
-  #   end
-  # end
-
   @spec unzip_content(path :: Path.t(), user :: binary(), key :: binary(), opts :: Keyword.t()) ::
           pos_integer()
-  def unzip_content(path, user, key, opts \\ []) do
+  def unzip_content(path, user, key, opts \\ []) when is_binary(path) and is_binary(user) and is_binary(key) and is_list(opts) do
     group =
       Keyword.get(opts, :group)
       |> Validate.int!()
@@ -1085,8 +990,7 @@ defmodule MaxGallery.Context do
       count =
         for item <- path_string do
           Utils.create_folder(user, item, key, agent: agent, group: group)
-        end
-        |> Enum.count()
+        end |> Enum.count()
 
       exclude_path =
         Path.relative_to(
@@ -1103,9 +1007,27 @@ defmodule MaxGallery.Context do
     end
   end
 
+  @doc """
+  Creates a new user account with encrypted password storage.
+
+  ## Parameters
+  - `name` - User's display name
+  - `email` - User's email address (must be unique)
+  - `password` - Plain text password (will be hashed)
+
+  ## Returns
+  - `{:ok, user_id}` - Success with new user's ID
+  - `{:error, "email alredy been taken"}` - If email already exists
+
+  ## Security
+  - Generates random salt for password hashing
+  - Uses secure hash function for password storage
+  - Never stores plain text passwords
+  - Validates email uniqueness before creation
+  """
   @spec user_insert(name :: String.t(), email :: String.t(), password :: String.t()) ::
           {:error, String.t()} | {:ok, pos_integer()}
-  def user_insert(name, email, password) do
+  def user_insert(name, email, password) when is_binary(name) and is_binary(email) and is_binary(password) do
     case UserApi.get_email(email) do
       {:ok, _querry} ->
         {:error, "email alredy been taken"}
@@ -1125,9 +1047,27 @@ defmodule MaxGallery.Context do
     end
   end
 
+  @doc """
+  Validates user credentials for authentication.
+
+  ## Parameters
+  - `email` - User's email address
+  - `password` - Plain text password to verify
+
+  ## Returns
+  - `{:ok, user_id}` - Success with user's ID
+  - `{:error, "invalid email/passwd"}` - If credentials are invalid
+  - `{:error, reason}` - If user lookup fails
+
+  ## Security
+  - Extracts salt from stored password hash
+  - Compares hashed input with stored hash
+  - Uses constant-time comparison to prevent timing attacks
+  - Never logs or stores plain text passwords
+  """
   @spec user_validate(email :: String.t(), password :: String.t()) ::
           {:ok, non_neg_integer()} | {:error, String.t()}
-  def user_validate(email, password) do
+  def user_validate(email, password) when is_binary(email) and is_binary(password) do
     case UserApi.get_email(email) do
       {:ok, querry} ->
         <<_salt::binary-size(16), passhash::binary>> = querry.passhash
@@ -1165,76 +1105,113 @@ defmodule MaxGallery.Context do
   - Continues with user deletion even if some data cleanup fails
   - Provides detailed logging for each step of the deletion process
   """
-  @spec user_delete(id :: binary()) :: :ok | :error
-  def user_delete(id) do
+  @spec user_delete(user :: binary()) :: :ok | :error
+  def user_delete(user) when is_binary(user) do
     require Logger
 
-    Logger.info("Starting user deletion process for user #{id}")
+    Logger.info("Starting user deletion process for user #{user}")
 
     # Delete all user's groups from database
-    case GroupApi.delete_all(id) do
+    case GroupApi.delete_all(user) do
       {count_groups, nil} ->
-        Logger.info("Deleted #{count_groups} groups for user #{id}")
+        Logger.info("Deleted #{count_groups} groups for user #{user}")
 
       {count_groups, _error} ->
-        Logger.warning("Deleted #{count_groups} groups for user #{id}, some deletions failed")
+        Logger.warning("Deleted #{count_groups} groups for user #{user}, some deletions failed")
 
       error ->
-        Logger.error("Failed to delete groups for user #{id}: #{inspect(error)}")
+        Logger.error("Failed to delete groups for user #{user}: #{inspect(error)}")
     end
 
     # Delete all user's files from database
-    case CypherApi.delete_all(id) do
+    case CypherApi.delete_all(user) do
       {count_files, nil} ->
-        Logger.info("Deleted #{count_files} files from database for user #{id}")
+        Logger.info("Deleted #{count_files} files from database for user #{user}")
 
       {count_files, _error} ->
         Logger.warning(
-          "Deleted #{count_files} files from database for user #{id}, some deletions failed"
+          "Deleted #{count_files} files from database for user #{user}, some deletions failed"
         )
 
       error ->
-        Logger.error("Failed to delete files from database for user #{id}: #{inspect(error)}")
+        Logger.error("Failed to delete files from database for user #{user}: #{inspect(error)}")
     end
 
     # Delete all user's files from storage using batch processing
-    case Storage.del_all(id) do
-      {:ok, count_storage} ->
-        Logger.info("Deleted #{count_storage} files from storage for user #{id}")
+    case Storage.del_all(user) do
+      :ok ->
+        Logger.info("Deleted many files from storage for user #{user}")
 
       {:error, reason} ->
-        Logger.error("Failed to delete files from storage for user #{id}: #{reason}")
+        Logger.error("Failed to delete files from storage for user #{user}: #{reason}")
     end
 
     # Finally delete the user account
-    case UserApi.delete(id) do
+    case UserApi.delete(user) do
       {:ok, _querry} ->
-        Logger.info("Successfully deleted user #{id} and all associated data")
+        Logger.info("Successfully deleted user #{user} and all associated data")
         :ok
 
       error ->
-        Logger.error("Failed to delete user account #{id}: #{inspect(error)}")
+        Logger.error("Failed to delete user account #{user}: #{inspect(error)}")
         :error
     end
   end
 
-  def user_get(id, opts \\ []) do
+  @doc """
+  Retrieves user information by ID or email.
+
+  ## Parameters
+  - `user` - Binary user ID
+  - `opts` - Optional keyword list:
+    - `:email` - If provided, looks up user by email instead of ID
+
+  ## Returns
+  - `{:ok, user_struct}` - Success with user data
+  - `{:error, reason}` - If user not found
+
+  ## Notes
+  - When `:email` option is provided, uses email lookup
+  - Otherwise uses direct ID lookup
+  - Returns full user struct with all fields
+  """
+  @spec user_get(user :: binary(), opts :: Keyword.t()) :: {:ok, map()} | {:error, String.t()}
+  def user_get(user, opts \\ []) when is_binary(user) and is_list(opts) do
     email = Keyword.get(opts, :email)
 
     if email do
       UserApi.get_email(email)
     else
-      UserApi.get(id)
+      UserApi.get(user)
     end
   end
 
-  def user_update(email, %{password: password}) do
+  @doc """
+  Updates user account information.
+
+  ## Parameters
+  - `email` - User's email address for identification
+  - `params` - Map containing fields to update:
+    - `:password` - New password (will be hashed with new salt)
+
+  ## Returns
+  - `{:ok, updated_user}` - Success with updated user data
+  - `{:error, reason}` - If user not found or update fails
+
+  ## Security
+  - Generates new random salt for password updates
+  - Hashes new password before storage
+  - Never stores plain text passwords
+  - Validates user existence before update
+  """
+  @spec user_update(email :: String.t(), params :: map()) :: {:ok, map()} | {:error, String.t()}
+  def user_update(email, %{password: password}) when is_binary(email) and is_binary(password) do
     case UserApi.get_email(email) do
-      {:ok, %{id: id}} ->
+      {:ok, %{id: user}} ->
         salt = Encrypter.random()
         passhash = salt <> Encrypter.hash(password)
 
-        UserApi.update(id, %{passhash: passhash})
+        UserApi.update(user, %{passhash: passhash})
 
       error ->
         error

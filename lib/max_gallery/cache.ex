@@ -42,13 +42,14 @@ defmodule MaxGallery.Cache do
   """
 
   alias MaxGallery.StorageAdapter, as: Storage
+  alias MaxGallery.Utils
   alias MaxGallery.Encrypter
   alias MaxGallery.Phantom
   alias MaxGallery.Variables
 
   # Private function to get the appropriate temporary path based on environment
   defp tmp_path() do
-    if(Mix.env() == :dev) do
+    if Mix.env() == :dev do
       Variables.tmp_dir() <> "cache/"
     else
       Variables.tmp_dir() <> "test/"
@@ -78,16 +79,22 @@ defmodule MaxGallery.Cache do
   - Returns boolean flag indicating whether download occurred
   - Automatically creates cache directory if needed
   """
-  @spec consume_cache(user :: binary(), binary(), binary(), String.t()) :: {Path.t(), boolean()}
-  def consume_cache(user, id, blob_iv, key) do
+  @spec consume_cache(user :: binary(), id :: integer(), blob_iv :: binary(), key :: String.t(), length :: integer()) :: {Path.t(), boolean()}
+  def consume_cache(user, id, blob_iv, key, length) when is_binary(user) and is_integer(id) and is_binary(blob_iv) and is_binary(key) and is_integer(length) do
     path = get_path(user, id)
 
     if File.exists?(path) && Phantom.insert_line?(user, key) do
       {path, false}
     else
-      write_chunk(user, id, blob_iv, key)
+      write_chunk(user, id, blob_iv, key, length)
       {path, true}
     end
+  end
+
+  # Backward compatibility function
+  def consume_cache(user, id, blob_iv, key) do
+    # Default to using stream for backward compatibility
+    consume_cache(user, id, blob_iv, key, Variables.chunk_size() * 2)
   end
 
   @doc """
@@ -115,16 +122,30 @@ defmodule MaxGallery.Cache do
   - Creates parent directories automatically
   - Uses binary write mode for efficiency
   """
-  @spec write_chunk(user :: binary(), binary(), binary(), String.t()) :: Path.t()
-  def write_chunk(user, id, blob_iv, key) do
+  @spec write_chunk(user :: binary(), id :: integer(), blob_iv :: binary(), key :: String.t(), length :: integer()) :: Path.t()
+  def write_chunk(user, id, blob_iv, key, length) when is_binary(user) and is_integer(id) and is_binary(blob_iv) and is_binary(key) and is_integer(length) do
     file_path = get_path(user, id)
     File.mkdir_p!(tmp_path())
 
-    {:ok, enc_blob} = Storage.get(user, id)
-    {:ok, blob} = Encrypter.decrypt({blob_iv, enc_blob}, key)
-
-    File.write!(file_path, blob, [:write])
+    if Variables.use_stream() <= length do
+      # Use streaming for large files
+      {:ok, stream} = Storage.get_stream(user, id)
+      out_stream = Encrypter.decrypt_stream(stream, blob_iv, key)
+      Utils.exec(out_stream, :write, {file_path})
+    else
+      # Use normal get/decrypt for small files
+      {:ok, encrypted_blob} = Storage.get(user, id)
+      decrypted_blob = Encrypter.decrypt(encrypted_blob, blob_iv, key)
+      File.write!(file_path, decrypted_blob)
+    end
+    
     file_path
+  end
+
+  # Backward compatibility function
+  def write_chunk(user, id, blob_iv, key) do
+    # Default to using stream for backward compatibility
+    write_chunk(user, id, blob_iv, key, Variables.chunk_size() * 2)
   end
 
   @doc """
@@ -151,50 +172,23 @@ defmodule MaxGallery.Cache do
   - May trigger download if not cached
   - More memory intensive than streaming approaches
   """
-  @spec get_content(user :: binary(), binary(), binary(), String.t()) ::
-          {:ok, binary()} | {:error, any()}
-  def get_content(user, id, blob_iv, key) do
-    {path, _created} = consume_cache(user, id, blob_iv, key)
-    File.read(path)
+  @spec get_content(user :: binary(), id :: integer(), blob_iv :: binary(), key :: String.t(), length :: integer()) :: binary()
+  def get_content(user, id, blob_iv, key, length) when is_binary(user) and is_integer(id) and is_binary(blob_iv) and is_binary(key) and is_integer(length) do
+    if Variables.use_stream() <= length do
+      # Use cache for large files
+      {path, _created} = consume_cache(user, id, blob_iv, key, length)
+      File.read!(path)
+    else
+      # Direct decrypt for small files (no cache needed)
+      {:ok, encrypted_blob} = Storage.get(user, id)
+      Encrypter.decrypt(encrypted_blob, blob_iv, key)
+    end
   end
 
-  @doc """
-  Encodes a file chunk using Phantom validation.
-  This function is kept for compatibility with existing code.
-
-  ## Parameters
-  - `path` - Path to the file to encode
-
-  ## Returns
-  - Encoded file path with environment prefix
-
-  ## Process
-  1. Creates encoded output file
-  2. Streams input file in chunks
-  3. Applies Phantom validation to each chunk
-  4. Writes encoded data to output file
-  5. Removes original file
-  6. Returns encoded file path
-
-  ## Notes
-  - Legacy function maintained for compatibility
-  - Uses streaming to handle large files
-  - Removes original file after encoding
-  - Adds environment prefix to output filename
-  """
-  @spec encode_chunk(Path.t()) :: Path.t()
-  def encode_chunk(path) do
-    File.open!(path <> "_encode", [:write], fn output ->
-      File.stream!(path, [], Variables.chunk_size())
-      |> Stream.each(fn chunk ->
-        encoded_data = Phantom.validate_bin(chunk)
-        IO.binwrite(output, encoded_data)
-      end)
-      |> Stream.run()
-    end)
-
-    File.rm!(path)
-    inspect(Mix.env()) <> "_" <> path <> "_encode"
+  # Backward compatibility function
+  def get_content(user, id, blob_iv, key) do
+    # Default to using stream for backward compatibility
+    get_content(user, id, blob_iv, key, Variables.chunk_size() * 2)
   end
 
   @doc """
@@ -212,8 +206,8 @@ defmodule MaxGallery.Cache do
   - Only removes from local cache, not from storage
   - Useful for cache invalidation after updates
   """
-  @spec remove_cache(binary(), binary()) :: :ok
-  def remove_cache(user, id) do
+  @spec remove_cache(user :: binary(), id :: integer()) :: :ok
+  def remove_cache(user, id) when is_binary(user) and is_integer(id) do
     path = get_path(user, id)
 
     if File.exists?(path) do
@@ -239,8 +233,8 @@ defmodule MaxGallery.Cache do
   - Useful for cache hit/miss analysis
   - Does not validate file integrity
   """
-  @spec cached?(user :: binary(), binary()) :: boolean()
-  def cached?(user, id) do
+  @spec cached?(user :: binary(), id :: integer()) :: boolean()
+  def cached?(user, id) when is_binary(user) and is_integer(id) do
     path = get_path(user, id)
     File.exists?(path)
   end
@@ -260,8 +254,8 @@ defmodule MaxGallery.Cache do
   - Includes environment in path for isolation
   - Does not check if file actually exists
   """
-  @spec get_path(user :: binary(), binary()) :: Path.t()
-  def get_path(user, id) do
+  @spec get_path(user :: binary(), id :: integer()) :: Path.t()
+  def get_path(user, id) when is_binary(user) and is_integer(id) do
     tmp_path() <> "#{user}_#{Mix.env()}_#{id}"
   end
 
@@ -281,8 +275,8 @@ defmodule MaxGallery.Cache do
   - Returns raw binary content
   - Fails if file not cached
   """
-  @spec get_cache(user :: binary(), binary()) :: binary() | :error
-  def get_cache(user, id) do
+  @spec get_cache(user :: binary(), id :: integer()) :: binary() | :error
+  def get_cache(user, id) when is_binary(user) and is_integer(id) do
     path = get_path(user, id)
 
     if cached?(user, id) do
@@ -315,26 +309,27 @@ defmodule MaxGallery.Cache do
   - Gracefully handles permission errors on individual files
   - Used during logout to clean up user-specific cache
   """
-  @spec cleanup_user_cache(user :: binary()) :: {:ok, non_neg_integer()} | {:error, any()}
-  def cleanup_user_cache(user) do
+  @spec cleanup(user :: binary()) :: {:ok, non_neg_integer()} | {:error, any()}
+  def cleanup(user) when is_binary(user) do
     File.mkdir_p!(tmp_path())
 
     case File.ls(tmp_path()) do
       {:ok, files} ->
         user_prefix = "#{user}_#{Mix.env()}_"
-        
-        removed_count = 
+
+        removed_count =
           files
           |> Enum.filter(&String.starts_with?(&1, user_prefix))
           |> Enum.reduce(0, fn file, acc ->
             file_path = Path.join(tmp_path(), file)
-            
+
             case File.rm(file_path) do
               :ok -> acc + 1
-              {:error, _reason} -> acc  # Continue even if individual file removal fails
+              # Continue even if individual file removal fails
+              {:error, _reason} -> acc
             end
           end)
-        
+
         {:ok, removed_count}
 
       {:error, reason} ->
@@ -366,7 +361,7 @@ defmodule MaxGallery.Cache do
   - Safe to call repeatedly
   """
   @spec cleanup_old_files(non_neg_integer()) :: :ok
-  def cleanup_old_files(max_age_minutes \\ 120) do
+  def cleanup_old_files(max_age_minutes \\ 120) when is_integer(max_age_minutes) and max_age_minutes >= 0 do
     File.mkdir_p!(tmp_path())
 
     case File.ls(tmp_path()) do
@@ -397,4 +392,6 @@ defmodule MaxGallery.Cache do
 
     :ok
   end
+
+
 end

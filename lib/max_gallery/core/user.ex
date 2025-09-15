@@ -7,13 +7,14 @@ defmodule MaxGallery.Core.User do
     field :name, :string
     field :passhash, :binary
     field :email, :string
+    field :last_file, :integer, default: 1
 
     has_many :cypher, Cypher
     timestamps()
   end
 
   def changeset(model, params) do
-    Ecto.Changeset.cast(model, params, [:name, :passhash, :email])
+    Ecto.Changeset.cast(model, params, [:name, :passhash, :email, :last_file])
   end
 
   def fields() do

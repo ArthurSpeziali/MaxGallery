@@ -1,7 +1,11 @@
 defmodule MaxGallery.Phantom do
   alias MaxGallery.Encrypter
-  alias MaxGallery.Cache
   alias MaxGallery.Core.Cypher.Api
+  alias MaxGallery.Core.Cypher
+  alias MaxGallery.Core.Group
+  @type querry :: [%Cypher{} | %Group{} | map()] 
+  @type unique :: %Cypher{} | %Group{} | map()
+
 
   @moduledoc """
   Provides validation and integrity checking for encrypted data in MaxGallery.
@@ -106,22 +110,10 @@ defmodule MaxGallery.Phantom do
   - Maintains data structure integrity
   - Safe to use on already-validated content
   """
-  @spec encode_bin(contents :: Context.querry()) :: Context.querry()
+  @spec encode_bin(contents :: querry() | unique()) :: querry()
   def encode_bin(contents) when is_list(contents) do
     Enum.map(contents, fn item ->
-      new_content = Map.update!(item, :name, &validate_bin/1)
-
-      case new_content do
-        %{blob: _blob} ->
-          Map.update!(new_content, :blob, &validate_bin/1)
-
-        %{path: path} = params ->
-          new_path = Cache.encode_chunk(path)
-          Map.merge(params, %{path: new_path})
-
-        _ ->
-          new_content
-      end
+      Map.update!(item, :name, &validate_bin/1)
     end)
   end
 
@@ -187,7 +179,7 @@ defmodule MaxGallery.Phantom do
   """
   @spec valid?(map(), key :: String.t()) :: boolean()
   def valid?(%{msg_iv: msg_iv, msg: msg}, key) do
-    {:ok, dec_cypher} = Encrypter.decrypt({msg_iv, msg}, key)
+    dec_cypher = Encrypter.decrypt(msg, msg_iv, key)
 
     dec_cypher == get_text()
   end

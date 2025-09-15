@@ -40,6 +40,11 @@
       </div>
     </div>
 
+    <div class="px-4 py-2 m-2 flex gap-2">
+      <h2 class="text-xl font-semibold text-gray-800 mt-2">Group: </h2>
+      <h2 class="text-xl font-semibold text-blue-900 underline mt-2"> {@folder_name}</h2>
+    </div>
+
     <div class="grid md:grid-cols-3 grid-cols-1 gap-4 px-4 py-2 border rounded shadow m-2">
       <%= if @datas == [] do %>
         <strong class="text-xl">No content yet.</strong>
@@ -295,6 +300,10 @@
               <span class="break-words whitespace-normal">"{name}"</span> <br />
             <% end %>
 
+            <strong class="text-blue-900">Id: </strong>
+            <span class="break-words whitespace-normal">{@object.id}</span>
+            <br />
+
             <strong class="text-blue-900">Group: </strong>
             <span class="break-words whitespace-normal">
               "{MaxGallery.Phantom.validate_bin(@group_name)}"
@@ -307,7 +316,7 @@
             <%= if Map.get(@object, :ext) do %>
               <span>File</span> <br />
             <% else %>
-              <span>Folder</span> <br />
+              <span>Group</span> <br />
             <% end %>
 
             <strong class="text-blue-900">Size: </strong>

@@ -5,9 +5,10 @@ defmodule MaxGallery.Repo.Migrations.CreateCyphers do
     create table("cyphers") do
       add :group_id, references("groups", type: :integer, on_delete: :delete_all)
       add :user_id, references("users", type: :uuid, on_delete: :delete_all), null: false
+      add :file, :integer, default: 1
       add :name, :binary, null: false
       add :name_iv, :binary, null: false
-      add :blob_iv, :binary, null: false
+      add :blob_iv, :binary, null: true
       add :ext, :string, size: 32, default: ".txt"
       add :msg, :binary, null: false
       add :msg_iv, :binary, null: false

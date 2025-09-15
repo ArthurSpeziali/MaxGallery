@@ -12,6 +12,16 @@ defmodule MaxGalleryWeb.Live.DataLive do
 
     {:ok, lazy_datas} = Context.decrypt_all(user, key, lazy: true, group: group_id)
 
+    folder_name = 
+      if group_id do
+        case Context.decrypt_one(user, group_id, key, group: true, lazy: true) do
+          {:ok, group} -> "\"#{group.name}\""
+          {:error, _} -> "Main"
+        end
+      else
+        "Main"
+      end
+
     socket =
       assign(socket,
         user: user,
@@ -19,6 +29,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
         datas: lazy_datas,
         lock_datas: lazy_datas,
         page_id: group_id,
+        folder_name: folder_name,
         delete_iframe: nil,
         rename_iframe: nil,
         remove_iframe: nil,
@@ -130,9 +141,12 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("back", _params, socket) do
-    back_id =
+    user = socket.assigns[:user]
+
+    back_id = Utils.get_back(
+      user, 
       socket.assigns[:page_id]
-      |> Utils.get_back()
+    )
 
     {:noreply, push_navigate(socket, to: "/user/data/#{back_id}")}
   end
@@ -204,7 +218,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
       end
 
     ## Adjusts the NaiveDateTime to be displayed on the web.
-    %{inserted_at: inserted_at, updated_at: updated_at} = Utils.get_timestamps(id, group: group?)
+    %{inserted_at: inserted_at, updated_at: updated_at} = Utils.get_timestamps(user, id, group: group?)
 
     timestamps = %{
       inserted_at: NaiveDateTime.to_string(inserted_at),

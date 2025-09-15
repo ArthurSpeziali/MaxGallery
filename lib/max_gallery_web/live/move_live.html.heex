@@ -36,13 +36,14 @@
                 Open
               </button>
 
-              <button
-                phx-click="select"
-                phx-value-id={item.id}
-                class="text-blue-600 font-bold hover:underline"
-              >
-                Select
-              </button>
+              <form phx-submit="select" phx-value-id={item.id}>
+                <button
+                  phx-click="loading"
+                  class="text-blue-600 font-bold hover:underline"
+                >
+                  Select
+                </button>
+              </form>
             </div>
 
             <img src="/images/group.png" class="w-auto h-6 mt-2" />
@@ -55,7 +56,7 @@
       <div class="flex items-center justify-center mt-12">
         <form phx-submit="select" phx-value-id="main">
           <button phx-click="loading" class="text-lg font-bold text-blue-800 underline">
-            Select Here
+            Select Main Page
           </button>
         </form>
       </div>

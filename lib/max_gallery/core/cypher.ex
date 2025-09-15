@@ -3,8 +3,8 @@ defmodule MaxGallery.Core.Cypher do
   alias MaxGallery.Core.Group
   alias MaxGallery.Core.User
 
-  @foreign_key_type :binary_id
   schema "cyphers" do
+    field :file, :integer, default: 0
     field :name, :binary
     field :name_iv, :binary
     field :blob_iv, :binary
@@ -13,14 +13,16 @@ defmodule MaxGallery.Core.Cypher do
     field :msg_iv, :string
     field :length, :integer, default: 0
 
-    belongs_to :user, User
-    belongs_to :group, Group, type: :integer
+    belongs_to :user, User, type: :binary_id
+    belongs_to :group, Group
     # Chunks removed - files now stored directly in S3
     timestamps()
   end
 
   def changeset(model, params) do
-    Ecto.Changeset.cast(model, params, [
+    model
+    |> Ecto.Changeset.cast(params, [
+      :file,
       :name,
       :name_iv,
       :blob_iv,
@@ -28,8 +30,10 @@ defmodule MaxGallery.Core.Cypher do
       :group_id,
       :msg,
       :msg_iv,
-      :user_id
+      :user_id,
+      :length
     ])
+    |> Ecto.Changeset.validate_required([:name, :name_iv, :user_id])
   end
 
   ## Return all `Cypher` fields.

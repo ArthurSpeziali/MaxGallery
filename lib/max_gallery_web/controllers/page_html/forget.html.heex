@@ -21,46 +21,71 @@
 
           <button
             type="submit"
-            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+            id="resend-button"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={@send == :wait}
           >
             Send me the recuperation link.
           </button>
+        </.form>
 
-          <%= cond do %>
-            <% @send -> %>
-              <p class="text-sm text-green-600 mt-2 text-center">
-                {@txt}
-              </p>
-            <% @send == :wait -> %>
-              <p class="text-sm text-yellow-600 mt-2 text-center">
-                You can resend the email in (seconds):
-              </p>
-              <p class="text-sm text-yellow-800 text-center" id="counter">
-                {@txt}
-              </p>
+        <div id="resend-container" class="mt-2">
+          <%= if @remain do %>
+            <p class="text-sm text-yellow-600 text-center">
+              You can resend the email in (seconds):
+            </p>
+            <p class="text-sm text-yellow-800 text-center font-bold" id="countdown">
+              {@remain}
+            </p>
+          <% else %>
+            <%= cond do %>
+              <% @send -> %>
+                <p class="text-sm text-green-600 text-center font-bold">
+                  {@txt}
+                </p>
+              <% @txt -> %>
+                <p class="text-md text-red-800 text-center">
+                  {@txt}
+                </p>
+              <% true -> %>
+                <p class="text-sm text-green-600 text-center font-bold">
+                  You can send the email now
+                </p>
+            <% end %>
+          <% end %>
+        </div>
 
-              <script>
-                const counter = document.getElementById("counter");
-                let time = parseInt(counter.textContent); 
+        <script>
+          document.addEventListener("DOMContentLoaded", () => {
+            const countdownEl = document.getElementById("countdown");
+            const resendButton = document.getElementById("resend-button");
+            const resendContainer = document.getElementById("resend-container");
 
+            if (countdownEl && countdownEl.textContent.trim()) {
+              let time = parseInt(countdownEl.textContent.trim());
+              
+              if (time > 0) {
                 const interval = setInterval(() => {
                   time--;
-                  counter.textContent = time; 
+                  countdownEl.textContent = time;
 
                   if (time <= 0) {
                     clearInterval(interval);
-                    counter.textContent = "Now, you can resend the email.";
+                    
+                    // Update the container to show success message
+                    resendContainer.innerHTML = '<p class="text-sm text-green-600 text-center font-bold">You can resend the email now</p>';
+                    
+                    // Enable the resend button
+                    if (resendButton) {
+                      resendButton.disabled = false;
+                      resendButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
                   }
                 }, 1000);
-              </script>
-            <% @txt -> %>
-              <p class="text-md text-red-800 text-center" id="counter">
-                {@txt}
-              </p>
-            <% true -> %>
-              {nil}
-          <% end %>
-        </.form>
+              }
+            }
+          });
+        </script>
       </div>
     </div>
   </body>
