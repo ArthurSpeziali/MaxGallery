@@ -5,24 +5,37 @@ defmodule MaxGallery.Mail do
 
   @spec send(template :: email_t()) :: Task.t()
   def send(template) do
-    Task.async(Mailer, :deliver, [template])
+    Task.async(fn -> Mailer.deliver(template) end)
   end
 
   @spec response(task :: Task.t(), email :: String.t()) :: :ok | {:error, String.t()}
   def response(task, email) do
-    res = Task.await(task)
+    res = 
+      try do 
+        Task.await(task, 30_000)
+      rescue 
+        _e ->
+          {:error, "timeout error"}
+      else 
+        value ->
+          value
+      end
 
     case res do
       {:ok, _} ->
-        Logger.info("Succeful email sendend to '#{email}'")
+        Logger.debug("Succeful email sendend to '#{email}'")
         :ok
+
+      {:error, "timeout error"} ->
+        Logger.debug("Timeout email sendend to '#{email}'")
+        {:error, "timeout error"} 
 
       {:error, {_code, map}} ->
         reason = map["errors"] 
                  |> List.first() 
                  |> Map.get("message")
 
-        Logger.info("Error email sendend to '#{email}, \nwith reason: #{reason}'")
+        Logger.debug("Error email sendend to '#{email}, \nwith reason: #{reason}'")
         {:error, reason}
     end
   end
