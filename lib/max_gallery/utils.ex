@@ -39,7 +39,24 @@ defmodule MaxGallery.Utils do
   are performed in a temporary directory that should be cleaned up after use.
   """
 
-  def check_limit(user, size) do
+  @doc """
+  Checks if adding a file would exceed the user's storage limit.
+
+  ## Parameters
+  - `user` - Binary user ID to check storage for
+  - `size` - Size in bytes of the file to be added
+
+  ## Returns
+  - `:ok` - If the file can be added without exceeding limits
+  - `{:error, "storage_limit_exceeded"}` - If adding would exceed the limit
+
+  ## Notes
+  - Calculates current usage plus new file size
+  - Converts bytes to GB for comparison with user limit
+  - Uses `Variables.max_size_user/0` for the limit check
+  """
+  @spec check_limit(user :: binary(), size :: non_neg_integer()) :: :ok | {:error, String.t()}
+  def check_limit(user, size) when is_binary(user) and is_integer(size) and size >= 0 do
     ## In GigaBytes
     current = user_size(user)
     size = size / (1024 * 1024 * 1024)
@@ -69,7 +86,7 @@ defmodule MaxGallery.Utils do
   - Primarily used for navigation within group hierarchies
   """
   @spec get_back(user :: binary(), id :: integer() | nil) :: integer() | nil
-  def get_back(user, id) do
+  def get_back(user, id) when is_binary(user) do
     case id do
       nil ->
         nil
@@ -112,7 +129,7 @@ defmodule MaxGallery.Utils do
   """
   @spec get_group(user :: binary(), id :: integer(), opts :: Keyword.t()) ::
           {:ok, MaxGallery.Context.querry()}
-  def get_group(user, id, opts \\ []) do
+  def get_group(user, id, opts \\ []) when is_binary(user) and is_list(opts) do
     only = Keyword.get(opts, :only)
 
     case only do
@@ -159,7 +176,7 @@ defmodule MaxGallery.Utils do
   - May raise exceptions if the item doesn't exist or lacks required fields
   """
   @spec get_size(user :: binary(), id :: integer(), opts :: Keyword.t()) :: non_neg_integer()
-  def get_size(user, id, opts \\ []) do
+  def get_size(user, id, opts \\ []) when is_binary(user) and is_integer(id) and is_list(opts) do
     group? = Keyword.get(opts, :group)
 
     if group? do
@@ -208,8 +225,8 @@ defmodule MaxGallery.Utils do
   - Preserves the original timestamp structure from the database
   - Will raise if the item doesn't exist or lacks timestamp fields
   """
-  @spec get_timestamps(id :: integer(), Keyword.t()) :: map()
-  def get_timestamps(user, id, opts \\ []) do
+  @spec get_timestamps(user :: binary(), id :: integer(), opts :: Keyword.t()) :: map()
+  def get_timestamps(user, id, opts \\ []) when is_binary(user) and is_integer(id) and is_list(opts) do
     group? = Keyword.get(opts, :group)
 
     {:ok, timestamps} =
@@ -258,8 +275,8 @@ defmodule MaxGallery.Utils do
   - Maintains original hierarchy and relationships
   - Performance scales with group size and depth when not lazy
   """
-  @spec get_tree(user :: binary(), id :: integer(), Keyword.t()) :: MaxGallery.Context.querry()
-  def get_tree(user, id, key, opts \\ []) do
+  @spec get_tree(user :: binary(), id :: integer(), key :: String.t(), opts :: Keyword.t()) :: MaxGallery.Context.querry()
+  def get_tree(user, id, key, opts \\ []) when is_binary(user) and is_binary(key) and is_list(opts) do
     lazy? = Keyword.get(opts, :lazy)
     {:ok, contents} = get_group(user, id)
 
@@ -575,7 +592,7 @@ defmodule MaxGallery.Utils do
   """
   @spec get_like(querry :: MaxGallery.Context.querry(), like :: String.t()) ::
           MaxGallery.Context.querry()
-  def get_like(querry, like) do
+  def get_like(querry, like) when is_list(querry) and is_binary(like) do
     Enum.filter(querry, fn item ->
       String.downcase(
         item.name
@@ -620,7 +637,7 @@ defmodule MaxGallery.Utils do
   def binary_chunk(bin, _range), do: [bin]
 
   @spec create_folder(user :: binary(), folder :: Path.t(), key :: String.t(), opts :: Keyword.t()) :: :ok
-  def create_folder(user, folder, key, opts \\ []) do
+  def create_folder(user, folder, key, opts \\ []) when is_binary(user) and is_binary(folder) and is_binary(key) and is_list(opts) do
     group = Keyword.get(opts, :group)
     agent = Keyword.get(opts, :agent)
 
@@ -781,8 +798,23 @@ defmodule MaxGallery.Utils do
     recursive_path(tail, lock, dest, agent, user, id, key)
   end
 
+  @doc """
+  Validates if a file is a valid ZIP archive.
+
+  ## Parameters
+  - `path` - File path to validate
+
+  ## Returns
+  - `true` - If the file is a valid ZIP archive
+  - `false` - If the file is invalid, corrupted, or doesn't exist
+
+  ## Notes
+  - Uses Erlang's `:zip` module for validation
+  - Safely handles various error conditions
+  - Automatically closes ZIP handle after validation
+  """
   @spec zip_valid?(path :: Path.t()) :: boolean()
-  def zip_valid?(path) do
+  def zip_valid?(path) when is_binary(path) do
     String.to_charlist(path)
     |> :zip.zip_open()
     |> case do
@@ -801,6 +833,20 @@ defmodule MaxGallery.Utils do
     end
   end
 
+  @doc """
+  Generates a random numeric code with a specified number of digits.
+
+  ## Parameters
+  - `digits` - Number of digits for the generated code (must be positive)
+
+  ## Returns
+  - String containing the random numeric code
+
+  ## Notes
+  - Pads with trailing zeros if needed to maintain exact digit count
+  - Uses Elixir's `Enum.random/1` for randomization
+  - Useful for generating verification codes or temporary tokens
+  """
   @spec gen_code(digits :: pos_integer()) :: String.t()
   def gen_code(digits) when digits > 0 do
     final =
@@ -814,8 +860,23 @@ defmodule MaxGallery.Utils do
     |> String.pad_trailing(digits, "0")
   end
 
+  @doc """
+  Encrypts a string with a timestamp for secure token generation.
+
+  ## Parameters
+  - `string` - The string to encrypt with timestamp
+
+  ## Returns
+  - Base64-encoded encrypted token containing timestamp and string
+
+  ## Notes
+  - Combines current Unix timestamp with the provided string
+  - Uses system encryption key from environment variable
+  - Returns URL-safe Base64 encoding
+  - Useful for time-sensitive tokens and verification links
+  """
   @spec enc_timestamp(string :: String.t()) :: String.t()
-  def enc_timestamp(string) do
+  def enc_timestamp(string) when is_binary(string) do
     now =
       DateTime.utc_now()
       |> DateTime.to_unix()
@@ -842,15 +903,31 @@ defmodule MaxGallery.Utils do
   - Returns 0.0 if user has no files
   """
   @spec user_size(user :: binary()) :: float()
-  def user_size(user) do
+  def user_size(user) when is_binary(user) do
     {:ok, sizes} = CypherApi.all_size(user)
 
     # Convert bytes to GB (1 GB = 1024^3 bytes)
     Enum.sum(sizes) / (1024 * 1024 * 1024)
   end
 
+  @doc """
+  Decrypts a timestamp-encrypted token back to its original components.
+
+  ## Parameters
+  - `base` - Base64-encoded encrypted token (from `enc_timestamp/1`)
+
+  ## Returns
+  - `{datetime, string}` - Tuple with the original DateTime and string
+  - `{:error, reason}` - Error if decryption fails or token is invalid
+
+  ## Notes
+  - Validates Base64 encoding, binary size, and token format
+  - Extracts Unix timestamp and converts to DateTime
+  - Returns original string that was encrypted
+  - Useful for validating time-sensitive tokens
+  """
   @spec dec_timestamp(base :: String.t()) :: {DateTime.t(), String.t()} | {:error, String.t()}
-  def dec_timestamp(base) do
+  def dec_timestamp(base) when is_binary(base) do
     ivenc = Base.url_decode64(base)
 
     if ivenc != :error do
@@ -884,7 +961,24 @@ defmodule MaxGallery.Utils do
     end
   end
 
-  @spec exec(stream :: struct(), atom(), tuple()) :: any()
+  @doc """
+  Executes stream operations for reading or writing data.
+
+  ## Parameters
+  - `stream` - The stream to process
+  - `operation` - Either `:write` or `:read`
+  - `args` - Tuple with operation-specific arguments
+
+  ## Returns
+  - For `:write` - Writes stream to file path
+  - For `:read` - Returns concatenated binary data
+
+  ## Notes
+  - `:write` operation requires `{path}` tuple with file path
+  - `:read` operation requires empty tuple `{}`
+  - Used internally for handling encrypted file streams
+  """
+  @spec exec(stream :: struct(), operation :: atom(), args :: tuple()) :: any()
   def exec(stream, :write, {path}) do
     File.open(path, [:write], fn output ->
       Stream.each(stream, fn chunk ->
@@ -901,20 +995,6 @@ defmodule MaxGallery.Utils do
   end
 
 
-  @spec rest_cache(stream :: Enum.t()) :: Enumt.t()
-  def rest_cache(stream) do
-    list = Enum.to_list(stream)
 
-    {value, list} = List.pop_at(
-      list,
-      length(list) - 1
-    )
-
-    List.update_at(
-      list,
-      length(list) - 1,
-      fn x -> x <> value end
-    ) |> Stream.map(& &1)
-  end
 
 end

@@ -105,8 +105,26 @@ defmodule MaxGallery.Encrypter do
     :crypto.crypto_one_time(:aes_256_ctr, hash_key, iv, cypher, false)
   end
 
+  @doc """
+  Encrypts a file using streaming for large files.
+
+  ## Parameters
+  - `path` - File path to encrypt
+  - `key` - Raw encryption key (will be hashed)
+
+  ## Returns
+  - `{stream, iv}` - Tuple containing:
+    - `stream` - Stream of encrypted chunks
+    - `iv` - Initialization vector used for encryption
+
+  ## Notes
+  - Uses AES-256-CTR mode for streaming encryption
+  - Processes file in chunks for memory efficiency
+  - Suitable for large files that don't fit in memory
+  - IV must be stored for later decryption
+  """
   @spec encrypt_stream(path :: Path.t(), key :: String.t()) :: {stream(), binary()}
-  def encrypt_stream(path, key) do
+  def encrypt_stream(path, key) when is_binary(path) and is_binary(key) do
     iv = random()
     key = hash(key)
     ref = :crypto.crypto_init(:aes_ctr, key, iv, true)
@@ -121,8 +139,25 @@ defmodule MaxGallery.Encrypter do
     {stream, iv}
   end
 
+  @doc """
+  Decrypts a stream of encrypted data.
+
+  ## Parameters
+  - `stream` - Stream of encrypted chunks
+  - `iv` - Initialization vector used during encryption
+  - `key` - Raw encryption key (will be hashed)
+
+  ## Returns
+  - Stream of decrypted chunks
+
+  ## Notes
+  - Uses AES-256-CTR mode for streaming decryption
+  - Processes chunks in streaming fashion for memory efficiency
+  - Must use the same IV that was used for encryption
+  - Suitable for large encrypted files
+  """
   @spec decrypt_stream(stream :: stream(), iv :: binary(), key :: String.t()) :: stream()
-  def decrypt_stream(stream, iv, key) do
+  def decrypt_stream(stream, iv, key) when is_binary(iv) and is_binary(key) do
     key = hash(key)
     ref = :crypto.crypto_init(:aes_ctr, key, iv, false)
 
@@ -135,11 +170,41 @@ defmodule MaxGallery.Encrypter do
     stream
   end
 
+  @doc """
+  Hashes a key using SHA-256 for cryptographic operations.
+
+  ## Parameters
+  - `key` - Raw key string to hash
+
+  ## Returns
+  - 32-byte SHA-256 hash of the input key
+
+  ## Notes
+  - Used internally to derive encryption keys
+  - Provides consistent key derivation
+  - SHA-256 produces 256-bit (32-byte) output
+  - Essential for AES-256 key requirements
+  """
   @spec hash(key :: String.t()) :: binary()
-  def hash(key) do
+  def hash(key) when is_binary(key) do
     :crypto.hash(:sha256, key)
   end
 
+  @doc """
+  Generates cryptographically strong random bytes.
+
+  ## Parameters
+  - `bytes` - Number of random bytes to generate (default: 16)
+
+  ## Returns
+  - Binary containing the specified number of random bytes
+
+  ## Notes
+  - Uses `:crypto.strong_rand_bytes/1` for cryptographic strength
+  - Default 16 bytes is suitable for AES initialization vectors
+  - Essential for generating unique IVs for each encryption
+  - Should not be used for key generation (use proper key derivation)
+  """
   @spec random(bytes :: pos_integer()) :: binary()
   def random(bytes \\ 16) when bytes > 0 do
     :crypto.strong_rand_bytes(bytes)

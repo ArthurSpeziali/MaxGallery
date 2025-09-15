@@ -80,7 +80,7 @@ defmodule MaxGallery.Cache do
   - Automatically creates cache directory if needed
   """
   @spec consume_cache(user :: binary(), id :: integer(), blob_iv :: binary(), key :: String.t(), length :: integer()) :: {Path.t(), boolean()}
-  def consume_cache(user, id, blob_iv, key, length) do
+  def consume_cache(user, id, blob_iv, key, length) when is_binary(user) and is_integer(id) and is_binary(blob_iv) and is_binary(key) and is_integer(length) do
     path = get_path(user, id)
 
     if File.exists?(path) && Phantom.insert_line?(user, key) do
@@ -123,7 +123,7 @@ defmodule MaxGallery.Cache do
   - Uses binary write mode for efficiency
   """
   @spec write_chunk(user :: binary(), id :: integer(), blob_iv :: binary(), key :: String.t(), length :: integer()) :: Path.t()
-  def write_chunk(user, id, blob_iv, key, length) do
+  def write_chunk(user, id, blob_iv, key, length) when is_binary(user) and is_integer(id) and is_binary(blob_iv) and is_binary(key) and is_integer(length) do
     file_path = get_path(user, id)
     File.mkdir_p!(tmp_path())
 
@@ -173,7 +173,7 @@ defmodule MaxGallery.Cache do
   - More memory intensive than streaming approaches
   """
   @spec get_content(user :: binary(), id :: integer(), blob_iv :: binary(), key :: String.t(), length :: integer()) :: binary()
-  def get_content(user, id, blob_iv, key, length) do
+  def get_content(user, id, blob_iv, key, length) when is_binary(user) and is_integer(id) and is_binary(blob_iv) and is_binary(key) and is_integer(length) do
     if Variables.use_stream() <= length do
       # Use cache for large files
       {path, _created} = consume_cache(user, id, blob_iv, key, length)
@@ -207,7 +207,7 @@ defmodule MaxGallery.Cache do
   - Useful for cache invalidation after updates
   """
   @spec remove_cache(user :: binary(), id :: integer()) :: :ok
-  def remove_cache(user, id) do
+  def remove_cache(user, id) when is_binary(user) and is_integer(id) do
     path = get_path(user, id)
 
     if File.exists?(path) do
@@ -234,7 +234,7 @@ defmodule MaxGallery.Cache do
   - Does not validate file integrity
   """
   @spec cached?(user :: binary(), id :: integer()) :: boolean()
-  def cached?(user, id) do
+  def cached?(user, id) when is_binary(user) and is_integer(id) do
     path = get_path(user, id)
     File.exists?(path)
   end
@@ -255,7 +255,7 @@ defmodule MaxGallery.Cache do
   - Does not check if file actually exists
   """
   @spec get_path(user :: binary(), id :: integer()) :: Path.t()
-  def get_path(user, id) do
+  def get_path(user, id) when is_binary(user) and is_integer(id) do
     tmp_path() <> "#{user}_#{Mix.env()}_#{id}"
   end
 
@@ -276,7 +276,7 @@ defmodule MaxGallery.Cache do
   - Fails if file not cached
   """
   @spec get_cache(user :: binary(), id :: integer()) :: binary() | :error
-  def get_cache(user, id) do
+  def get_cache(user, id) when is_binary(user) and is_integer(id) do
     path = get_path(user, id)
 
     if cached?(user, id) do
@@ -310,7 +310,7 @@ defmodule MaxGallery.Cache do
   - Used during logout to clean up user-specific cache
   """
   @spec cleanup(user :: binary()) :: {:ok, non_neg_integer()} | {:error, any()}
-  def cleanup(user) do
+  def cleanup(user) when is_binary(user) do
     File.mkdir_p!(tmp_path())
 
     case File.ls(tmp_path()) do
@@ -361,7 +361,7 @@ defmodule MaxGallery.Cache do
   - Safe to call repeatedly
   """
   @spec cleanup_old_files(non_neg_integer()) :: :ok
-  def cleanup_old_files(max_age_minutes \\ 120) do
+  def cleanup_old_files(max_age_minutes \\ 120) when is_integer(max_age_minutes) and max_age_minutes >= 0 do
     File.mkdir_p!(tmp_path())
 
     case File.ls(tmp_path()) do

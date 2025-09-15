@@ -70,7 +70,7 @@ defmodule MaxGallery.Context do
   """
   @spec cypher_insert(path :: Path.t(), user :: binary(), key :: String.t(), opts :: Keyword.t()) ::
           response()
-  def cypher_insert(path, user, key, opts \\ []) do
+  def cypher_insert(path, user, key, opts \\ []) when is_binary(path) and is_binary(user) and is_binary(key) and is_list(opts) do
     name = Keyword.get(opts, :name)
 
     group =
@@ -240,7 +240,7 @@ defmodule MaxGallery.Context do
     - `{:ok, binary}`: A binary-encoded list of decrypted items.
   """
   @spec decrypt_all(user :: binary(), key :: String.t(), opts :: Keyword.t()) :: {:ok, querry()}
-  def decrypt_all(user, key, opts \\ []) do
+  def decrypt_all(user, key, opts \\ []) when is_binary(user) and is_binary(key) and is_list(opts) do
     lazy? = Keyword.get(opts, :lazy)
     only = Keyword.get(opts, :only)
     memory? = Keyword.get(opts, :memory)
@@ -279,7 +279,7 @@ defmodule MaxGallery.Context do
     - `{:error, reason}`: If any operation (get, delete, etc.) fails.
   """
   @spec cypher_delete(user :: binary(), id :: integer(), key :: String.t()) :: response()
-  def cypher_delete(user, id, key) do
+  def cypher_delete(user, id, key) when is_binary(user) and is_integer(id) and is_binary(key) do
     Repo.transaction(fn ->
       with {:ok, querry} <- CypherApi.get(user, id),
            true <- Phantom.valid?(querry, key),
@@ -322,7 +322,7 @@ defmodule MaxGallery.Context do
     - `{:error, reason}`: If any decryption or retrieval fails.
   """
   @spec decrypt_one(user :: binary(), id :: integer(), key :: String.t(), opts :: Keyword.t()) :: {:ok, map()} | {:error, String.t()}
-  def decrypt_one(user, id, key, opts \\ []) do
+  def decrypt_one(user, id, key, opts \\ []) when is_binary(user) and is_integer(id) and is_binary(key) and is_list(opts) do
     lazy? = Keyword.get(opts, :lazy)
     group? = Keyword.get(opts, :group)
 
@@ -335,7 +335,6 @@ defmodule MaxGallery.Context do
     case result do
       {:ok, querry} ->
         case Encrypter.decrypt(querry.name, querry.name_iv, key) do
-          {:error, _} -> {:error, "invalid key"}
           name ->
             # Use the group field if available (from swap_id), otherwise use group_id
             group_ref = Map.get(querry, :group, querry.group_id)
@@ -411,7 +410,7 @@ defmodule MaxGallery.Context do
     - `{:error, "invalid key"}`: If the provided encryption key is not valid for this file.
   """
   @spec cypher_update(user :: binary(), id :: integer(), map(), key :: String.t()) :: response()
-  def cypher_update(user, id, %{name: new_name, blob: new_blob}, key) do
+  def cypher_update(user, id, %{name: new_name, blob: new_blob}, key) when is_binary(user) and is_integer(id) and is_binary(new_name) and is_binary(new_blob) and is_binary(key) do
     ext = Path.extname(new_name)
     new_name = Path.basename(new_name, ext)
 
@@ -438,7 +437,7 @@ defmodule MaxGallery.Context do
     end)
   end
 
-  def cypher_update(user, id, %{name: new_name}, key) do
+  def cypher_update(user, id, %{name: new_name}, key) when is_binary(user) and is_integer(id) and is_binary(new_name) and is_binary(key) do
     ext = Path.extname(new_name)
     new_name = Path.basename(new_name, ext)
 
@@ -455,7 +454,7 @@ defmodule MaxGallery.Context do
     end
   end
 
-  def cypher_update(user, id, %{group_id: new_group}, key) do
+  def cypher_update(user, id, %{group_id: new_group}, key) when is_binary(user) and is_integer(id) and is_binary(key) do
     {:ok, querry} = CypherApi.get(user, id)
 
     with true <- Phantom.valid?(querry, key) do
@@ -495,7 +494,7 @@ defmodule MaxGallery.Context do
           opts :: Keyword.t()
         ) ::
           response()
-  def group_insert(group_name, user, key, opts \\ []) do
+  def group_insert(group_name, user, key, opts \\ []) when is_binary(group_name) and is_binary(user) and is_binary(key) and is_list(opts) do
     group = Keyword.get(opts, :group)
 
     if Phantom.insert_line?(user, key) do
@@ -544,7 +543,7 @@ defmodule MaxGallery.Context do
     - `{:error, "invalid key"}`: If the encryption key is invalid for the group.
   """
   @spec group_update(user :: binary(), id :: integer(), map(), key :: String.t()) :: response()
-  def group_update(user, id, %{name: new_name}, key) do
+  def group_update(user, id, %{name: new_name}, key) when is_binary(user) and is_integer(id) and is_binary(new_name) and is_binary(key) do
     {:ok, querry} = GroupApi.get(user, id)
     {name_iv, name} = Encrypter.encrypt(new_name, key)
 
@@ -556,7 +555,7 @@ defmodule MaxGallery.Context do
     end
   end
 
-  def group_update(user, id, %{group_id: group_id}, key) do
+  def group_update(user, id, %{group_id: group_id}, key) when is_binary(user) and is_integer(id) and is_binary(key) do
     {:ok, querry} = GroupApi.get(user, id)
 
     with true <- Phantom.valid?(querry, key) do
@@ -597,7 +596,7 @@ defmodule MaxGallery.Context do
   The operation is irreversible and will permanently remove all nested content.
   """
   @spec group_delete(user :: binary(), id :: integer(), key :: String.t()) :: response()
-  def group_delete(user, id, key) do
+  def group_delete(user, id, key) when is_binary(user) and is_integer(id) and is_binary(key) do
     with {:ok, querry} <- GroupApi.get(user, id),
          true <- Phantom.valid?(querry, key),
          {:ok, _boolean} <- delete_cascade(user, id, key) do
@@ -691,7 +690,7 @@ defmodule MaxGallery.Context do
   """
   @spec cypher_duplicate(user :: binary(), id :: integer(), params :: map(), key :: String.t()) ::
           response()
-  def cypher_duplicate(user, id, params, key) do
+  def cypher_duplicate(user, id, params, key) when is_binary(user) and is_integer(id) and is_map(params) and is_binary(key) do
     case CypherApi.get(user, id) do
       {:ok, querry} ->
         original =
@@ -758,7 +757,7 @@ defmodule MaxGallery.Context do
   """
   @spec group_duplicate(user :: binary(), id :: integer(), params :: map(), key :: String.t()) ::
           response()
-  def group_duplicate(user, id, params, key) do
+  def group_duplicate(user, id, params, key) when is_binary(user) and is_integer(id) and is_map(params) and is_binary(key) do
     case GroupApi.get(user, id) do
       {:ok, querry} ->
         original =
@@ -850,7 +849,7 @@ defmodule MaxGallery.Context do
   """
   @spec zip_content(user :: binary(), id :: integer(), key :: String.t(), opts :: Keyword.t()) ::
           {:ok, Path.t()} | {:error, String.t()}
-  def zip_content(user, id, key, opts \\ []) do
+  def zip_content(user, id, key, opts \\ []) when is_binary(user) and is_binary(key) and is_list(opts) do
     group? = Keyword.get(opts, :group)
 
     ## Since `nil` can’t be passed as a valid value in a .heex (only strings), this conversion is necessary.
@@ -925,7 +924,7 @@ defmodule MaxGallery.Context do
   """
   @spec delete_all(user :: binary(), key :: String.t()) ::
           {:ok, non_neg_integer()} | {:error, String.t()}
-  def delete_all(user, key) do
+  def delete_all(user, key) when is_binary(user) and is_binary(key) do
     with true <- Phantom.insert_line?(user, key),
          {count_group, nil} <- GroupApi.delete_all(user),
          {count_data, nil} <- CypherApi.delete_all(user),
@@ -937,9 +936,37 @@ defmodule MaxGallery.Context do
     end
   end
 
+  @doc """
+  Extracts and imports a ZIP archive into the encrypted file system.
+
+  ## Parameters
+  - `path` - Path to the ZIP file to extract
+  - `user` - Binary user ID for file ownership
+  - `key` - Encryption key for securing imported files
+  - `opts` - Optional keyword list:
+    - `:group` - Parent group ID for imported files
+
+  ## Returns
+  - Integer count of successfully imported files
+  - `{:error, "invalid key"}` - If key validation fails
+
+  ## Process
+  1. Validates encryption key
+  2. Extracts ZIP to temporary directory
+  3. Recursively processes all files and folders
+  4. Encrypts and stores each file in the system
+  5. Creates group hierarchy matching ZIP structure
+  6. Cleans up temporary files
+
+  ## Notes
+  - Preserves original folder structure
+  - All files are encrypted before storage
+  - Uses Agent for tracking group creation during import
+  - Automatically cleans up extracted files after processing
+  """
   @spec unzip_content(path :: Path.t(), user :: binary(), key :: binary(), opts :: Keyword.t()) ::
           pos_integer()
-  def unzip_content(path, user, key, opts \\ []) do
+  def unzip_content(path, user, key, opts \\ []) when is_binary(path) and is_binary(user) and is_binary(key) and is_list(opts) do
     group =
       Keyword.get(opts, :group)
       |> Validate.int!()
@@ -980,9 +1007,27 @@ defmodule MaxGallery.Context do
     end
   end
 
+  @doc """
+  Creates a new user account with encrypted password storage.
+
+  ## Parameters
+  - `name` - User's display name
+  - `email` - User's email address (must be unique)
+  - `password` - Plain text password (will be hashed)
+
+  ## Returns
+  - `{:ok, user_id}` - Success with new user's ID
+  - `{:error, "email alredy been taken"}` - If email already exists
+
+  ## Security
+  - Generates random salt for password hashing
+  - Uses secure hash function for password storage
+  - Never stores plain text passwords
+  - Validates email uniqueness before creation
+  """
   @spec user_insert(name :: String.t(), email :: String.t(), password :: String.t()) ::
           {:error, String.t()} | {:ok, pos_integer()}
-  def user_insert(name, email, password) do
+  def user_insert(name, email, password) when is_binary(name) and is_binary(email) and is_binary(password) do
     case UserApi.get_email(email) do
       {:ok, _querry} ->
         {:error, "email alredy been taken"}
@@ -1002,9 +1047,27 @@ defmodule MaxGallery.Context do
     end
   end
 
+  @doc """
+  Validates user credentials for authentication.
+
+  ## Parameters
+  - `email` - User's email address
+  - `password` - Plain text password to verify
+
+  ## Returns
+  - `{:ok, user_id}` - Success with user's ID
+  - `{:error, "invalid email/passwd"}` - If credentials are invalid
+  - `{:error, reason}` - If user lookup fails
+
+  ## Security
+  - Extracts salt from stored password hash
+  - Compares hashed input with stored hash
+  - Uses constant-time comparison to prevent timing attacks
+  - Never logs or stores plain text passwords
+  """
   @spec user_validate(email :: String.t(), password :: String.t()) ::
           {:ok, non_neg_integer()} | {:error, String.t()}
-  def user_validate(email, password) do
+  def user_validate(email, password) when is_binary(email) and is_binary(password) do
     case UserApi.get_email(email) do
       {:ok, querry} ->
         <<_salt::binary-size(16), passhash::binary>> = querry.passhash
@@ -1043,7 +1106,7 @@ defmodule MaxGallery.Context do
   - Provides detailed logging for each step of the deletion process
   """
   @spec user_delete(user :: binary()) :: :ok | :error
-  def user_delete(user) do
+  def user_delete(user) when is_binary(user) do
     require Logger
 
     Logger.info("Starting user deletion process for user #{user}")
@@ -1095,7 +1158,25 @@ defmodule MaxGallery.Context do
     end
   end
 
-  def user_get(user, opts \\ []) do
+  @doc """
+  Retrieves user information by ID or email.
+
+  ## Parameters
+  - `user` - Binary user ID
+  - `opts` - Optional keyword list:
+    - `:email` - If provided, looks up user by email instead of ID
+
+  ## Returns
+  - `{:ok, user_struct}` - Success with user data
+  - `{:error, reason}` - If user not found
+
+  ## Notes
+  - When `:email` option is provided, uses email lookup
+  - Otherwise uses direct ID lookup
+  - Returns full user struct with all fields
+  """
+  @spec user_get(user :: binary(), opts :: Keyword.t()) :: {:ok, map()} | {:error, String.t()}
+  def user_get(user, opts \\ []) when is_binary(user) and is_list(opts) do
     email = Keyword.get(opts, :email)
 
     if email do
@@ -1105,7 +1186,26 @@ defmodule MaxGallery.Context do
     end
   end
 
-  def user_update(email, %{password: password}) do
+  @doc """
+  Updates user account information.
+
+  ## Parameters
+  - `email` - User's email address for identification
+  - `params` - Map containing fields to update:
+    - `:password` - New password (will be hashed with new salt)
+
+  ## Returns
+  - `{:ok, updated_user}` - Success with updated user data
+  - `{:error, reason}` - If user not found or update fails
+
+  ## Security
+  - Generates new random salt for password updates
+  - Hashes new password before storage
+  - Never stores plain text passwords
+  - Validates user existence before update
+  """
+  @spec user_update(email :: String.t(), params :: map()) :: {:ok, map()} | {:error, String.t()}
+  def user_update(email, %{password: password}) when is_binary(email) and is_binary(password) do
     case UserApi.get_email(email) do
       {:ok, %{id: user}} ->
         salt = Encrypter.random()
