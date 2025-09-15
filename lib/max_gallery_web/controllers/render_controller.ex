@@ -2,6 +2,7 @@ defmodule MaxGalleryWeb.RenderController do
   use MaxGalleryWeb, :controller
   require Logger
   alias MaxGallery.Context
+  alias MaxGallery.Phantom
   alias MaxGallery.Extension
   alias MaxGallery.Variables
 
@@ -76,7 +77,7 @@ defmodule MaxGalleryWeb.RenderController do
     user = get_session(conn, "user_auth")
 
 
-    if key do
+    if key && Phantom.insert_line?(user, key) do
       {:ok, file_path} = Context.zip_content(user, id, key, group: true) 
 
       Logger.debug(
@@ -93,7 +94,7 @@ defmodule MaxGalleryWeb.RenderController do
     key = get_session(conn, :auth_key)
     user = get_session(conn, "user_auth")
 
-    if key do
+    if key && Phantom.insert_line?(user, key) do
       {:ok, file_path} = Context.zip_content(user, id, key)
 
       send_download(conn, {:file, file_path})

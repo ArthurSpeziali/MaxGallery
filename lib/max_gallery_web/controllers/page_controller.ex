@@ -154,22 +154,47 @@ defmodule MaxGalleryWeb.PageController do
   end
 
   def forget(conn, params) do
-    {txt, send?} =
+    # Check if there's an email in session for timestamp checking
+    email = get_session(conn, :forget_email)
+    
+    {txt, send?, remain} =
       cond do
         params["send"] ->
-          {"Your e-mail has just been sent.", true}
+          {"Your e-mail has just been sent.", true, nil}
 
         params["remain"] ->
-          {params["remain"], :wait}
+          {params["remain"], :wait, params["remain"]}
 
         params["invalid"] ->
-          {"This e-mail does not exists in our database.", false}
+          {"This e-mail does not exists in our database.", false, nil}
+
+        email ->
+          # Check timestamp for this email like in verify
+          user_request = LiveServer.get(:timestamp_requests)[email]
+          
+          if user_request do
+            remain_time =
+              DateTime.diff(
+                DateTime.utc_now(),
+                user_request,
+                :second
+              )
+
+            if remain_time >= Variables.email_resend() do
+              {nil, false, nil}
+            else
+              remaining = Variables.email_resend() - remain_time
+              {remaining, :wait, remaining}
+            end
+          else
+            {nil, false, nil}
+          end
 
         true ->
-          {nil, false}
+          {nil, false, nil}
       end
 
-    render(conn, :forget, layout: false, hide_header: true, txt: txt, send: send?)
+    render(conn, :forget, layout: false, hide_header: true, txt: txt, send: send?, remain: remain)
   end
 
   def reset(conn, %{"token" => token}) do

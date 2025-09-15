@@ -59,6 +59,9 @@ defmodule MaxGalleryWeb.RequestController do
         redirect(conn, to: "/forget?invalid=true")
 
       {:ok, _id} ->
+        # Store email in session for timestamp checking like in verify
+        conn = put_session(conn, :forget_email, email)
+        
         user_request = LiveServer.get(:timestamp_requests)[email]
 
         if user_request do
@@ -72,7 +75,7 @@ defmodule MaxGalleryWeb.RequestController do
           if remain >= Variables.email_resend() do
             email_forget_process(conn, email)
           else
-            redirect(conn, to: "/forget?remain=#{Variables.email_resend() - remain}")
+            redirect(conn, to: "/forget")
           end
         else
           email_forget_process(conn, email)
