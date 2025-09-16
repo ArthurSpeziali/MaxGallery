@@ -135,7 +135,6 @@ defmodule MaxGallery.Encrypter do
         :crypto.crypto_update(ref, chunk)
       end)
 
-    :crypto.crypto_final(ref)
     {stream, iv}
   end
 
@@ -166,7 +165,6 @@ defmodule MaxGallery.Encrypter do
         :crypto.crypto_update(ref, chunk)
       end)
 
-    :crypto.crypto_final(ref)
     stream
   end
 

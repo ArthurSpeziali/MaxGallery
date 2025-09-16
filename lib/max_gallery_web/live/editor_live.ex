@@ -6,6 +6,7 @@ defmodule MaxGalleryWeb.Live.EditorLive do
   alias MaxGallery.Validate
 
   def mount(%{"id" => id} = params, %{"auth_key" => key, "user_auth" => user}, socket) do
+    id = Validate.int!(id)
     page_id = Map.get(params, "page_id")
 
     {:ok, lazy_data} = Context.decrypt_one(user, id, key, lazy: true)

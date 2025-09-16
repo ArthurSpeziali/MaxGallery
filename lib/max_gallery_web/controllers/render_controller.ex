@@ -4,6 +4,7 @@ defmodule MaxGalleryWeb.RenderController do
   alias MaxGallery.Context
   alias MaxGallery.Phantom
   alias MaxGallery.Extension
+  alias MaxGallery.Validate
   alias MaxGallery.Variables
 
   @type plug :: %Plug.Conn{}
@@ -12,6 +13,7 @@ defmodule MaxGalleryWeb.RenderController do
   ## Decrypt the file and shows instantly.
   @spec content_render(conn :: plug(), id :: integer()) :: plug()
   def content_render(conn, id) do
+    id = Validate.int!(id)
     key = get_session(conn, :auth_key)
     user = get_session(conn, "user_auth")
     {:ok, querry} = Context.decrypt_one(user, id, key)
@@ -35,44 +37,46 @@ defmodule MaxGalleryWeb.RenderController do
 
   @spec images(conn :: plug(), map()) :: plug()
   def images(conn, %{"id" => id}) do
+    id = Validate.int!(id)
     content_render(conn, id)
   end
 
   ## Load the file, and chunk it. It ensures the videos load faster.
   @spec videos(conn :: plug(), map()) :: plug()
   def videos(conn, %{"id" => id}) do
+    id = Validate.int!(id)
     key = get_session(conn, :auth_key)
     user = get_session(conn, "user_auth")
 
     # Get cypher info first to get blob_iv
     {:ok, cypher} = Context.decrypt_one(user, id, key)
 
-    if File.exists?(cypher.path) do
-      mime = Extension.get_mime(cypher.ext)
+    mime = Extension.get_mime(cypher.ext)
 
-      conn =
-        put_resp_content_type(conn, mime)
-        |> put_resp_header("accept-ranges", "bytes")
-        |> send_chunked(200)
+    conn =
+      put_resp_content_type(conn, mime)
+      |> send_chunked(200)
 
-      File.stream!(cypher.path, Variables.chunk_size())
-      |> Enum.reduce_while(conn, fn blob_chunk, conn ->
-        case chunk(conn, blob_chunk) do
-          {:ok, conn} -> {:cont, conn}
-          {:error, _reason} -> {:halt, conn}
-        end
-      end)
-    else
-      redirect(conn, to: "/user/data")
-    end
+    File.stream!(cypher.path, Variables.chunk_size())
+    |> Enum.reduce_while(conn, fn chunk, conn ->
+      case chunk(conn, chunk) do
+        {:ok, conn} ->
+          {:cont, conn}
+
+        {:error, :closed} ->
+          {:halt, conn}
+      end
+    end)
   end
 
   @spec audios(conn :: plug(), map()) :: plug()
   def audios(conn, %{"id" => id}) do
+    id = Validate.int!(id)
     content_render(conn, id)
   end
 
   def download(conn, %{"id" => id, "type" => "group"}) do
+    id = Validate.int!(id)
     key = get_session(conn, :auth_key)
     user = get_session(conn, "user_auth")
 
@@ -91,6 +95,7 @@ defmodule MaxGalleryWeb.RenderController do
   end
 
   def download(conn, %{"id" => id, "type" => "data"}) do
+    id = Validate.int!(id)
     key = get_session(conn, :auth_key)
     user = get_session(conn, "user_auth")
 

@@ -46,6 +46,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("ask_delete", %{"id" => id, "name" => name}, socket) do
+    id = Validate.int!(id)
     {:noreply, assign(socket, delete_iframe: id, name_data: name)}
   end
 
@@ -64,23 +65,25 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("confirm_delete", %{"id" => id}, socket) do
+    id = Validate.int!(id)
     user = socket.assigns[:user]
     key = socket.assigns[:key]
     page_id = socket.assigns[:page_id]
 
-    IO.inspect id
     Context.cypher_delete(user, id, key)
 
     {:noreply, push_navigate(socket, to: "/user/data/#{page_id}")}
   end
 
   def handle_event("editor", %{"id" => id}, socket) do
+    id = Validate.int!(id)
     page_id = socket.assigns[:page_id]
 
     {:noreply, push_navigate(socket, to: "/user/editor/#{page_id}?id=#{id}")}
   end
 
   def handle_event("show", %{"id" => id}, socket) do
+    id = Validate.int!(id)
     page_id = socket.assigns[:page_id]
 
     {:noreply, push_navigate(socket, to: "/user/show/#{page_id}?id=#{id}")}
@@ -93,6 +96,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("ask_rename", %{"id" => id, "name" => name}, socket) do
+    id = Validate.int!(id)
     socket =
       assign(socket,
         rename_iframe: id,
@@ -103,6 +107,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("confirm_rename", %{"id" => id, "new_name" => name}, socket) do
+    id = Validate.int!(id)
     user = socket.assigns[:user]
     key = socket.assigns[:key]
     page_id = socket.assigns[:page_id]
@@ -112,6 +117,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("ask_remove", %{"id" => id, "name" => name}, socket) do
+    id = Validate.int!(id)
     socket =
       assign(socket,
         remove_iframe: id,
@@ -138,6 +144,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("open", %{"id" => id}, socket) do
+    id = Validate.int!(id)
     {:noreply, push_navigate(socket, to: "/user/data/#{id}")}
   end
 
@@ -173,10 +180,12 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("more_menu", %{"id" => id, "type" => type}, socket) do
+    id = Validate.int!(id)
     {:noreply, assign(socket, more_iframe: id, type: type)}
   end
 
   def handle_event("move", %{"id" => id}, socket) do
+    id = Validate.int!(id)
     page_id = socket.assigns[:page_id]
     type = socket.assigns[:type]
 
@@ -185,6 +194,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("copy", %{"id" => id}, socket) do
+    id = Validate.int!(id)
     page_id = socket.assigns[:page_id]
     type = socket.assigns[:type]
 
@@ -193,6 +203,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
   end
 
   def handle_event("info", %{"id" => id}, socket) do
+    id = Validate.int!(id)
     user = socket.assigns[:user]
     key = socket.assigns[:key]
     type = socket.assigns[:type]

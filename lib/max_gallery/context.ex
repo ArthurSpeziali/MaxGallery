@@ -279,7 +279,8 @@ defmodule MaxGallery.Context do
     - `{:error, reason}`: If any operation (get, delete, etc.) fails.
   """
   @spec cypher_delete(user :: binary(), id :: integer(), key :: String.t()) :: response()
-  def cypher_delete(user, id, key) when is_binary(user) and is_integer(id) and is_binary(key) do
+  def cypher_delete(user, id, key) when is_binary(user) and is_binary(key) do
+    id = Validate.int!(id)
     Repo.transaction(fn ->
       with {:ok, querry} <- CypherApi.get(user, id),
            true <- Phantom.valid?(querry, key),
@@ -322,7 +323,8 @@ defmodule MaxGallery.Context do
     - `{:error, reason}`: If any decryption or retrieval fails.
   """
   @spec decrypt_one(user :: binary(), id :: integer(), key :: String.t(), opts :: Keyword.t()) :: {:ok, map()} | {:error, String.t()}
-  def decrypt_one(user, id, key, opts \\ []) when is_binary(user) and is_integer(id) and is_binary(key) and is_list(opts) do
+  def decrypt_one(user, id, key, opts \\ []) when is_binary(user) and is_binary(key) and is_list(opts) do
+    id = Validate.int!(id)
     lazy? = Keyword.get(opts, :lazy)
     group? = Keyword.get(opts, :group)
 
@@ -334,47 +336,90 @@ defmodule MaxGallery.Context do
     
     case result do
       {:ok, querry} ->
-        case Encrypter.decrypt(querry.name, querry.name_iv, key) do
-          name ->
-            # Use the group field if available (from swap_id), otherwise use group_id
-            group_ref = Map.get(querry, :group, querry.group_id)
+        name = Encrypter.decrypt(querry.name, querry.name_iv, key)
+        # Use the group field if available (from swap_id), otherwise use group_id
+        group_ref = Map.get(querry, :group, querry.group_id)
 
-            case {lazy?, group?} do
-              {true, nil} ->
-                {:ok,
-                 %{
-                   id: id,
-                   name: name,
-                   ext: querry.ext,
-                   group: group_ref
-                 }}
+        case {lazy?, group?} do
+          {true, nil} ->
+            {:ok,
+             %{
+               id: id,
+               name: name,
+               ext: querry.ext,
+               group: group_ref
+             }}
 
-              {nil, nil} ->
-                # Full file: download and decrypt using cache system
-                {path, _created} = Cache.consume_cache(user, querry.id, querry.blob_iv, key, querry.length)
-                
-                {:ok,
-                 %{
-                   id: id,
-                   name: name,
-                   path: path,
-                   ext: querry.ext,
-                   group: group_ref
-                 }}
+          {nil, nil} ->
+            # Full file: download and decrypt using cache system
+            {path, _created} = Cache.consume_cache(user, querry.id, querry.blob_iv, key, querry.length)
+            
+            {:ok,
+             %{
+               id: id,
+               name: name,
+               path: path,
+               ext: querry.ext,
+               group: group_ref
+             }}
 
-              {_boolean, true} ->
-                {:ok,
-                 %{
-                   id: id,
-                   name: name,
-                   group: group_ref
-                 }}
-            end
-        end
+          {_boolean, true} ->
+            {:ok,
+             %{
+               id: id,
+               name: name,
+               group: group_ref
+             }}
+      end
       
       error -> error
     end
   end
+
+  @spec decrypt_stream(user :: binary(), id :: integer(), key :: String.t()) :: {:ok, map()} | {:error, String.t()}
+  def decrypt_stream(user, id, key) when is_binary(user) and is_binary(key) do
+    id = Validate.int!(id)
+
+    result = CypherApi.get(user, id)
+    
+    case result do
+      {:ok, querry} ->
+        name = Encrypter.decrypt(querry.name, querry.name_iv, key)
+        # Use the group field if available (from swap_id), otherwise use group_id
+        group_ref = Map.get(querry, :group, querry.group_id)
+
+        # Full file: download and decrypt using cache system
+        # {path, _created} = Cache.consume_cache(user, querry.id, querry.blob_iv, key, querry.length)
+        
+        path = Cache.get_path(user, id)
+        stream =
+          if File.exists?(path) && Phantom.insert_line?(user, key) do 
+            {:ok, File.stream!(path, Variables.chunk_size())}
+          else
+            Storage.get_stream(user, id)
+          end
+
+        case stream do
+          {:ok, stream} ->
+            dec_stream = Encrypter.decrypt_stream(stream, querry.blob_iv, key)
+            {:ok,
+               %{
+                 id: id,
+                 name: name,
+                 stream: dec_stream,
+                 ext: querry.ext,
+                 group: group_ref
+               }}
+
+          error -> error
+        end
+
+      error -> error
+    end
+  end
+
+
+
 
   @doc """
   Updates an encrypted file's name, content (blob), or group association.
@@ -410,7 +455,8 @@ defmodule MaxGallery.Context do
     - `{:error, "invalid key"}`: If the provided encryption key is not valid for this file.
   """
   @spec cypher_update(user :: binary(), id :: integer(), map(), key :: String.t()) :: response()
-  def cypher_update(user, id, %{name: new_name, blob: new_blob}, key) when is_binary(user) and is_integer(id) and is_binary(new_name) and is_binary(new_blob) and is_binary(key) do
+  def cypher_update(user, id, %{name: new_name, blob: new_blob}, key) when is_binary(user) and is_binary(new_name) and is_binary(new_blob) and is_binary(key) do
+    id = Validate.int!(id)
     ext = Path.extname(new_name)
     new_name = Path.basename(new_name, ext)
 
@@ -437,7 +483,8 @@ defmodule MaxGallery.Context do
     end)
   end
 
-  def cypher_update(user, id, %{name: new_name}, key) when is_binary(user) and is_integer(id) and is_binary(new_name) and is_binary(key) do
+  def cypher_update(user, id, %{name: new_name}, key) when is_binary(user) and is_binary(new_name) and is_binary(key) do
+    id = Validate.int!(id)
     ext = Path.extname(new_name)
     new_name = Path.basename(new_name, ext)
 
@@ -454,7 +501,8 @@ defmodule MaxGallery.Context do
     end
   end
 
-  def cypher_update(user, id, %{group_id: new_group}, key) when is_binary(user) and is_integer(id) and is_binary(key) do
+  def cypher_update(user, id, %{group_id: new_group}, key) when is_binary(user) and is_binary(key) do
+    id = Validate.int!(id)
     {:ok, querry} = CypherApi.get(user, id)
 
     with true <- Phantom.valid?(querry, key) do
@@ -543,7 +591,8 @@ defmodule MaxGallery.Context do
     - `{:error, "invalid key"}`: If the encryption key is invalid for the group.
   """
   @spec group_update(user :: binary(), id :: integer(), map(), key :: String.t()) :: response()
-  def group_update(user, id, %{name: new_name}, key) when is_binary(user) and is_integer(id) and is_binary(new_name) and is_binary(key) do
+  def group_update(user, id, %{name: new_name}, key) when is_binary(user) and is_binary(new_name) and is_binary(key) do
+    id = Validate.int!(id)
     {:ok, querry} = GroupApi.get(user, id)
     {name_iv, name} = Encrypter.encrypt(new_name, key)
 
@@ -555,7 +604,8 @@ defmodule MaxGallery.Context do
     end
   end
 
-  def group_update(user, id, %{group_id: group_id}, key) when is_binary(user) and is_integer(id) and is_binary(key) do
+  def group_update(user, id, %{group_id: group_id}, key) when is_binary(user) and is_binary(key) do
+    id = Validate.int!(id)
     {:ok, querry} = GroupApi.get(user, id)
 
     with true <- Phantom.valid?(querry, key) do
@@ -596,7 +646,8 @@ defmodule MaxGallery.Context do
   The operation is irreversible and will permanently remove all nested content.
   """
   @spec group_delete(user :: binary(), id :: integer(), key :: String.t()) :: response()
-  def group_delete(user, id, key) when is_binary(user) and is_integer(id) and is_binary(key) do
+  def group_delete(user, id, key) when is_binary(user) and is_binary(key) do
+    id = Validate.int!(id)
     with {:ok, querry} <- GroupApi.get(user, id),
          true <- Phantom.valid?(querry, key),
          {:ok, _boolean} <- delete_cascade(user, id, key) do
@@ -690,7 +741,8 @@ defmodule MaxGallery.Context do
   """
   @spec cypher_duplicate(user :: binary(), id :: integer(), params :: map(), key :: String.t()) ::
           response()
-  def cypher_duplicate(user, id, params, key) when is_binary(user) and is_integer(id) and is_map(params) and is_binary(key) do
+  def cypher_duplicate(user, id, params, key) when is_binary(user) and is_map(params) and is_binary(key) do
+    id = Validate.int!(id)
     case CypherApi.get(user, id) do
       {:ok, querry} ->
         original =
@@ -757,7 +809,8 @@ defmodule MaxGallery.Context do
   """
   @spec group_duplicate(user :: binary(), id :: integer(), params :: map(), key :: String.t()) ::
           response()
-  def group_duplicate(user, id, params, key) when is_binary(user) and is_integer(id) and is_map(params) and is_binary(key) do
+  def group_duplicate(user, id, params, key) when is_binary(user) and is_map(params) and is_binary(key) do
+    id = Validate.int!(id)
     case GroupApi.get(user, id) do
       {:ok, querry} ->
         original =
@@ -860,6 +913,7 @@ defmodule MaxGallery.Context do
         id
       end
 
+    id = Validate.int!(id)
     if group? do
       {:ok, name} =
         if id do

@@ -92,6 +92,7 @@ defmodule MaxGallery.Utils do
         nil
 
       _id ->
+        id = Validate.int!(id)
         {:ok, querry} = GroupApi.get(user, id)
         case Map.fetch!(querry, :group_id) do
           nil -> nil
@@ -131,6 +132,7 @@ defmodule MaxGallery.Utils do
           {:ok, MaxGallery.Context.querry()}
   def get_group(user, id, opts \\ []) when is_binary(user) and is_list(opts) do
     only = Keyword.get(opts, :only)
+    id = Validate.int!(id)
 
     case only do
       nil ->
@@ -176,8 +178,9 @@ defmodule MaxGallery.Utils do
   - May raise exceptions if the item doesn't exist or lacks required fields
   """
   @spec get_size(user :: binary(), id :: integer(), opts :: Keyword.t()) :: non_neg_integer()
-  def get_size(user, id, opts \\ []) when is_binary(user) and is_integer(id) and is_list(opts) do
+  def get_size(user, id, opts \\ []) when is_binary(user) and is_list(opts) do
     group? = Keyword.get(opts, :group)
+    id = Validate.int!(id)
 
     if group? do
       {:ok, contents} = get_group(user, id)
@@ -226,8 +229,9 @@ defmodule MaxGallery.Utils do
   - Will raise if the item doesn't exist or lacks timestamp fields
   """
   @spec get_timestamps(user :: binary(), id :: integer(), opts :: Keyword.t()) :: map()
-  def get_timestamps(user, id, opts \\ []) when is_binary(user) and is_integer(id) and is_list(opts) do
+  def get_timestamps(user, id, opts \\ []) when is_binary(user) and is_list(opts) do
     group? = Keyword.get(opts, :group)
+    id = Validate.int!(id)
 
     {:ok, timestamps} =
       if group? do
@@ -277,6 +281,7 @@ defmodule MaxGallery.Utils do
   """
   @spec get_tree(user :: binary(), id :: integer(), key :: String.t(), opts :: Keyword.t()) :: MaxGallery.Context.querry()
   def get_tree(user, id, key, opts \\ []) when is_binary(user) and is_binary(key) and is_list(opts) do
+    id = Validate.int!(id)
     lazy? = Keyword.get(opts, :lazy)
     {:ok, contents} = get_group(user, id)
 
