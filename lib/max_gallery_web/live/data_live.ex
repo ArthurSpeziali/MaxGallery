@@ -68,6 +68,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
     key = socket.assigns[:key]
     page_id = socket.assigns[:page_id]
 
+    IO.inspect id
     Context.cypher_delete(user, id, key)
 
     {:noreply, push_navigate(socket, to: "/user/data/#{page_id}")}

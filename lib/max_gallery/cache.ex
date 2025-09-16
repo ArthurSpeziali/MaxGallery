@@ -49,10 +49,10 @@ defmodule MaxGallery.Cache do
 
   # Private function to get the appropriate temporary path based on environment
   defp tmp_path() do
-    if Mix.env() == :dev do
-      Variables.tmp_dir() <> "cache/"
-    else
+    if Mix.env() == :test do
       Variables.tmp_dir() <> "test/"
+    else
+      Variables.tmp_dir() <> "cache/"
     end
   end
 

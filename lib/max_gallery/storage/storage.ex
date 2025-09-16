@@ -44,6 +44,15 @@ defmodule MaxGallery.Storage do
   import SweetXml, only: [sigil_x: 2]
   @bucket Variables.bucket_name()
 
+  def tmp_path() do
+    Variables.tmp_dir() <> "downloads/" <> (
+      System.unique_integer()
+      |> Integer.to_string()
+      |> Base.encode32()
+    )
+    
+  end
+
   @doc """
   Stores an encrypted file blob in cloud storage.
 
@@ -79,7 +88,7 @@ defmodule MaxGallery.Storage do
   @spec put_stream(user :: binary(), id :: integer(), Path.t() | Enum.t()) ::
           :ok | {:error, String.t()}
   def put_stream(user, id, path) when is_binary(path) do
-    stream = File.stream!(path, Variables.chunk_size())
+    stream = S3.Upload.stream_file(path, chunk_size: Variables.chunk_size())
 
     key = generate(user, id)
     req = S3.upload(stream, @bucket, key)
