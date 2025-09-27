@@ -8,7 +8,7 @@ defmodule MaxGalleryWeb.Endpoint do
   @session_options [
     store: :cookie,
     key: "_max_gallery_key",
-    signing_salt: Application.compile_env!(:max_gallery, MaxGalleryWeb.Endpoint)[:signing_salt] |> IO.inspect,
+    signing_salt: Application.compile_env!(:max_gallery, MaxGalleryWeb.Endpoint)[:signing_salt],
     same_site: "Lax"
   ]
 
