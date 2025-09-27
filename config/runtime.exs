@@ -18,8 +18,12 @@ Dotenv.load!()
 # Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
 # script that automatically sets the env var above.
 if System.get_env("PHX_SERVER") do
-  config :max_gallery, MaxGalleryWeb.Endpoint, server: true
+  config :max_gallery, MaxGalleryWeb.Endpoint, 
+    server: true
 end
+
+config :max_gallery, MaxGalleryWeb.Endpoint, 
+  signing_salt: System.get_env("SIGNING_SALT")
 
 config :swoosh,
   api_client: Swoosh.ApiClient.Finch,
