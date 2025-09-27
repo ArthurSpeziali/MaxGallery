@@ -20,8 +20,8 @@ config :max_gallery, MaxGalleryWeb.Endpoint,
     layout: false
   ],
   pubsub_server: MaxGallery.PubSub,
-  live_view: [signing_salt: "1cbMQEQA"]
-  # signing_salt: System.get_env("SIGNING_SALT")
+  live_view: [signing_salt: "1cbMQEQA"],
+  signing_salt: System.get_env("SIGNING_SALT")
 
 
 
