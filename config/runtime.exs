@@ -22,6 +22,15 @@ if System.get_env("PHX_SERVER") do
     server: true
 end
 
+config :ex_aws,
+  access_key_id: System.get_env("BLACKBLAZE_KEY_ID"),
+  secret_access_key: System.get_env("BLACKBLAZE_APP_KEY"),
+  json_codec: Jason,
+  s3: [
+    scheme: "https://",
+    host: "s3.us-east-005.backblazeb2.com"
+  ]
+
 config :swoosh,
   api_client: Swoosh.ApiClient.Finch,
   finch_name: MaxGallery.Finch
