@@ -68,11 +68,6 @@ defmodule MaxGalleryWeb.PageController do
     user = get_session(conn, :user_validation)
 
     if user do
-      Template.email_verify(user.email, user.code)
-      |> Mail.send()
-
-
-
       user_request = LiveServer.get(:timestamp_requests)[user.email]
       remain_send =
         if user_request do
@@ -101,7 +96,7 @@ defmodule MaxGalleryWeb.PageController do
           remain: remain_send
         )
       else
-        # Send email verification code
+        # Send email verification code only once
         Template.email_verify(user.email, user.code)
         |> Mail.send()
 
