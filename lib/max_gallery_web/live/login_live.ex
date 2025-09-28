@@ -42,7 +42,7 @@ defmodule MaxGalleryWeb.Live.LoginLive do
 
     {femail, fpassword} = {
       Validate.input!(email),
-      Validate.input!(password)
+      String.trim(password)
     }
 
     error_list =
