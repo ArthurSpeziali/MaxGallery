@@ -1,4 +1,4 @@
-defmodule MaxGallery.Mail do
+defmodule MaxGallery.Mailout do
   alias MaxGallery.Mail.Mailer
   require Logger
   @type email_t() :: %Swoosh.Email{}
