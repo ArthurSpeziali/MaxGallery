@@ -23,11 +23,11 @@ defmodule MaxGallery.Mailout do
 
     case res do
       {:ok, _} ->
-        Logger.debug("Succeful email sendend to '#{email}'")
+        Logger.info("Succeful email sendend to '#{email}'")
         :ok
 
       {:error, "timeout error"} ->
-        Logger.debug("Timeout email sendend to '#{email}'")
+        Logger.info("Timeout email sendend to '#{email}'")
         {:error, "timeout error"} 
 
       {:error, {_code, map}} ->
@@ -35,7 +35,7 @@ defmodule MaxGallery.Mailout do
                  |> List.first() 
                  |> Map.get("message")
 
-        Logger.debug("Error email sendend to '#{email}, \nwith reason: #{reason}'")
+        Logger.info("Error email sendend to '#{email}, \nwith reason: #{reason}'")
         {:error, reason}
     end
   end
