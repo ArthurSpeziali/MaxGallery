@@ -12,7 +12,7 @@ defmodule MaxGallery.Mail do
   def response(task, email) do
     res = 
       try do 
-        Task.await(task, 30_000)
+        Task.await(task, 45_000)
       rescue 
         _e ->
           {:error, "timeout error"}
