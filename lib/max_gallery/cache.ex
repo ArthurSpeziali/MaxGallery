@@ -49,7 +49,7 @@ defmodule MaxGallery.Cache do
 
   # Private function to get the appropriate temporary path based on environment
   defp tmp_path() do
-    if Mix.env() == :test do
+    if (System.get_env("MIX_ENV") || :prod) == :test do
       Variables.tmp_dir() <> "test/"
     else
       Variables.tmp_dir() <> "cache/"
@@ -256,7 +256,7 @@ defmodule MaxGallery.Cache do
   """
   @spec get_path(user :: binary(), id :: integer()) :: Path.t()
   def get_path(user, id) when is_binary(user) do
-    tmp_path() <> "#{user}_#{Mix.env()}_#{id}"
+    tmp_path() <> "#{user}_#{System.get_env("MIX_ENV") || :prod}_#{id}"
   end
 
   @doc """
@@ -315,7 +315,7 @@ defmodule MaxGallery.Cache do
 
     case File.ls(tmp_path()) do
       {:ok, files} ->
-        user_prefix = "#{user}_#{Mix.env()}_"
+        user_prefix = "#{user}_#{System.get_env("MIX_ENV") || :prod}_"
 
         removed_count =
           files

@@ -7,7 +7,7 @@ defmodule MaxGallery.StorageAdapter do
   @doc "Returns the appropriate storage implementation based on current environment."
   @spec impl() :: module()
   def impl do
-    case Mix.env() do
+    case System.get_env("MIX_ENV") || :prod do
       :test -> MaxGallery.Storage.Mock
       _ -> MaxGallery.Storage
     end
