@@ -4,7 +4,7 @@ defmodule MaxGalleryWeb.RequestController do
   alias MaxGallery.Variables
   alias MaxGallery.Utils
   alias MaxGallery.Mail.Template
-  alias MaxGallery.Mailout
+  alias MaxGallery.Mail
   alias MaxGallery.Context
   alias MaxGallery.Server.LiveServer
 
@@ -97,11 +97,8 @@ defmodule MaxGalleryWeb.RequestController do
     link =
       "https://" <> host <> "/reset-passwd?token=#{token}"
 
-    task =
-      Template.reset_passwd(email, link)
-      |> Mailout.send()
-
-    spawn(fn -> Mailout.response(task, email) end)
+    Template.reset_passwd(email, link)
+    |> Mail.send()
 
     LiveServer.add(:timestamp_requests, %{email => DateTime.utc_now()})
 

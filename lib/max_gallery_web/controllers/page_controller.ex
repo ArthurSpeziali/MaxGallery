@@ -5,7 +5,7 @@ defmodule MaxGalleryWeb.PageController do
   alias MaxGallery.Validate
   alias MaxGallery.Utils
   alias MaxGallery.Mail.Template
-  alias MaxGallery.Mailout
+  alias MaxGallery.Mail
   alias MaxGallery.Server.LiveServer
   alias MaxGallery.Cache
 
@@ -68,12 +68,9 @@ defmodule MaxGalleryWeb.PageController do
     user = get_session(conn, :user_validation)
 
     if user do
-      task = 
-        Template.email_verify(user.email, user.code)
-        |> Mailout.send()
+      Template.email_verify(user.email, user.code)
+      |> Mail.send()
 
-      ## Logger if it return an error 
-      spawn(fn -> Mailout.response(task, user.email) end)
 
 
       user_request = LiveServer.get(:timestamp_requests)[user.email]
@@ -106,7 +103,7 @@ defmodule MaxGalleryWeb.PageController do
       else
         # Send email verification code
         Template.email_verify(user.email, user.code)
-        |> Mailout.send()
+        |> Mail.send()
 
         # Update timestamp for rate limiting
         LiveServer.add(:timestamp_requests, %{user.email => DateTime.utc_now()})
