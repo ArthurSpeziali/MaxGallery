@@ -4,6 +4,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
   alias MaxGallery.Context
   alias MaxGallery.Extension
   alias MaxGallery.Utils
+  alias MaxGallery.Phantom
   alias MaxGallery.Variables
   alias MaxGallery.Validate
 
@@ -15,7 +16,7 @@ defmodule MaxGalleryWeb.Live.DataLive do
     folder_name = 
       if group_id do
         case Context.decrypt_one(user, group_id, key, group: true, lazy: true) do
-          {:ok, group} -> "\"#{group.name}\""
+          {:ok, group} -> "\"#{Phantom.validate_bin(group.name)}\""
           {:error, _} -> "Main"
         end
       else
