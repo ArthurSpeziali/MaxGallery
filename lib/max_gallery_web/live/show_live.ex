@@ -43,9 +43,17 @@ defmodule MaxGalleryWeb.Live.ShowLive do
             Phantom.validate_bin(item)
           end)
         else 
-          Map.put(encoded_data, :blob,
-            File.read!(querry.path)
-          )
+          if Extension.get_ext(querry.ext) != "video" do
+            Map.put(encoded_data, :blob,
+              File.read!(querry.path)
+            )
+          else 
+            random = Enum.random(1..5_000_000) 
+                     |> to_string()
+                     |> Base.encode16()
+
+            Map.put(encoded_data, :blob, random)
+          end
         end
       end
 
