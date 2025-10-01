@@ -43,7 +43,7 @@ defmodule MaxGalleryWeb.Live.ShowLive do
             Phantom.validate_bin(item)
           end)
         else 
-          %{encoded_data | blob: "nil"}
+          Map.put(encoded_data, :blob, "nil")
         end
       end
 
