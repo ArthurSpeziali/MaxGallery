@@ -36,11 +36,15 @@ defmodule MaxGalleryWeb.Live.ShowLive do
 
     encoded_data = 
       if Phantom.insert_line?(user, key) do
-          encoded_data
-        else
+        encoded_data
+      else
+        if Extension.get_ext(querry.ext) != "video" do 
           Map.update!(encoded_data, :blob, fn item -> 
             Phantom.validate_bin(item)
           end)
+        else 
+          %{encoded_data | blob: "nil"}
+        end
       end
 
 
