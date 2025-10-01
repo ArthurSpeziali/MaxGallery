@@ -76,7 +76,12 @@ defmodule MaxGalleryWeb.RenderController do
   end
 
   def download(conn, %{"id" => id, "type" => "group"}) do
-    id = Validate.int!(id)
+    id = if id != "main" do 
+      Validate.int!(id)
+    else 
+      nil 
+    end 
+
     key = get_session(conn, :auth_key)
     user = get_session(conn, "user_auth")
 
