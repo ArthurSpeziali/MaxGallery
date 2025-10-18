@@ -36,10 +36,11 @@ config :swoosh,
   finch_name: MaxGallery.Finch
 
 config :max_gallery, MaxGallery.Mail.Mailer,
-  adapter: Swoosh.Adapters.Sendgrid,
+  adapter: Swoosh.Adapters.Mailgun,
   user: System.get_env("EMAIL_ADDRESS", "maxgallery@support.com"),
   api_key: System.get_env("SENDGRID_API"),
-  compress: true
+  domain: System.get_env("SENDGRID_DOMAIN")
+  # compress: true
 
 if config_env() == :prod do
   database_url =
