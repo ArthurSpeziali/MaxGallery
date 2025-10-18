@@ -68,6 +68,8 @@ defmodule MaxGallery.MixProject do
       {:ex_aws_s3, "~> 2.5"},
       {:hackney, "~> 1.20"},
       {:sweet_xml, "~> 0.7"},
+      {:plug, "~> 1.18"},
+      {:multipart, "~> 0.4.0"},
 
       {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
       {:credo, "~> 1.7", only: [:dev], runtime: false},

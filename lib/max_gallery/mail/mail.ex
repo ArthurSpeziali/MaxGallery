@@ -3,7 +3,7 @@ defmodule MaxGallery.Mail do
   require Logger
   @type email_t() :: %Swoosh.Email{}
 
-  @spec send(template :: email_t()) :: Task.t()
+  @spec send(template :: email_t()) :: {:error, String.t()} | :ok
   def send(template) do
     [{_, email}] = template.to 
 
@@ -16,9 +16,7 @@ defmodule MaxGallery.Mail do
           :ok
 
         {:error, {_code, map}} ->
-          reason = map["errors"] 
-                   |> List.first() 
-                   |> Map.get("message")
+          reason = map["message"] 
 
           Logger.info("Error email sendend to '#{email}, \nwith reason: #{reason}'")
           {:error, reason}
