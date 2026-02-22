@@ -58,9 +58,7 @@ defmodule MaxGallery.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"},
-      {:mix_test_watch, "~> 1.2", only: [:test], runtime: false},
       {:mail, "~> 0.5.1"},
-      {:dotenv, "~> 3.1"},
       {:httpoison, "~> 2.2"},
       {:email_checker, "~> 0.2.4"},
       # S3/BlackBlaze B2 dependencies
@@ -72,6 +70,8 @@ defmodule MaxGallery.MixProject do
       {:multipart, "~> 0.4.0"},
 
       {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
+      {:dotenv, "~> 3.1", only: [:dev], runtime: false},
+      {:mix_test_watch, "~> 1.2", only: [:test], runtime: false},
       {:credo, "~> 1.7", only: [:dev], runtime: false},
     ]
   end
