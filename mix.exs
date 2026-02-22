@@ -70,7 +70,7 @@ defmodule MaxGallery.MixProject do
       {:multipart, "~> 0.4.0"},
 
       {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
-      {:dotenv, "~> 3.1", only: [:dev], runtime: false},
+      {:dotenv, "~> 3.1"},
       {:mix_test_watch, "~> 1.2", only: [:test], runtime: false},
       {:credo, "~> 1.7", only: [:dev], runtime: false},
     ]
