@@ -7,16 +7,16 @@ defmodule MaxGalleryWeb.PageController do
   alias MaxGallery.Mail.Template
   alias MaxGallery.Mail
   alias MaxGallery.Server.LiveServer
-  alias MaxGallery.Cache
+  # alias MaxGallery.Cache
 
   ## Remove assings, cookies, files, etc...
   def logout(conn, _params) do
     # Clean up user-specific cache files instead of entire tmp directory
-    user_auth = get_session(conn, "user_auth") || conn.cookies["auth_user"]
+    # user_auth = get_session(conn, "user_auth") || conn.cookies["auth_user"]
 
-    if user_auth do
-      Cache.cleanup(user_auth)
-    end
+    # if user_auth do
+    #   Cache.cleanup(user_auth)
+    # end
 
     configure_session(conn, drop: true)
     |> redirect(to: "/user")
@@ -25,11 +25,11 @@ defmodule MaxGalleryWeb.PageController do
   def logout_user(conn, _params) do
     # Clean up user-specific cache files instead of entire tmp directory
     conn = fetch_cookies(conn, signed: ["auth_user"])
-    user_auth = conn.cookies["auth_user"] || get_session(conn, "user_auth")
+    # user_auth = conn.cookies["auth_user"] || get_session(conn, "user_auth")
 
-    if user_auth do
-      Cache.cleanup(user_auth)
-    end
+    # if user_auth do
+    #   Cache.cleanup(user_auth)
+    # end
 
     configure_session(conn, drop: true)
     |> delete_resp_cookie("auth_user")
