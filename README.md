@@ -31,7 +31,6 @@
 - **PostgreSQL Backend**: Reliable data persistence with ACID compliance
 - **S3-Compatible Storage**: Scalable binary storage (BlackBlaze B2, AWS S3)
 - **Fault-Tolerant**: Elixir's actor model for high availability
-- **Docker Ready**: Containerized deployment with PostgreSQL
 
 ### 🛡️ **Enterprise Security Features**
 - **User Authentication**: Secure password hashing with salt
