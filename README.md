@@ -354,7 +354,11 @@ _build/prod/rel/max_gallery/bin/max_gallery start
 
 ## 📄 License
 
-This project is licensed under the **GNU General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **GNU AFFERO General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
+
+![Agpl](https://www.gnu.org/graphics/gplv3-or-later.png)
+
+
 
 ## 🆘 Support
 
